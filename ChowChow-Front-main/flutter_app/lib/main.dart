@@ -3,9 +3,21 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:window_manager/window_manager.dart';
 import 'services/api_client.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Windows에서 폰 비율 창으로 고정
+  if (Platform.isWindows) {
+    await windowManager.ensureInitialized();
+    await windowManager.setSize(const Size(390, 844));
+    await windowManager.setMinimumSize(const Size(390, 844));
+    await windowManager.setTitle('펫푸드 레시피');
+    await windowManager.center();
+  }
+
   runApp(const PetFoodApp());
 }
 

@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
-  // Android 에뮬레이터에서 호스트 머신 localhost는 10.0.2.2
-  static const String baseUrl = 'http://10.0.2.2:8080';
+  // Android 에뮬레이터: 10.0.2.2 / Windows·iOS 등 나머지: localhost
+  static String get baseUrl {
+    if (Platform.isAndroid) return 'http://10.0.2.2:8080';
+    return 'http://localhost:8080';
+  }
 
   static const String _tokenKey = 'access_token';
 
