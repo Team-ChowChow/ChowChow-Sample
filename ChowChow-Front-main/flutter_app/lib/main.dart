@@ -547,7 +547,6 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(child: pages[index]),
-      extendBody: true,
 
       floatingActionButton: SizedBox(
         width: 64,
@@ -1925,7 +1924,23 @@ class _SearchPageState extends State<SearchPage> {
                   children: recipes.map((recipe) {
                     final tags = recipe['tags'] as List<dynamic>;
 
-                    return Container(
+                    return GestureDetector(
+                      onTap: () {
+                        final id = recipe['id'];
+                        if (id != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RecipeDetailPage(
+                                recipeId: id is int ? id : int.tryParse(id.toString()) ?? 0,
+                                initialTitle: recipe['title'] as String?,
+                                initialImage: recipe['image'] as String?,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
                       margin: const EdgeInsets.only(bottom: 14),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -2026,6 +2041,7 @@ class _SearchPageState extends State<SearchPage> {
                           ],
                         ),
                       ),
+                    ),
                     );
                   }).toList(),
                 ),
@@ -2033,6 +2049,588 @@ class _SearchPageState extends State<SearchPage> {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────
+// 레시피 상세 페이지
+// ──────────────────────────────────────────────
+class RecipeDetailPage extends StatefulWidget {
+  final int recipeId;
+  final String? initialTitle;
+  final String? initialImage;
+
+  const RecipeDetailPage({
+    super.key,
+    required this.recipeId,
+    this.initialTitle,
+    this.initialImage,
+  });
+
+  @override
+  State<RecipeDetailPage> createState() => _RecipeDetailPageState();
+}
+
+class _RecipeDetailPageState extends State<RecipeDetailPage> {
+  Map<String, dynamic>? recipe;
+  List<dynamic> reviews = [];
+  bool _loading = true;
+  bool _reviewLoading = false;
+  String? _error;
+  bool _isBookmarked = false;
+
+  double _myRating = 0;
+  final _reviewController = TextEditingController();
+  bool _submittingReview = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecipe();
+    _loadReviews();
+  }
+
+  @override
+  void dispose() {
+    _reviewController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRecipe() async {
+    try {
+      final res = await ApiClient.get('/api/v1/recipes/${widget.recipeId}');
+      if (!mounted) return;
+      setState(() {
+        recipe = res;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = '레시피를 불러올 수 없습니다.';
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _loadReviews() async {
+    setState(() => _reviewLoading = true);
+    try {
+      final res = await ApiClient.get('/api/v1/recipes/${widget.recipeId}/reviews');
+      if (!mounted) return;
+      final data = res is List ? List<dynamic>.from(res as List) : List<dynamic>.from(res['data'] as List? ?? []);
+      setState(() {
+        reviews = data;
+        _reviewLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _reviewLoading = false);
+    }
+  }
+
+  Future<void> _toggleBookmark() async {
+    try {
+      await ApiClient.post('/api/v1/recipes/${widget.recipeId}/bookmark', {});
+      if (!mounted) return;
+      setState(() => _isBookmarked = !_isBookmarked);
+    } catch (_) {}
+  }
+
+  Future<void> _submitReview() async {
+    if (_myRating == 0 || _reviewController.text.trim().isEmpty) return;
+    setState(() => _submittingReview = true);
+    try {
+      await ApiClient.post('/api/v1/recipes/${widget.recipeId}/reviews', {
+        'rating': _myRating,
+        'reviewContent': _reviewController.text.trim(),
+      });
+      _reviewController.clear();
+      if (!mounted) return;
+      setState(() {
+        _myRating = 0;
+        _submittingReview = false;
+      });
+      _loadReviews();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _submittingReview = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFF97316)))
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text(_error!, style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () { setState(() { _loading = true; _error = null; }); _loadRecipe(); },
+                        child: const Text('다시 시도'),
+                      ),
+                    ],
+                  ),
+                )
+              : CustomScrollView(
+                  slivers: [
+                    SliverAppBar(
+                      expandedHeight: 280,
+                      pinned: true,
+                      backgroundColor: const Color(0xFFF97316),
+                      leading: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      actions: [
+                        IconButton(
+                          icon: Icon(
+                            _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                            color: Colors.white,
+                          ),
+                          onPressed: _toggleBookmark,
+                        ),
+                      ],
+                      flexibleSpace: FlexibleSpaceBar(
+                        background: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            _buildHeroImage(recipe!['imageUrl'] as String?),
+                            Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Color(0x88000000), Color(0x00000000), Color(0x66000000)],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // AI 뱃지
+                            if (recipe!['isAiGenerated'] == true)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFB923C), Color(0xFFF97316)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+                                    SizedBox(width: 4),
+                                    Text('AI 생성 레시피', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+
+                            // 제목
+                            Text(
+                              recipe!['recipeTitle'] ?? widget.initialTitle ?? '',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+
+                            // 태그
+                            if (recipe!['recipePurpose'] != null)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 14),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF3E0),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '#${recipe!['recipePurpose']}',
+                                  style: const TextStyle(color: Color(0xFFFF7A00), fontSize: 13),
+                                ),
+                              ),
+
+                            // 설명
+                            if ((recipe!['recipeDescription'] as String?)?.isNotEmpty == true) ...[
+                              Text(
+                                recipe!['recipeDescription'],
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Color(0xFF4B5563),
+                                  height: 1.6,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // 급여량
+                            if ((recipe!['feedingAmount'] as String?)?.isNotEmpty == true)
+                              _RecipeInfoCard(
+                                icon: Icons.restaurant_outlined,
+                                label: '급여량',
+                                value: recipe!['feedingAmount'],
+                                color: const Color(0xFFF0FDF4),
+                                iconColor: const Color(0xFF16A34A),
+                              ),
+
+                            // 주의사항
+                            if ((recipe!['warnings'] as String?)?.isNotEmpty == true)
+                              _RecipeInfoCard(
+                                icon: Icons.warning_amber_rounded,
+                                label: '주의사항',
+                                value: recipe!['warnings'],
+                                color: const Color(0xFFFEF3C7),
+                                iconColor: const Color(0xFFD97706),
+                              ),
+
+                            const SizedBox(height: 8),
+
+                            // 재료
+                            _RecipeSectionTitle(title: '재료'),
+                            const SizedBox(height: 10),
+                            ..._buildIngredients(),
+                            const SizedBox(height: 20),
+
+                            // 조리 방법
+                            _RecipeSectionTitle(title: '조리 방법'),
+                            const SizedBox(height: 10),
+                            ..._buildSteps(),
+                            const SizedBox(height: 20),
+
+                            // 리뷰
+                            _RecipeSectionTitle(title: '리뷰 (${reviews.length})'),
+                            const SizedBox(height: 12),
+                            _buildReviewForm(),
+                            const SizedBox(height: 16),
+                            ..._buildReviews(),
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+    );
+  }
+
+  Widget _buildHeroImage(String? url) {
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _heroPlaceholder(),
+      );
+    }
+    return _heroPlaceholder();
+  }
+
+  Widget _heroPlaceholder() {
+    return Container(
+      color: const Color(0xFFFFE8D6),
+      child: const Center(
+        child: Icon(Icons.restaurant, size: 72, color: Color(0xFFFFB87A)),
+      ),
+    );
+  }
+
+  List<Widget> _buildIngredients() {
+    final ingredients = recipe!['ingredients'] as List? ?? [];
+    if (ingredients.isEmpty) {
+      return [const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Text('재료 정보가 없습니다.', style: TextStyle(color: Colors.grey)),
+      )];
+    }
+    return ingredients.map<Widget>((ing) {
+      final name = ing['ingredientName'] as String? ?? '재료';
+      final amount = ing['amount'];
+      final unit = ing['unit'] as String? ?? '';
+      final note = ing['note'] as String? ?? '';
+      final amountStr = amount != null ? '$amount$unit' : unit;
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 8, height: 8,
+              decoration: const BoxDecoration(color: Color(0xFFF97316), shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+            if (amountStr.isNotEmpty)
+              Text(amountStr, style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+            if (note.isNotEmpty)
+              Text(' ($note)', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildSteps() {
+    final steps = recipe!['steps'] as List? ?? [];
+    if (steps.isEmpty) {
+      return [const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Text('조리 방법이 없습니다.', style: TextStyle(color: Colors.grey)),
+      )];
+    }
+    return steps.map<Widget>((step) {
+      final num = step['stepNumber'] as int? ?? 0;
+      final desc = step['stepDescription'] as String? ?? '';
+      final img = step['stepImage'] as String?;
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 28, height: 28,
+                  decoration: const BoxDecoration(color: Color(0xFFF97316), shape: BoxShape.circle),
+                  child: Center(
+                    child: Text('$num', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(desc, style: const TextStyle(fontSize: 14, height: 1.5))),
+              ],
+            ),
+            if (img != null && img.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(img, width: double.infinity, height: 160, fit: BoxFit.cover),
+              ),
+            ],
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  Widget _buildReviewForm() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('리뷰 작성', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 10),
+          Row(
+            children: List.generate(5, (i) {
+              return GestureDetector(
+                onTap: () => setState(() => _myRating = (i + 1).toDouble()),
+                child: Icon(
+                  i < _myRating ? Icons.star : Icons.star_border,
+                  color: Colors.amber, size: 32,
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _reviewController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: '리뷰를 작성해주세요',
+              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFF97316),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _submittingReview ? null : _submitReview,
+              child: _submittingReview
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('리뷰 등록'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildReviews() {
+    if (_reviewLoading) {
+      return [const Center(child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: CircularProgressIndicator(color: Color(0xFFF97316)),
+      ))];
+    }
+    if (reviews.isEmpty) {
+      return [const Center(child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Text('아직 리뷰가 없어요.', style: TextStyle(color: Color(0xFF9CA3AF))),
+      ))];
+    }
+    return reviews.map<Widget>((r) {
+      final rating = (r['starRating'] as num?)?.toDouble() ?? 0;
+      final nickname = r['userNickname'] as String? ?? '익명';
+      final content = r['reviewContent'] as String? ?? '';
+      final createdAt = (r['createdAt'] as String? ?? '').length >= 10
+          ? (r['createdAt'] as String).substring(0, 10) : '';
+      return Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: const Color(0xFFFFE8D6),
+                  child: Text(
+                    nickname.isNotEmpty ? nickname[0] : '?',
+                    style: const TextStyle(color: Color(0xFFF97316), fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(nickname, style: const TextStyle(fontWeight: FontWeight.w600))),
+                Row(
+                  children: List.generate(5, (i) => Icon(
+                    i < rating ? Icons.star : Icons.star_border,
+                    size: 16, color: Colors.amber,
+                  )),
+                ),
+              ],
+            ),
+            if (content.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(content, style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563))),
+            ],
+            if (createdAt.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(createdAt, style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+            ],
+          ],
+        ),
+      );
+    }).toList();
+  }
+}
+
+class _RecipeSectionTitle extends StatelessWidget {
+  const _RecipeSectionTitle({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 4, height: 20,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF97316),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+      ],
+    );
+  }
+}
+
+class _RecipeInfoCard extends StatelessWidget {
+  const _RecipeInfoCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.iconColor,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 12, color: iconColor, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 14, color: Color(0xFF374151))),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
