@@ -12,6 +12,9 @@ import java.util.List;
 public class RecipeResponse {
     private Integer recipeId;
     private Integer menuId;
+    private String petType;
+    private String menuName;
+    private String menuCategory;
     private Integer petId;
     private String recipeTitle;
     private String recipeDescription;
@@ -29,6 +32,9 @@ public class RecipeResponse {
         return RecipeResponse.builder()
                 .recipeId(recipe.getRecipeId())
                 .menuId(recipe.getMenuId())
+                .petType(recipe.getMenu() != null ? recipe.getMenu().getPetType() : null)
+                .menuName(recipe.getMenu() != null ? recipe.getMenu().getMenuName() : null)
+                .menuCategory(recipe.getMenu() != null ? recipe.getMenu().getMenuCategory() : null)
                 .petId(recipe.getPet() != null ? recipe.getPet().getPetId() : null)
                 .recipeTitle(recipe.getRecipeTitle())
                 .recipeDescription(recipe.getRecipeDescription())

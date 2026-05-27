@@ -1,6 +1,8 @@
 package com.petdiet.pet.controller;
 
 import com.petdiet.config.SupabasePrincipal;
+import com.petdiet.master.entity.Breed;
+import com.petdiet.master.repository.BreedRepository;
 import com.petdiet.pet.dto.PetRequest;
 import com.petdiet.pet.dto.PetResponse;
 import com.petdiet.pet.service.PetService;
@@ -19,6 +21,7 @@ import java.util.Map;
 public class PetController {
 
     private final PetService petService;
+    private final BreedRepository breedRepository;
 
     @GetMapping
     public ResponseEntity<List<PetResponse>> getMyPets(
@@ -57,8 +60,29 @@ public class PetController {
     }
 
     @GetMapping("/breeds")
-    public ResponseEntity<?> getBreeds() {
-        return ResponseEntity.ok(List.of());
+    public ResponseEntity<?> getBreeds(
+            @RequestParam(required = false) String petType,
+            @RequestParam(required = false) String query) {
+
+        List<Breed> breeds;
+        if (query != null && !query.isBlank()) {
+            breeds = breedRepository.searchByKeyword(query.trim(), petType);
+        } else if (petType != null && !petType.isBlank()) {
+            breeds = breedRepository.findByPetTypeOrderByBreedName(petType);
+        } else {
+            breeds = breedRepository.findAll();
+        }
+
+        List<Map<String, Object>> result = breeds.stream()
+                .map(b -> Map.<String, Object>of(
+                        "breedId", b.getBreedId(),
+                        "breedName", b.getBreedName(),
+                        "breedNameKo", b.getBreedNameKo() != null ? b.getBreedNameKo() : b.getBreedName(),
+                        "petType", b.getPetType()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{petId}/allergies")

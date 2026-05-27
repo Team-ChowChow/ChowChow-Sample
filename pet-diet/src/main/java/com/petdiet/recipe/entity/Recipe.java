@@ -28,6 +28,10 @@ public class Recipe {
     private Integer menuId;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "\"menuId\"", insertable = false, updatable = false)
+    private Menu menu;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "\"userId\"")
     private User user;
 

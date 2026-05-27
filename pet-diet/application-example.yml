@@ -3,8 +3,8 @@ spring:
     name: pet-diet
 
   datasource:
-    url: ${SUPABASE_URL}
-    username: postgres
+    url: ${SUPABASE_DB_URL}
+    username: ${SUPABASE_DB_USERNAME}
     password: ${SUPABASE_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
@@ -31,32 +31,41 @@ supabase:
   url: ${SUPABASE_URL}
   anon-key: ${SUPABASE_ANON_KEY}
   service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
+  jwt-secret: ${SUPABASE_JWT_SECRET}
+  storage:
+    bucket-recipe: recipe-images
+    bucket-meal: meal-images
 
-# OpenAI 설정
+# OpenAI 설정 (LLM 상담 서비스용)
 openai:
   api-key: ${OPENAI_API_KEY}
+  base-url: https://api.openai.com
   model: gpt-4o
   max-tokens: 2048
+
+# fal.ai 설정 (이미지 생성용)
+fal:
+  api-key: ${FAL_API_KEY}
+  recipe-image-model: fal-ai/flux-pro/v1.1
+  character-image-model: fal-ai/flux/dev/image-to-image
+
+# Resend 설정
+resend:
+  api-key: ${RESEND_API_KEY}
+
+# 앱 기본 URL
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
+# Dog/Cat Breed API 설정
+breed:
+  dog-api-key: ${DOG_API_KEY}
+  cat-api-key: ${CAT_API_KEY}
 
 # Spoonacular 설정
 spoonacular:
   api-key: ${SPOONACULAR_API_KEY}
   base-url: https://api.spoonacular.com
-
-# OAuth2 소셜 로그인
-oauth2:
-  kakao:
-    client-id: ${KAKAO_CLIENT_ID}
-    client-secret: ${KAKAO_CLIENT_SECRET}
-    redirect-uri: ${KAKAO_REDIRECT_URI}
-  google:
-    client-id: ${GOOGLE_CLIENT_ID}
-    client-secret: ${GOOGLE_CLIENT_SECRET}
-    redirect-uri: ${GOOGLE_REDIRECT_URI}
-  naver:
-    client-id: ${NAVER_CLIENT_ID}
-    client-secret: ${NAVER_CLIENT_SECRET}
-    redirect-uri: ${NAVER_REDIRECT_URI}
 
 logging:
   level:

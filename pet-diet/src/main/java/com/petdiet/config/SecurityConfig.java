@@ -40,6 +40,11 @@ public class SecurityConfig {
                     "/api/auth/send-email-verify",
                     "/api/auth/pre-verify",
                     "/api/auth/check-pre-verified",
+                    "/api/admin/**",
+                    "/api/ai/image/recipe",
+                    "/api/v1/recipes",
+                    "/api/v1/recipes/search",
+                    "/api/v1/recipes/{recipeId}",
                     "/error"
                 ).permitAll()
                 .anyRequest().authenticated()

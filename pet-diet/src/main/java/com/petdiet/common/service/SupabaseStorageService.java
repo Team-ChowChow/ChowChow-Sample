@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /**
  * Supabase Storage 업로드 서비스.
- * DALL-E 등 외부 URL의 이미지를 다운로드한 뒤 Supabase Storage에 영구 저장.
+ * 외부 URL의 이미지를 다운로드한 뒤 Supabase Storage에 영구 저장.
  */
 @Slf4j
 @Service
@@ -37,7 +37,9 @@ public class SupabaseStorageService {
                 .defaultHeader("x-upsert", "true")
                 .build();
 
-        this.downloadClient = WebClient.builder().build();
+        this.downloadClient = WebClient.builder()
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
+                .build();
     }
 
     /**

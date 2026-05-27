@@ -1,36 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-type TabKey = "home" | "search" | "community" | "profile";
+type TabKey = "home" | "search" | "profile";
 
-const recipeCards = [
-  {
-    id: 1,
-    title: "두준쿠 저지방 닭가슴살 레시피",
-    tags: ["#저지방", "#다이어트"],
-    image:
-      "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=600&q=80",
-    author: "멍멍이엄마",
-    rating: 4.8,
-  },
-  {
-    id: 2,
-    title: "연어 오메가3 영양 밥",
-    tags: ["#트렌드", "#면역력"],
-    image:
-      "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80",
-    author: "냥이집사",
-    rating: 4.9,
-  },
-  {
-    id: 3,
-    title: "소고기 채소 스튜",
-    tags: ["#퍼피/키튼", "#면역력"],
-    image:
-      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80",
-    author: "펫푸드마스터",
-    rating: 4.7,
-  },
-];
+interface Recipe {
+  recipeId: number;
+  recipeTitle: string;
+  recipeDescription: string | null;
+  recipePurpose: string | null;
+  feedingAmount: string | null;
+  imageUrl: string | null;
+  isAiGenerated: boolean;
+  menuId: number;
+  petType: "DOG" | "CAT" | null;
+  menuName: string | null;
+  menuCategory: string | null;
+}
+
+const PLACEHOLDER =
+  "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=600&q=80";
+
+function useRecipes() {
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/v1/recipes?size=20&page=0&sort=recipeId,desc")
+      .then((r) => r.json())
+      .then((body) => setRecipes(body.data ?? []))
+      .catch(() => setRecipes([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { recipes, loading };
+}
 
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -45,7 +47,6 @@ export default function App() {
       <section className="screen-content">
         {tab === "home" && <HomeScreen />}
         {tab === "search" && <SearchScreen />}
-        {tab === "community" && <CommunityScreen />}
         {tab === "profile" && <ProfileScreen onLogout={() => setLoggedIn(false)} />}
       </section>
       <BottomNav tab={tab} onChange={setTab} />
@@ -53,6 +54,7 @@ export default function App() {
   );
 }
 
+// ── 로그인 ────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }: { onLogin: () => void }) {
   return (
     <main className="phone-shell login-shell">
@@ -84,7 +86,12 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   );
 }
 
+// ── 홈 ───────────────────────────────────────────────────────────────────────
 function HomeScreen() {
+  const { recipes, loading } = useRecipes();
+
+  const hero = recipes[0];
+
   return (
     <div className="page">
       <header className="top-bar">
@@ -92,14 +99,16 @@ function HomeScreen() {
         <div className="coin-pill">C 1,250</div>
       </header>
 
+      {/* 히어로 카드 */}
       <article className="hero-card">
         <img
-          src="https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?auto=format&fit=crop&w=900&q=80"
-          alt="트렌드 레시피"
+          src={hero?.imageUrl ?? PLACEHOLDER}
+          alt={hero?.recipeTitle ?? "레시피"}
         />
-        <div className="hero-title">소고기 브로콜리</div>
+        <div className="hero-title">{hero?.recipeTitle ?? "레시피 로딩 중..."}</div>
       </article>
 
+      {/* AI 셰프 */}
       <section className="ai-card">
         <p className="ai-label">AI 셰프</p>
         <h3>우리 아이 맞춤 식단을 AI가 추천해드려요</h3>
@@ -107,82 +116,104 @@ function HomeScreen() {
         <button className="ghost-btn">AI 상담 시작하기</button>
       </section>
 
-      <h3 className="section-title">나의 식단 기록</h3>
-      <div className="recipe-grid">
-        {recipeCards.map((recipe) => (
-          <article key={recipe.id} className="recipe-mini">
-            <img src={recipe.image} alt={recipe.title} />
-            <p>{recipe.title}</p>
-          </article>
-        ))}
-      </div>
+      {/* 레시피 그리드 */}
+      <h3 className="section-title">추천 레시피</h3>
+      {loading ? (
+        <p className="muted" style={{ textAlign: "center", padding: "20px" }}>
+          레시피 불러오는 중...
+        </p>
+      ) : (
+        <div className="recipe-grid">
+          {recipes.slice(0, 6).map((r) => (
+            <article key={r.recipeId} className="recipe-mini">
+              <img src={r.imageUrl ?? PLACEHOLDER} alt={r.recipeTitle} />
+              <p>{r.recipeTitle}</p>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
+// ── 검색 ─────────────────────────────────────────────────────────────────────
 function SearchScreen() {
+  const { recipes, loading } = useRecipes();
+  const [keyword, setKeyword] = useState("");
+  const [petType, setPetType] = useState<"" | "DOG" | "CAT">("");
+
+  const filtered = recipes.filter((r) => {
+    const matchKeyword =
+      keyword === "" ||
+      r.recipeTitle.includes(keyword) ||
+      (r.recipeDescription ?? "").includes(keyword) ||
+      (r.recipePurpose ?? "").includes(keyword);
+    const matchPetType = petType === "" || r.petType === petType;
+    return matchKeyword && matchPetType;
+  });
+
   return (
     <div className="page">
       <h2 className="page-title">레시피 검색</h2>
-      <input className="search-box" placeholder="요리 이름으로 검색..." />
-      <button className="primary-btn compact">우리 아이 맞춤 필터</button>
+      <input
+        className="search-box"
+        placeholder="레시피 이름으로 검색..."
+        value={keyword}
+        onChange={(e) => setKeyword(e.target.value)}
+      />
 
       <div className="chip-row">
-        <span className="chip">#트렌드</span>
-        <span className="chip">#저지방</span>
-        <span className="chip">#알러지프리</span>
-        <span className="chip">#면역력</span>
+        <span
+          className={`chip ${petType === "" ? "active" : ""}`}
+          onClick={() => setPetType("")}
+        >
+          전체
+        </span>
+        <span
+          className={`chip ${petType === "DOG" ? "active" : ""}`}
+          onClick={() => setPetType("DOG")}
+        >
+          🐶 강아지
+        </span>
+        <span
+          className={`chip ${petType === "CAT" ? "active" : ""}`}
+          onClick={() => setPetType("CAT")}
+        >
+          🐱 고양이
+        </span>
       </div>
 
-      <p className="result-text">총 3개의 레시피</p>
+      <p className="result-text">총 {filtered.length}개의 레시피</p>
 
-      <div className="recipe-list">
-        {recipeCards.map((recipe) => (
-          <article key={recipe.id} className="recipe-item">
-            <img src={recipe.image} alt={recipe.title} />
-            <div>
-              <h4>{recipe.title}</h4>
-              <p>{recipe.tags.join("  ")}</p>
-              <small>
-                ⭐ {recipe.rating} · {recipe.author}
-              </small>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CommunityScreen() {
-  return (
-    <div className="page">
-      <h2 className="page-title">커뮤니티</h2>
-      <p className="muted">반려동물 식단에 대한 이야기를 나눠보세요</p>
-
-      <div className="chip-row">
-        <span className="chip active">전체</span>
-        <span className="chip">레시피</span>
-        <span className="chip">질문</span>
-        <span className="chip">후기</span>
-      </div>
-
-      <article className="post-card">
-        <strong>멍멍이엄마</strong>
-        <p>
-          오늘 초코한테 닭가슴살 야채 볶음 만들어줬어요! 너무 잘 먹네요 🙂
-          <br />
-          #닭가슴살 #야채볶음
+      {loading ? (
+        <p className="muted" style={{ textAlign: "center", padding: "20px" }}>
+          레시피 불러오는 중...
         </p>
-        <img
-          src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=900&q=80"
-          alt="커뮤니티 이미지"
-        />
-      </article>
+      ) : (
+        <div className="recipe-list">
+          {filtered.map((r) => (
+            <article key={r.recipeId} className="recipe-item">
+              <img src={r.imageUrl ?? PLACEHOLDER} alt={r.recipeTitle} />
+              <div>
+                <h4>{r.recipeTitle}</h4>
+                <p className="muted" style={{ fontSize: "12px", marginTop: "2px" }}>
+                  {r.recipePurpose ?? ""}
+                </p>
+                <small style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "4px" }}>
+                  {r.petType === "DOG" && <span className="chip" style={{ fontSize: "10px", padding: "1px 6px" }}>🐶 강아지</span>}
+                  {r.petType === "CAT" && <span className="chip" style={{ fontSize: "10px", padding: "1px 6px" }}>🐱 고양이</span>}
+                  {r.menuCategory && <span className="chip" style={{ fontSize: "10px", padding: "1px 6px" }}>{r.menuCategory}</span>}
+                </small>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
+// ── 프로필 ────────────────────────────────────────────────────────────────────
 function ProfileScreen({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="page">
@@ -194,19 +225,11 @@ function ProfileScreen({ onLogout }: { onLogout: () => void }) {
       <section className="profile-card">
         <h3>우리 아이들</h3>
         <div className="pet-item">
-          <img src={recipeCards[0].image} alt="초코" />
+          <img src={PLACEHOLDER} alt="초코" />
           <div>
             <strong>초코</strong>
             <p>골든 리트리버 · 3살</p>
             <small>알러지: 닭고기, 밀</small>
-          </div>
-        </div>
-        <div className="pet-item">
-          <img src={recipeCards[2].image} alt="나비" />
-          <div>
-            <strong>나비</strong>
-            <p>코리안 숏헤어 · 2살</p>
-            <small>알러지: 생선</small>
           </div>
         </div>
       </section>
@@ -218,6 +241,7 @@ function ProfileScreen({ onLogout }: { onLogout: () => void }) {
   );
 }
 
+// ── 하단 내비 ─────────────────────────────────────────────────────────────────
 function BottomNav({
   tab,
   onChange,
@@ -232,9 +256,6 @@ function BottomNav({
       </button>
       <button className={tab === "search" ? "nav-btn active" : "nav-btn"} onClick={() => onChange("search")}>
         검색
-      </button>
-      <button className={tab === "community" ? "nav-btn active" : "nav-btn"} onClick={() => onChange("community")}>
-        커뮤니티
       </button>
       <button className={tab === "profile" ? "nav-btn active" : "nav-btn"} onClick={() => onChange("profile")}>
         프로필
