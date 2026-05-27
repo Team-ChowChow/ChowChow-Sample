@@ -1,5 +1,6 @@
 package com.petdiet.config;
 
+import com.petdiet.master.service.BreedSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -20,10 +21,12 @@ import java.util.List;
 public class DataInitializer implements ApplicationRunner {
 
     private final JdbcTemplate jdbc;
+    private final BreedSyncService breedSyncService;
 
     @Override
     public void run(ApplicationArguments args) {
         log.info("마스터 데이터 초기화 시작");
+        migrateBreedColumns();
         loadAllergies();
         loadDiseases();
         loadIngredients();
@@ -78,22 +81,13 @@ public class DataInitializer implements ApplicationRunner {
         log.info("Ingredients 삽입: {}건", rows.size());
     }
 
+    private void migrateBreedColumns() {
+        jdbc.execute("ALTER TABLE \"Breeds\" ADD COLUMN IF NOT EXISTS \"breedNameKo\" VARCHAR(100)");
+    }
+
     private void loadBreeds() {
-        if (count("Breeds") > 0) return;
-        List<Object[]> rows = new ArrayList<>();
-        for (CSVRecord r : readCsv("db/csv/breeds.csv")) {
-            String desc = r.get("breedDescription");
-            rows.add(new Object[]{
-                r.get("petType"),
-                r.get("breedName"),
-                (desc == null || desc.isBlank()) ? null : desc
-            });
-        }
-        jdbc.batchUpdate(
-            "INSERT INTO \"Breeds\" (\"petType\", \"breedName\", \"breedDescription\") VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
-            rows
-        );
-        log.info("Breeds 삽입: {}건", rows.size());
+        int synced = breedSyncService.syncIfEmpty();
+        if (synced > 0) log.info("Breeds API 동기화: {}건", synced);
     }
 
     private void loadAllergyIngredients() {

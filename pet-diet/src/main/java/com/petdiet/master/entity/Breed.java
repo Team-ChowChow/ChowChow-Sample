@@ -24,4 +24,11 @@ public class Breed {
 
     @Column(name = "\"breedDescription\"")
     private String breedDescription;
+
+    @Column(name = "\"breedNameKo\"", length = 100)
+    private String breedNameKo;
+
+    public void updateKoreanName(String breedNameKo) {
+        this.breedNameKo = breedNameKo;
+    }
 }
