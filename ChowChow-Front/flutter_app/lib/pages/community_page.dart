@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../data/sample_data.dart';
 import '../theme/chow_theme.dart';
@@ -16,7 +17,7 @@ class CommunityPage extends StatelessWidget {
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
-                pinned: true,
+                pinned: false,
                 backgroundColor: Colors.white,
                 surfaceTintColor: Colors.transparent,
                 title: Column(
@@ -116,7 +117,7 @@ class CommunityPage extends StatelessWidget {
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap: () {},
+              onTap: () => context.push('/create-post'),
               child: const SizedBox(
                 width: 56,
                 height: 56,

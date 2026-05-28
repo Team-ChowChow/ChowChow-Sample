@@ -64,8 +64,6 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleGoogleLogin() => context.go('/');
 
-  void _handleKakaoLogin() => context.go('/');
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,15 +184,7 @@ class _LoginPageState extends State<LoginPage> {
                           foregroundColor: ChowColors.gray700,
                           borderColor: ChowColors.gray300,
                           icon: const _GoogleIcon(),
-                          label: 'Google로 로그인',
-                        ),
-                        const SizedBox(height: 12),
-                        _SocialButton(
-                          onPressed: _handleKakaoLogin,
-                          backgroundColor: ChowColors.kakaoYellow,
-                          foregroundColor: Colors.black,
-                          icon: const _KakaoIcon(),
-                          label: '카카오로 로그인',
+                          label: 'Google 계정으로 로그인',
                         ),
                         const SizedBox(height: 28),
                         Text.rich(
@@ -250,36 +240,20 @@ class _PawLogo extends StatelessWidget {
           ),
         ],
       ),
-      child: const Center(child: _DoublePawPrints()),
-    );
-  }
-}
-
-class _DoublePawPrints extends StatelessWidget {
-  const _DoublePawPrints();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 44,
-      height: 36,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(left: 2, top: 6, child: _singlePaw(0.85)),
-          Positioned(right: 2, top: 2, child: Transform.rotate(angle: 0.25, child: _singlePaw(0.9))),
-        ],
+      child: Center(
+        child: Image.asset(
+          'assets/images/paw.png',
+          width: 34,
+          height: 34,
+          color: Colors.brown,
+          colorBlendMode: BlendMode.srcIn,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
-
-  Widget _singlePaw(double scale) {
-    return Transform.scale(
-      scale: scale,
-      child: const Icon(Icons.pets, color: Color(0xFF2D2D2D), size: 26),
-    );
-  }
 }
+
 
 class _LoginButton extends StatelessWidget {
   const _LoginButton({required this.onPressed, this.isLoading = false});
@@ -377,58 +351,78 @@ class _GoogleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(width: 20, height: 20, child: CustomPaint(painter: _GoogleMarkPainter()));
-  }
-}
-
-class _GoogleMarkPainter extends CustomPainter {
-  const _GoogleMarkPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final p = Paint()..style = PaintingStyle.fill;
-    p.color = const Color(0xFF4285F4);
-    canvas.drawRect(Rect.fromLTWH(w * 0.45, 0, w * 0.55, h * 0.45), p);
-    p.color = const Color(0xFF34A853);
-    canvas.drawRect(Rect.fromLTWH(w * 0.45, h * 0.55, w * 0.55, h * 0.45), p);
-    p.color = const Color(0xFFFBBC05);
-    canvas.drawRect(Rect.fromLTWH(0, h * 0.45, w * 0.45, h * 0.2), p);
-    p.color = const Color(0xFFEA4335);
-    canvas.drawRect(Rect.fromLTWH(0, 0, w * 0.45, h * 0.55), p);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _KakaoIcon extends StatelessWidget {
-  const _KakaoIcon();
-
-  @override
-  Widget build(BuildContext context) {
     return SizedBox(
       width: 20,
       height: 20,
-      child: CustomPaint(painter: _KakaoBubblePainter()),
+      child: CustomPaint(
+        painter: _GoogleLogoPainter(),
+      ),
     );
   }
 }
 
-class _KakaoBubblePainter extends CustomPainter {
+class _GoogleLogoPainter extends CustomPainter {
+  const _GoogleLogoPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = Colors.black;
-    final path = Path()
-      ..moveTo(size.width * 0.5, size.height * 0.08)
-      ..quadraticBezierTo(size.width * 0.95, size.height * 0.08, size.width * 0.95, size.height * 0.45)
-      ..quadraticBezierTo(size.width * 0.95, size.height * 0.82, size.width * 0.5, size.height * 0.82)
-      ..quadraticBezierTo(size.width * 0.05, size.height * 0.82, size.width * 0.05, size.height * 0.45)
-      ..quadraticBezierTo(size.width * 0.05, size.height * 0.08, size.width * 0.5, size.height * 0.08)
+    final scaleX = size.width / 48;
+    final scaleY = size.height / 48;
+
+    Path scalePath(Path path) {
+      return path.transform(Matrix4.diagonal3Values(scaleX, scaleY, 1).storage);
+    }
+
+    final red = Paint()..color = const Color(0xFFEA4335);
+    final blue = Paint()..color = const Color(0xFF4285F4);
+    final yellow = Paint()..color = const Color(0xFFFBBC05);
+    final green = Paint()..color = const Color(0xFF34A853);
+
+    final redPath = Path()
+      ..moveTo(24, 9.5)
+      ..cubicTo(27.54, 9.5, 30.71, 10.72, 33.21, 13.1)
+      ..lineTo(40.06, 6.25)
+      ..cubicTo(35.9, 2.38, 30.47, 0, 24, 0)
+      ..cubicTo(14.62, 0, 6.51, 5.38, 2.56, 13.22)
+      ..lineTo(10.54, 19.41)
+      ..cubicTo(12.43, 13.72, 17.74, 9.5, 24, 9.5)
       ..close();
-    canvas.drawPath(path, p);
-    canvas.drawCircle(Offset(size.width * 0.22, size.height * 0.72), size.width * 0.06, p);
+
+    final bluePath = Path()
+      ..moveTo(46.98, 24.55)
+      ..cubicTo(46.98, 22.98, 46.83, 21.46, 46.6, 20)
+      ..lineTo(24, 20)
+      ..lineTo(24, 29.02)
+      ..lineTo(36.94, 29.02)
+      ..cubicTo(36.36, 31.98, 34.68, 34.5, 32.16, 36.2)
+      ..lineTo(39.89, 42.2)
+      ..cubicTo(44.4, 38.02, 46.98, 31.84, 46.98, 24.55)
+      ..close();
+
+    final yellowPath = Path()
+      ..moveTo(10.53, 28.59)
+      ..cubicTo(10.05, 27.14, 9.77, 25.6, 9.77, 24)
+      ..cubicTo(9.77, 22.4, 10.04, 20.86, 10.53, 19.41)
+      ..lineTo(2.55, 13.22)
+      ..cubicTo(0.92, 16.46, 0, 20.12, 0, 24)
+      ..cubicTo(0, 27.88, 0.92, 31.54, 2.56, 34.78)
+      ..lineTo(10.53, 28.59)
+      ..close();
+
+    final greenPath = Path()
+      ..moveTo(24, 48)
+      ..cubicTo(30.48, 48, 35.93, 45.87, 39.89, 42.19)
+      ..lineTo(32.16, 36.19)
+      ..cubicTo(30.01, 37.64, 27.24, 38.49, 24, 38.49)
+      ..cubicTo(17.74, 38.49, 12.43, 34.27, 10.53, 28.58)
+      ..lineTo(2.55, 34.77)
+      ..cubicTo(6.51, 42.62, 14.62, 48, 24, 48)
+      ..close();
+
+    canvas.drawPath(scalePath(redPath), red);
+    canvas.drawPath(scalePath(bluePath), blue);
+    canvas.drawPath(scalePath(yellowPath), yellow);
+    canvas.drawPath(scalePath(greenPath), green);
   }
 
   @override

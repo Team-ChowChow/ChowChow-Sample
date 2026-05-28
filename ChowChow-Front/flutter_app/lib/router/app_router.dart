@@ -15,6 +15,7 @@ import '../pages/recipe_generation_page.dart';
 import '../pages/search_page.dart';
 import '../pages/signup_page.dart';
 import '../shell/main_shell.dart';
+import '../pages/create_post.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -84,6 +85,11 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/app-settings',
         builder: (context, state) => const AppSettingsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/create-post',
+        builder: (context, state) => const CreatePostPage(),
       ),
     ],
   );
