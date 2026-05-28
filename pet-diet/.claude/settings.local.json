@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat >> *)"
+    ],
+    "additionalDirectories": [
+      "/Users/likehoon/Chawchaw/pet-diet/src/main/resources/db/csv"
+    ]
+  }
+}
