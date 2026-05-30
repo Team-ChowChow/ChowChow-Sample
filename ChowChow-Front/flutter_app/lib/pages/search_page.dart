@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
@@ -14,15 +15,19 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
+enum _SearchSort { popular, latest }
+
 class _SearchPageState extends State<SearchPage> {
   final _searchCtrl = TextEditingController();
   final _focusNode = FocusNode();
 
   String _query = '';
+  bool _searchFocused = false;
 
   String? _petTypeFilter; // DOG | CAT | ETC | null
-  String? _purposeFilter;
+  List<String> _purposeFilters = [];
   String? _ingredientFilter;
+  _SearchSort _sort = _SearchSort.popular;
 
   List<RecipeModel> _results = [];
   bool _loading = false;
@@ -39,6 +44,35 @@ class _SearchPageState extends State<SearchPage> {
     '#면역력',
   ];
 
+  final List<_PopularSearchTerm> _popularSearchTerms = const [
+    _PopularSearchTerm(rank: 1, keyword: '닭가슴살 레시피'),
+    _PopularSearchTerm(rank: 2, keyword: '다이어트 펫푸드', isNew: true),
+    _PopularSearchTerm(rank: 3, keyword: '알레르기 대응식'),
+    _PopularSearchTerm(rank: 4, keyword: '강아지 간식'),
+    _PopularSearchTerm(rank: 5, keyword: '연어 고구마', isNew: true),
+    _PopularSearchTerm(rank: 6, keyword: '생식 레시피'),
+    _PopularSearchTerm(rank: 7, keyword: '저지방 식단'),
+    _PopularSearchTerm(rank: 8, keyword: '시니어 건강식', isNew: true),
+    _PopularSearchTerm(rank: 9, keyword: '치킨 야채볼'),
+    _PopularSearchTerm(rank: 10, keyword: '면역력 강화'),
+  ];
+
+  final List<String> _suggestionSeeds = const [
+    '닭고기',
+    '소고기',
+    '연어',
+    '참치',
+    '오리',
+    '양고기',
+    '다이어트',
+    '알러지',
+    '시니어',
+    '면역력',
+    '치아건강',
+    '강아지',
+    '고양이',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +83,12 @@ class _SearchPageState extends State<SearchPage> {
 
       _debounce?.cancel();
       _debounce = Timer(const Duration(milliseconds: 400), _search);
+    });
+
+    _focusNode.addListener(() {
+      if (mounted) {
+        setState(() => _searchFocused = _focusNode.hasFocus);
+      }
     });
 
     _search();
@@ -79,8 +119,8 @@ class _SearchPageState extends State<SearchPage> {
         query['petType'] = _petTypeFilter!;
       }
 
-      if (_purposeFilter != null) {
-        query['purpose'] = _purposeFilter!;
+      if (_purposeFilters.isNotEmpty) {
+        query['purpose'] = _purposeFilters.join(',');
       }
 
       if (_ingredientFilter != null) {
@@ -109,6 +149,50 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  List<String> get _popularKeywords {
+    return _popularSearchTerms
+        .map((term) => term.keyword.trim())
+        .where((label) => label.isNotEmpty)
+        .toList();
+  }
+
+  List<String> get _searchSuggestions {
+    final keyword = _query.trim().toLowerCase();
+    final pool = <String>{
+      ..._popularKeywords,
+      ..._suggestionSeeds,
+      ..._results.map((recipe) => recipe.recipeTitle),
+      ..._results.map((recipe) => recipe.menuCategory ?? ''),
+      ..._results.map((recipe) => recipe.recipePurpose ?? ''),
+    }.where((item) => item.trim().isNotEmpty).toList();
+
+    if (keyword.isEmpty) {
+      return pool.take(8).toList();
+    }
+
+    return pool
+        .where((item) => item.toLowerCase().contains(keyword))
+        .take(8)
+        .toList();
+  }
+
+  List<RecipeModel> get _sortedResults {
+    final sorted = List<RecipeModel>.of(_results);
+    if (_sort == _SearchSort.latest) {
+      sorted.sort((a, b) => b.recipeId.compareTo(a.recipeId));
+    }
+    return sorted;
+  }
+
+  void _selectKeyword(String keyword) {
+    _searchCtrl.value = TextEditingValue(
+      text: keyword,
+      selection: TextSelection.collapsed(offset: keyword.length),
+    );
+    setState(() => _query = keyword);
+    _search();
+  }
+
   void _openFilter() {
     showModalBottomSheet<_FilterResult>(
       context: context,
@@ -118,7 +202,7 @@ class _SearchPageState extends State<SearchPage> {
       builder: (context) {
         return _FilterBottomSheet(
           petType: _petTypeFilter,
-          purpose: _purposeFilter,
+          purposes: _purposeFilters,
           ingredient: _ingredientFilter,
         );
       },
@@ -127,7 +211,7 @@ class _SearchPageState extends State<SearchPage> {
 
       setState(() {
         _petTypeFilter = result.petType;
-        _purposeFilter = result.purpose;
+        _purposeFilters = result.purposes;
         _ingredientFilter = result.ingredient;
       });
 
@@ -161,26 +245,50 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    SizedBox(
-                      height: 43,
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      height: _searchFocused ? 52 : 43,
                       child: TextField(
                         controller: _searchCtrl,
                         focusNode: _focusNode,
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: TextStyle(
+                          fontSize: _searchFocused ? 15 : 13,
                           color: ChowColors.gray800,
                         ),
                         decoration: InputDecoration(
                           hintText: '오리 이름으로도 검색...',
-                          hintStyle: const TextStyle(
-                            fontSize: 13,
+                          hintStyle: TextStyle(
+                            fontSize: _searchFocused ? 14 : 13,
                             color: ChowColors.gray500,
                           ),
                           filled: true,
-                          fillColor: ChowColors.gray50,
+                          fillColor: _searchFocused
+                              ? Colors.white
+                              : ChowColors.gray50,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(11),
+                            borderRadius: BorderRadius.circular(
+                              _searchFocused ? 15 : 11,
+                            ),
                             borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              _searchFocused ? 15 : 11,
+                            ),
+                            borderSide: BorderSide(
+                              color: _searchFocused
+                                  ? ChowColors.orange500
+                                  : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(
+                              color: ChowColors.orange500,
+                              width: 1.5,
+                            ),
                           ),
                           prefixIcon: const Icon(
                             Icons.search,
@@ -203,6 +311,25 @@ class _SearchPageState extends State<SearchPage> {
                               : null,
                         ),
                       ),
+                    ),
+
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: _searchFocused
+                          ? _SearchSuggestionPanel(
+                              key: ValueKey(_query.trim().isEmpty),
+                              title: _query.trim().isEmpty
+                                  ? '인기 검색어'
+                                  : '자동완성',
+                              popularTerms: _popularSearchTerms,
+                              suggestions: _searchSuggestions,
+                              query: _query,
+                              onSelect: _selectKeyword,
+                              onClose: () => _focusNode.unfocus(),
+                            )
+                          : const SizedBox.shrink(),
                     ),
 
                     const SizedBox(height: 10),
@@ -259,38 +386,39 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                     ),
 
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '인기 카테고리',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: ChowColors.gray900,
-                          height: 1.2,
+                    if (!_searchFocused) ...[
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '인기 카테고리',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: ChowColors.gray900,
+                            height: 1.2,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.start,
-                      children: _popularCategories
-                          .map(
-                            (label) => _PopularCategoryChip(
-                              label: label,
-                              onTap: () {
-                                final keyword = label.replaceFirst('#', '');
-                                _searchCtrl.text = keyword;
-                                setState(() => _query = keyword);
-                                _search();
-                              },
-                            ),
-                          )
-                          .toList(),
-                    ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.start,
+                        children: _popularCategories
+                            .map(
+                              (label) => _PopularCategoryChip(
+                                label: label,
+                                onTap: () {
+                                  final keyword = label.replaceFirst('#', '');
+                                  _searchCtrl.text = keyword;
+                                  setState(() => _query = keyword);
+                                  _search();
+                                },
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -299,14 +427,305 @@ class _SearchPageState extends State<SearchPage> {
 
           Expanded(
             child: _SearchResults(
-              results: _results,
+              results: _sortedResults,
               loading: _loading,
+              sort: _sort,
+              onSortChanged: (sort) {
+                setState(() => _sort = sort);
+              },
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _SearchSuggestionPanel extends StatelessWidget {
+  const _SearchSuggestionPanel({
+    super.key,
+    required this.title,
+    required this.popularTerms,
+    required this.suggestions,
+    required this.query,
+    required this.onSelect,
+    required this.onClose,
+  });
+
+  final String title;
+  final List<_PopularSearchTerm> popularTerms;
+  final List<String> suggestions;
+  final String query;
+  final ValueChanged<String> onSelect;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasQuery = query.trim().isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ChowColors.orange100),
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 12,
+            offset: Offset(0, 4),
+            color: Color(0x14000000),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasQuery ? Icons.manage_search : Icons.local_fire_department,
+                size: 17,
+                color: ChowColors.orange500,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: ChowColors.gray800,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onClose,
+                style: TextButton.styleFrom(
+                  foregroundColor: ChowColors.gray500,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(34, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  '닫기',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (!hasQuery)
+            _PopularSearchGrid(
+              terms: popularTerms,
+              onSelect: onSelect,
+            )
+          else if (suggestions.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                '추천 검색어가 없습니다.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: ChowColors.gray500,
+                ),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: suggestions
+                  .map(
+                    (keyword) => _SuggestionChip(
+                      keyword: keyword,
+                      hasQuery: hasQuery,
+                      onTap: () => onSelect(keyword),
+                    ),
+                  )
+                  .toList(),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PopularSearchGrid extends StatelessWidget {
+  const _PopularSearchGrid({
+    required this.terms,
+    required this.onSelect,
+  });
+
+  final List<_PopularSearchTerm> terms;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: terms.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 3.5,
+      ),
+      itemBuilder: (context, index) {
+        final term = terms[index];
+        return _PopularSearchTile(
+          term: term,
+          onTap: () => onSelect(term.keyword),
+        );
+      },
+    );
+  }
+}
+
+class _PopularSearchTile extends StatelessWidget {
+  const _PopularSearchTile({
+    required this.term,
+    required this.onTap,
+  });
+
+  final _PopularSearchTerm term;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ChowColors.gray50,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                child: Text(
+                  '${term.rank}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: term.rank <= 3
+                        ? ChowColors.orange500
+                        : ChowColors.gray400,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  term.keyword,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ChowColors.gray800,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+              if (term.isNew) ...[
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: ChowColors.red500,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'NEW',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionChip extends StatelessWidget {
+  const _SuggestionChip({
+    required this.keyword,
+    required this.hasQuery,
+    required this.onTap,
+  });
+
+  final String keyword;
+  final bool hasQuery;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: hasQuery ? ChowColors.orange50 : ChowColors.gray50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+        side: BorderSide(
+          color: hasQuery ? ChowColors.orange100 : ChowColors.gray200,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                hasQuery ? Icons.north_west : Icons.tag,
+                size: 13,
+                color: hasQuery ? ChowColors.orange600 : ChowColors.gray500,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                keyword,
+                style: TextStyle(
+                  color: hasQuery ? ChowColors.orange600 : ChowColors.gray700,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PopularSearchTerm {
+  const _PopularSearchTerm({
+    required this.rank,
+    required this.keyword,
+    this.isNew = false,
+  });
+
+  final int rank;
+  final String keyword;
+  final bool isNew;
 }
 
 class _PopularCategoryChip extends StatelessWidget {
@@ -350,10 +769,14 @@ class _SearchResults extends StatelessWidget {
   const _SearchResults({
     required this.results,
     required this.loading,
+    required this.sort,
+    required this.onSortChanged,
   });
 
   final List<RecipeModel> results;
   final bool loading;
+  final _SearchSort sort;
+  final ValueChanged<_SearchSort> onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -374,13 +797,10 @@ class _SearchResults extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            const Text(
-              '인기순',
-              style: TextStyle(
-                fontSize: 12,
-                color: ChowColors.orange500,
-                fontWeight: FontWeight.w500,
-              ),
+            _SortTextButton(
+              label: '인기순',
+              selected: sort == _SearchSort.popular,
+              onTap: () => onSortChanged(_SearchSort.popular),
             ),
             const SizedBox(width: 6),
             const Text(
@@ -391,12 +811,10 @@ class _SearchResults extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            const Text(
-              '최신순',
-              style: TextStyle(
-                fontSize: 12,
-                color: ChowColors.gray500,
-              ),
+            _SortTextButton(
+              label: '최신순',
+              selected: sort == _SearchSort.latest,
+              onTap: () => onSortChanged(_SearchSort.latest),
             ),
           ],
         ),
@@ -414,6 +832,37 @@ class _SearchResults extends StatelessWidget {
         else
           ...results.map((recipe) => _RecipeRow(recipe: recipe)),
       ],
+    );
+  }
+}
+
+class _SortTextButton extends StatelessWidget {
+  const _SortTextButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: selected ? ChowColors.orange500 : ChowColors.gray500,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -445,7 +894,10 @@ class _RecipeRow extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () {},
+          onTap: () => context.push(
+            '/recipes/${recipe.recipeId}',
+            extra: recipe,
+          ),
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Row(
@@ -580,24 +1032,24 @@ class _RecipeRow extends StatelessWidget {
 class _FilterResult {
   const _FilterResult({
     this.petType,
-    this.purpose,
+    this.purposes = const [],
     this.ingredient,
   });
 
   final String? petType;
-  final String? purpose;
+  final List<String> purposes;
   final String? ingredient;
 }
 
 class _FilterBottomSheet extends StatefulWidget {
   const _FilterBottomSheet({
     this.petType,
-    this.purpose,
+    this.purposes = const [],
     this.ingredient,
   });
 
   final String? petType;
-  final String? purpose;
+  final List<String> purposes;
   final String? ingredient;
 
   @override
@@ -606,21 +1058,31 @@ class _FilterBottomSheet extends StatefulWidget {
 
 class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   late String? _petType;
-  late String? _purpose;
+  late Set<String> _purposes;
   late String? _ingredient;
 
   @override
   void initState() {
     super.initState();
     _petType = widget.petType;
-    _purpose = widget.purpose;
+    _purposes = widget.purposes.toSet();
     _ingredient = widget.ingredient;
+  }
+
+  void _togglePurpose(String purpose) {
+    setState(() {
+      if (_purposes.contains(purpose)) {
+        _purposes.remove(purpose);
+      } else {
+        _purposes.add(purpose);
+      }
+    });
   }
 
   void _reset() {
     setState(() {
       _petType = null;
-      _purpose = null;
+      _purposes.clear();
       _ingredient = null;
     });
   }
@@ -630,7 +1092,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       context,
       _FilterResult(
         petType: _petType,
-        purpose: _purpose,
+        purposes: _purposes.toList(),
         ingredient: _ingredient,
       ),
     );
@@ -720,33 +1182,33 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 children: [
                   _FilterPill(
                     label: '다이어트',
-                    selected: _purpose == '다이어트',
-                    onTap: () => setState(() => _purpose = '다이어트'),
+                    selected: _purposes.contains('다이어트'),
+                    onTap: () => _togglePurpose('다이어트'),
                   ),
                   _FilterPill(
                     label: '알러지',
-                    selected: _purpose == '알러지',
-                    onTap: () => setState(() => _purpose = '알러지'),
+                    selected: _purposes.contains('알러지'),
+                    onTap: () => _togglePurpose('알러지'),
                   ),
                   _FilterPill(
                     label: '시니어',
-                    selected: _purpose == '시니어',
-                    onTap: () => setState(() => _purpose = '시니어'),
+                    selected: _purposes.contains('시니어'),
+                    onTap: () => _togglePurpose('시니어'),
                   ),
                   _FilterPill(
                     label: '성장기',
-                    selected: _purpose == '성장기',
-                    onTap: () => setState(() => _purpose = '성장기'),
+                    selected: _purposes.contains('성장기'),
+                    onTap: () => _togglePurpose('성장기'),
                   ),
                   _FilterPill(
                     label: '면역력',
-                    selected: _purpose == '면역력',
-                    onTap: () => setState(() => _purpose = '면역력'),
+                    selected: _purposes.contains('면역력'),
+                    onTap: () => _togglePurpose('면역력'),
                   ),
                   _FilterPill(
                     label: '피부/털',
-                    selected: _purpose == '피부/털',
-                    onTap: () => setState(() => _purpose = '피부/털'),
+                    selected: _purposes.contains('피부/털'),
+                    onTap: () => _togglePurpose('피부/털'),
                   ),
                 ],
               ),

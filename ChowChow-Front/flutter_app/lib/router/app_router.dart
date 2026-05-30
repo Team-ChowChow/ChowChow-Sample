@@ -13,11 +13,15 @@ import '../pages/home_page.dart';
 import '../pages/Notification_Settings_page.dart';
 import '../pages/login_page.dart';
 import '../pages/notices_page.dart';
+import '../pages/post_detail_page.dart';
 import '../pages/profile_page.dart';
+import '../pages/recipe_detail_page.dart';
 import '../pages/recipe_generation_page.dart';
 import '../pages/recipe_result_page.dart';
 import '../pages/search_page.dart';
 import '../pages/signup_page.dart';
+import '../data/sample_data.dart';
+import '../services/models.dart';
 import '../shell/main_shell.dart';
 import '../pages/create_post.dart';
 
@@ -97,6 +101,36 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/notification-settings',
         builder: (context, state) => const NotificationSettingsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/community/posts/:postId',
+        builder: (context, state) {
+          final postId =
+              int.tryParse(state.pathParameters['postId'] ?? '') ?? 0;
+          final initialPost = state.extra is CommunityPost
+              ? state.extra as CommunityPost
+              : null;
+          return PostDetailPage(
+            postId: postId,
+            initialPost: initialPost,
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/recipes/:recipeId',
+        builder: (context, state) {
+          final recipeId =
+              int.tryParse(state.pathParameters['recipeId'] ?? '') ?? 0;
+          final initialRecipe = state.extra is RecipeModel
+              ? state.extra as RecipeModel
+              : null;
+          return RecipeDetailPage(
+            recipeId: recipeId,
+            initialRecipe: initialRecipe,
+          );
+        },
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

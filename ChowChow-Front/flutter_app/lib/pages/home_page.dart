@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -40,16 +41,40 @@ class _HomePageState extends State<HomePage> {
           .map((e) => RecipeModel.fromJson(e as Map<String, dynamic>))
           .toList();
       if (!mounted) return;
-      setState(() { _recipes = list; _loading = false; });
+      setState(() {
+        _recipes = list;
+        _loading = false;
+      });
       if (list.isNotEmpty) {
-        _autoTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-          if (!mounted || !_pageController.hasClients || _recipes.isEmpty) return;
-          final next = (_slideIndex + 1) % _recipes.length;
-          _pageController.animateToPage(next, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
-        });
+        _startAutoSlide();
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _startAutoSlide() {
+    _autoTimer?.cancel();
+    if (_recipes.length <= 1) return;
+
+    _autoTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _moveSlide(1, fromUser: false);
+    });
+  }
+
+  void _moveSlide(int direction, {required bool fromUser}) {
+    if (!mounted || !_pageController.hasClients || _recipes.isEmpty) return;
+
+    final next = (_slideIndex + direction) % _recipes.length;
+    final target = next < 0 ? _recipes.length - 1 : next;
+    _pageController.animateToPage(
+      target,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+
+    if (fromUser) {
+      _startAutoSlide();
     }
   }
 
@@ -92,16 +117,66 @@ class _HomePageState extends State<HomePage> {
                           ? const Center(child: CircularProgressIndicator())
                           : _recipes.isEmpty
                               ? const Center(child: Text('레시피가 없습니다.'))
-                              : PageView.builder(
-                                  controller: _pageController,
-                                  itemCount: _recipes.length,
-                                  onPageChanged: (i) => setState(() => _slideIndex = i),
-                                  itemBuilder: (context, i) {
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      child: _TrendingCard(recipe: _recipes[i]),
-                                    );
-                                  },
+                              : Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Listener(
+                                      onPointerDown: (_) =>
+                                          _autoTimer?.cancel(),
+                                      onPointerUp: (_) => _startAutoSlide(),
+                                      onPointerCancel: (_) => _startAutoSlide(),
+                                      child: ScrollConfiguration(
+                                        behavior:
+                                            const _CarouselScrollBehavior(),
+                                        child: PageView.builder(
+                                          controller: _pageController,
+                                          physics:
+                                              const BouncingScrollPhysics(),
+                                          itemCount: _recipes.length,
+                                          onPageChanged: (i) {
+                                            setState(() => _slideIndex = i);
+                                          },
+                                          itemBuilder: (context, i) {
+                                            return Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                              ),
+                                              child: _TrendingCard(
+                                                recipe: _recipes[i],
+                                                onTap: () => context.push(
+                                                  '/recipes/${_recipes[i].recipeId}',
+                                                  extra: _recipes[i],
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    if (_recipes.length > 1) ...[
+                                      Positioned(
+                                        left: 22,
+                                        child: _SlideControlButton(
+                                          icon: Icons.chevron_left,
+                                          onTap: () => _moveSlide(
+                                            -1,
+                                            fromUser: true,
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: 22,
+                                        child: _SlideControlButton(
+                                          icon: Icons.chevron_right,
+                                          onTap: () => _moveSlide(
+                                            1,
+                                            fromUser: true,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                     ),
                     const SizedBox(height: 8),
@@ -168,7 +243,13 @@ class _HomePageState extends State<HomePage> {
                           childAspectRatio: 0.72,
                         ),
                         itemCount: _recipes.take(4).length,
-                        itemBuilder: (context, i) => _RecipeCard(recipe: _recipes[i]),
+                        itemBuilder: (context, i) => _RecipeCard(
+                          recipe: _recipes[i],
+                          onTap: () => context.push(
+                            '/recipes/${_recipes[i].recipeId}',
+                            extra: _recipes[i],
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -537,10 +618,57 @@ class _HeaderState extends State<_Header> {
   }
 }
 
+class _CarouselScrollBehavior extends MaterialScrollBehavior {
+  const _CarouselScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
+}
+
+class _SlideControlButton extends StatelessWidget {
+  const _SlideControlButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.32),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TrendingCard extends StatelessWidget {
-  const _TrendingCard({required this.recipe});
+  const _TrendingCard({
+    required this.recipe,
+    required this.onTap,
+  });
 
   final RecipeModel recipe;
+  final VoidCallback onTap;
 
   static const _placeholder =
       'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=600&q=80';
@@ -557,51 +685,54 @@ class _TrendingCard extends StatelessWidget {
       shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(16),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ChowNetworkImage(url: recipe.imageUrl ?? _placeholder),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ChowNetworkImage(url: recipe.imageUrl ?? _placeholder),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
+                ),
               ),
             ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  recipe.recipeTitle,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                if (tags.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: tags
-                        .map((t) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 11)),
-                            ))
-                        .toList(),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    recipe.recipeTitle,
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
                   ),
+                  if (tags.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: tags
+                          .map((t) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 11)),
+                              ))
+                          .toList(),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -683,9 +814,13 @@ class _AiChefBanner extends StatelessWidget {
 }
 
 class _RecipeCard extends StatelessWidget {
-  const _RecipeCard({required this.recipe});
+  const _RecipeCard({
+    required this.recipe,
+    required this.onTap,
+  });
 
   final RecipeModel recipe;
+  final VoidCallback onTap;
 
   static const _placeholder =
       'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=600&q=80';
@@ -697,7 +832,9 @@ class _RecipeCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       color: Colors.white,
-      child: Column(
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
@@ -746,6 +883,7 @@ class _RecipeCard extends StatelessWidget {
             ),
           ),
         ],
+          ),
       ),
     );
   }

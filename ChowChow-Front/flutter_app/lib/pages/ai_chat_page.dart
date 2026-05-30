@@ -48,6 +48,15 @@ class _AiChatPageState extends State<AiChatPage> {
     super.dispose();
   }
 
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+
+    context.go('/profile');
+  }
+
   void _scrollBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
@@ -104,7 +113,7 @@ class _AiChatPageState extends State<AiChatPage> {
                 child: Row(
                   children: [
                     IconButton(
-                      onPressed: () => context.go('/'),
+                      onPressed: _goBack,
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
                     Container(

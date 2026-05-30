@@ -53,6 +53,7 @@ class CommunityPost {
     required this.id,
     required this.author,
     required this.avatar,
+    required this.category,
     required this.timeAgo,
     required this.content,
     required this.image,
@@ -60,10 +61,12 @@ class CommunityPost {
     required this.comments,
     required this.views,
     required this.tags,
+    this.likedByMe = false,
   });
   final int id;
   final String author;
   final String avatar;
+  final String category;
   final String timeAgo;
   final String content;
   final String image;
@@ -71,6 +74,78 @@ class CommunityPost {
   final int comments;
   final int views;
   final List<String> tags;
+  final bool likedByMe;
+
+  factory CommunityPost.fromJson(Map<String, dynamic> json) {
+    return CommunityPost(
+      id: json['postId'] as int? ?? json['id'] as int? ?? 0,
+      author: json['userNickname'] as String? ??
+          json['author'] as String? ??
+          '사용자 ${json['userId'] ?? ''}'.trim(),
+      avatar: json['avatar'] as String? ?? '🙂',
+      category: json['postCategory'] as String? ?? json['category'] as String? ?? '기타',
+      timeAgo: _timeAgo(json['createdAt'] as String?),
+      content: json['postContent'] as String? ??
+          json['postContentPreview'] as String? ??
+          json['content'] as String? ??
+          '',
+      image: json['postImageUrl'] as String? ??
+          json['image'] as String? ??
+          'https://images.unsplash.com/photo-1760445528367-7f0fa0229d19?auto=format&fit=crop&w=1080&q=80',
+      likes: (json['likeCount'] as num?)?.toInt() ??
+          (json['likes'] as num?)?.toInt() ??
+          0,
+      comments: (json['commentCount'] as num?)?.toInt() ??
+          (json['comments'] as num?)?.toInt() ??
+          0,
+      views: (json['viewCount'] as num?)?.toInt() ??
+          (json['views'] as num?)?.toInt() ??
+          0,
+      tags: (json['tagNames'] as List<dynamic>?)
+              ?.map((tag) => '#$tag')
+              .toList() ??
+          const [],
+      likedByMe: json['likedByMe'] as bool? ?? false,
+    );
+  }
+
+  CommunityPost copyWith({
+    int? likes,
+    int? comments,
+    bool? likedByMe,
+  }) {
+    return CommunityPost(
+      id: id,
+      author: author,
+      avatar: avatar,
+      category: category,
+      timeAgo: timeAgo,
+      content: content,
+      image: image,
+      likes: likes ?? this.likes,
+      comments: comments ?? this.comments,
+      views: views,
+      tags: tags,
+      likedByMe: likedByMe ?? this.likedByMe,
+    );
+  }
+}
+
+const kCurrentUserNickname = '명랑이엄마';
+
+bool isCurrentUserPost(CommunityPost post) {
+  return post.author == kCurrentUserNickname;
+}
+
+String _timeAgo(String? value) {
+  if (value == null || value.isEmpty) return '방금';
+  final createdAt = DateTime.tryParse(value);
+  if (createdAt == null) return '방금';
+  final diff = DateTime.now().difference(createdAt.toLocal());
+  if (diff.inMinutes < 1) return '방금';
+  if (diff.inHours < 1) return '${diff.inMinutes}분 전';
+  if (diff.inDays < 1) return '${diff.inHours}시간 전';
+  return '${diff.inDays}일 전';
 }
 
 class UserPet {
@@ -191,6 +266,7 @@ final kSearchRecipes = <SearchRecipe>[
 final kCommunityPosts = <CommunityPost>[
   CommunityPost(
     id: 1,
+    category: '후기',
     author: '멍멍이엄마',
     avatar: '🐕',
     timeAgo: '2시간 전',
@@ -199,12 +275,13 @@ final kCommunityPosts = <CommunityPost>[
     image:
         'https://images.unsplash.com/photo-1760445528367-7f0fa0229d19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkb2clMjBlYXRpbmclMjBoZWFsdGh5JTIwbWVhbHxlbnwxfHx8fDE3NzE0MjIwOTh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
     likes: 42,
-    comments: 8,
+    comments: 4,
     views: 156,
     tags: ['#닭가슴살', '#야채볶음'],
   ),
   CommunityPost(
     id: 2,
+    category: '레시피',
     author: '냥이집사',
     avatar: '🐱',
     timeAgo: '5시간 전',
@@ -213,12 +290,13 @@ final kCommunityPosts = <CommunityPost>[
     image:
         'https://images.unsplash.com/photo-1597362925123-77861d3fbac7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZXQlMjBmb29kJTIwaW5ncmVkaWVudHMlMjB2ZWdldGFibGVzfGVufDF8fHx8MTc3MTQyMjA5OXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
     likes: 67,
-    comments: 12,
+    comments: 4,
     views: 234,
     tags: ['#연어', '#고구마', '#강추'],
   ),
   CommunityPost(
     id: 3,
+    category: '정보공유',
     author: '펫푸드마스터',
     avatar: '👨‍🍳',
     timeAgo: '1일 전',
@@ -227,9 +305,23 @@ final kCommunityPosts = <CommunityPost>[
     image:
         'https://images.unsplash.com/photo-1769947322352-dd6cbdc4ec2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXQlMjBlYXRpbmclMjBmb29kfGVufDF8fHx8MTc3MTM2MDQzMHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
     likes: 89,
-    comments: 15,
+    comments: 4,
     views: 412,
     tags: ['#소고기', '#채소스튜', '#팁'],
+  ),
+  CommunityPost(
+    id: 4,
+    category: '기타',
+    author: '초코아빠',
+    avatar: '🐾',
+    timeAgo: '2일 전',
+    content: '요즘 산책 후에 먹이기 좋은 간단한 간식 보관법도 공유해요. 다들 어떤 방식으로 보관하시나요?',
+    image:
+        'https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?auto=format&fit=crop&w=1080&q=80',
+    likes: 21,
+    comments: 4,
+    views: 98,
+    tags: ['#간식', '#보관법', '#잡담'],
   ),
 ];
 
