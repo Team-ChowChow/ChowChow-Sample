@@ -19,7 +19,6 @@ class AppSettingsPage extends StatelessWidget {
           _section(
             '계정 관리',
             [
-              _tile(context, '아이디 찾기', '가입한 아이디를 찾아보세요', Icons.person_outline, () => context.push('/find-id')),
               _tile(context, '비밀번호 찾기', '비밀번호를 재설정하세요', Icons.lock_outline, () => context.push('/find-password')),
               _tile(context, '비밀번호 변경', '새로운 비밀번호로 변경하세요', Icons.lock_reset_outlined, () => context.push('/change-password')),
             ],
@@ -27,15 +26,13 @@ class AppSettingsPage extends StatelessWidget {
           _section(
             '앱',
             [
-              _tile(context, '알림 설정', '푸시 알림 및 이메일 알림 관리', Icons.notifications_none, () {}),
-              _tile(context, '개인정보 보호', '개인정보 관리 및 권한 설정', Icons.shield_outlined, () {}),
-              _tile(context, '언어 설정', '한국어', Icons.language, () {}),
+              _tile(context, '알림 설정', '푸시 알림 및 이메일 알림 관리', Icons.notifications_none, () => context.push('/notification-settings')),
             ],
           ),
           _section(
-            '위험 구역',
+            '기타',
             [
-              _tile(context, '계정 삭제', '계정을 영구적으로 삭제합니다', Icons.delete_forever_outlined, () {}, danger: true),
+              _tile(context, '회원 탈퇴', '계정을 영구적으로 삭제합니다', Icons.delete_forever_outlined, () {}, danger: true),
             ],
           ),
         ],

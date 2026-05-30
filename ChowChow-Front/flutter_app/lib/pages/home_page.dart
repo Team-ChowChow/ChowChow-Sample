@@ -126,7 +126,9 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _AiChefBanner(onTap: () => context.push('/recipe-generation')),
+                      child: _AiChefBanner(
+                        onTap: () => context.push('/recipe-generation?quickStart=true'),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     Padding(
@@ -253,7 +255,208 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends StatefulWidget {
+  @override
+  State<_Header> createState() => _HeaderState();
+}
+
+class _HeaderState extends State<_Header> {
+  final List<_HeaderNotice> _notifications = [
+    const _HeaderNotice(
+      type: 'recipe',
+      title: '새로운 레시피가 등록되었어요!',
+      message: '초코가 좋아할 만한 닭가슴살 요리',
+      time: '5분 전',
+      isNew: true,
+    ),
+    const _HeaderNotice(
+      type: 'achievement',
+      title: '축하합니다! 🎉',
+      message: '7일 연속 접속 달성',
+      time: '1시간 전',
+      isNew: true,
+    ),
+    const _HeaderNotice(
+      type: 'community',
+      title: '멍멍이엄마님이 댓글을 남겼어요',
+      message: '"정말 유용한 레시피네요!"',
+      time: '2시간 전',
+      isNew: false,
+    ),
+    const _HeaderNotice(
+      type: 'system',
+      title: '식단 기록 알림',
+      message: '오늘 초코의 식단을 기록해주세요',
+      time: '어제',
+      isNew: false,
+    ),
+  ];
+
+  void _openNotifications() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.6,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: ChowColors.gray300,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      children: [
+                        const Text(
+                          '알림',
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close, color: ChowColors.gray500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: _notifications.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final item = _notifications[index];
+                        return Material(
+                          color: item.isNew ? const Color(0xFFFDF7EA) : Colors.white,
+                          child: InkWell(
+                            onTap: () {
+                              if (!item.isNew) return;
+                              setModalState(() {
+                                _notifications[index] = item.copyWith(isNew: false);
+                              });
+                              setState(() {});
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: _noticeBg(item.type),
+                                    child: Icon(_noticeIcon(item.type), color: _noticeFg(item.type), size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: ChowColors.gray800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.message,
+                                          style: const TextStyle(fontSize: 12, color: ChowColors.gray600),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item.time,
+                                          style: const TextStyle(fontSize: 12, color: ChowColors.gray500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    width: 12,
+                                    child: Center(
+                                      child: item.isNew
+                                          ? Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: const BoxDecoration(
+                                                color: ChowColors.orange500,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  IconData _noticeIcon(String type) {
+    switch (type) {
+      case 'recipe':
+        return Icons.restaurant_menu;
+      case 'achievement':
+        return Icons.auto_awesome;
+      case 'community':
+        return Icons.chat_bubble_outline;
+      default:
+        return Icons.notifications_none;
+    }
+  }
+
+  Color _noticeBg(String type) {
+    switch (type) {
+      case 'recipe':
+        return ChowColors.orange100;
+      case 'achievement':
+        return const Color(0xFFFDF2C9);
+      case 'community':
+        return const Color(0xFFDBEAFE);
+      default:
+        return ChowColors.gray100;
+    }
+  }
+
+  Color _noticeFg(String type) {
+    switch (type) {
+      case 'recipe':
+        return ChowColors.orange500;
+      case 'achievement':
+        return ChowColors.yellow600;
+      case 'community':
+        return ChowColors.blue500;
+      default:
+        return ChowColors.gray500;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -305,23 +508,24 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               IconButton(
-                onPressed: () {},
+                onPressed: _openNotifications,
                 icon: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     const Icon(Icons.notifications_none, color: ChowColors.gray700, size: 26),
-                    Positioned(
-                      right: 2,
-                      top: 2,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: ChowColors.orange500,
-                          shape: BoxShape.circle,
+                    if (_notifications.any((e) => e.isNew))
+                      Positioned(
+                        right: 2,
+                        top: 2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: ChowColors.orange500,
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -543,6 +747,38 @@ class _RecipeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HeaderNotice {
+  const _HeaderNotice({
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.time,
+    required this.isNew,
+  });
+
+  final String type;
+  final String title;
+  final String message;
+  final String time;
+  final bool isNew;
+
+  _HeaderNotice copyWith({
+    String? type,
+    String? title,
+    String? message,
+    String? time,
+    bool? isNew,
+  }) {
+    return _HeaderNotice(
+      type: type ?? this.type,
+      title: title ?? this.title,
+      message: message ?? this.message,
+      time: time ?? this.time,
+      isNew: isNew ?? this.isNew,
     );
   }
 }

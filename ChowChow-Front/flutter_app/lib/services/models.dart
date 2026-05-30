@@ -37,6 +37,54 @@ class RecipeModel {
       );
 }
 
+class DietIngredientModel {
+  final String name;
+  final String? amount;
+
+  DietIngredientModel({required this.name, this.amount});
+
+  factory DietIngredientModel.fromJson(Map<String, dynamic> j) => DietIngredientModel(
+        name: j['name'] as String? ?? '',
+        amount: j['amount'] as String?,
+      );
+}
+
+class DietGenerateModel {
+  final int? recipeId;
+  final String title;
+  final String? description;
+  final String? imageUrl;
+  final String? feedingAmount;
+  final List<DietIngredientModel> ingredients;
+  final List<String> steps;
+  final List<String> warnings;
+
+  DietGenerateModel({
+    this.recipeId,
+    required this.title,
+    this.description,
+    this.imageUrl,
+    this.feedingAmount,
+    required this.ingredients,
+    required this.steps,
+    required this.warnings,
+  });
+
+  factory DietGenerateModel.fromJson(Map<String, dynamic> j) => DietGenerateModel(
+        recipeId: j['recipeId'] as int?,
+        title: j['title'] as String? ?? 'AI 맞춤 레시피',
+        description: j['description'] as String?,
+        imageUrl: j['imageUrl'] as String?,
+        feedingAmount: j['feedingAmount'] as String?,
+        ingredients: (j['ingredients'] as List<dynamic>?)
+                ?.map((e) => DietIngredientModel.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+        steps: (j['steps'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+        warnings: (j['warnings'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      );
+}
+
 class PetModel {
   final int petId;
   final String petName;

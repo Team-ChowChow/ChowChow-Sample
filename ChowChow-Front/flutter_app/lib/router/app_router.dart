@@ -9,9 +9,13 @@ import '../pages/community_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
 import '../pages/home_page.dart';
+
+import '../pages/Notification_Settings_page.dart';
 import '../pages/login_page.dart';
+import '../pages/notices_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/recipe_generation_page.dart';
+import '../pages/recipe_result_page.dart';
 import '../pages/search_page.dart';
 import '../pages/signup_page.dart';
 import '../shell/main_shell.dart';
@@ -74,7 +78,10 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: '/recipe-generation',
-        builder: (context, state) => const RecipeGenerationPage(),
+        builder: (context, state) {
+          final quickStart = state.uri.queryParameters['quickStart'] == 'true';
+          return RecipeGenerationPage(quickStart: quickStart);
+        },
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -85,6 +92,21 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/app-settings',
         builder: (context, state) => const AppSettingsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/notification-settings',
+        builder: (context, state) => const NotificationSettingsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/recipe-result',
+        builder: (context, state) => const RecipeResultPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/notices',
+        builder: (context, state) => const NoticesPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
