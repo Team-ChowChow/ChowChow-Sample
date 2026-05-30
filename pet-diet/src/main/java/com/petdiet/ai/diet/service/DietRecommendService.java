@@ -72,13 +72,6 @@ public class DietRecommendService {
     public RecommendContext recommendWithContext(UUID authUuid, Integer petId, String userNotes) {
         User user = userRepository.findByAuthUuid(authUuid)
                 .orElseThrow(() -> new IllegalStateException("유저를 찾을 수 없습니다."));
-
-        if (petId == null) {
-            String prompt = buildGenericPrompt(userNotes);
-            DietRecommendResponse response = callOpenAi(prompt);
-            return new RecommendContext(user, null, response);
-        }
-
         UserPet pet = userPetRepository.findByPetIdAndUser(petId, user)
                 .orElseThrow(() -> new IllegalArgumentException("반려동물을 찾을 수 없습니다."));
 
@@ -144,32 +137,6 @@ public class DietRecommendService {
             sb.append("- 사용자 요청: ").append(userNotes).append("\n");
         }
 
-        sb.append("\n## 응답 형식 (JSON만 반환, 마크다운 코드블록 없이)\n");
-        sb.append("""
-                {
-                  "title": "식단 제목",
-                  "description": "식단 설명 (1~2줄)",
-                  "ingredients": [
-                    {"name": "재료명", "amount": "용량"}
-                  ],
-                  "steps": ["조리 단계 1", "조리 단계 2"],
-                  "feedingAmount": "하루 급여량 안내",
-                  "warnings": ["주의사항 1", "주의사항 2"]
-                }
-                """);
-        return sb.toString();
-    }
-
-    String buildGenericPrompt(String userNotes) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("당신은 반려동물 영양 전문가입니다. ");
-        sb.append("등록된 반려동물 프로필이 없으므로, 강아지·고양이 모두에게 무난한 일반 홈메이드 식단을 추천해주세요.\n\n");
-        sb.append("## 기준\n");
-        sb.append("- 독성 식재료(초콜릿, 양파, 포도, 마카다미아, 자일리톨 등)는 절대 포함하지 마세요.\n");
-        sb.append("- 소금·양념은 최소화하고, 단백질·채소·탄수화물 균형을 맞춰주세요.\n");
-        if (userNotes != null && !userNotes.isBlank()) {
-            sb.append("- 사용자 요청: ").append(userNotes).append("\n");
-        }
         sb.append("\n## 응답 형식 (JSON만 반환, 마크다운 코드블록 없이)\n");
         sb.append("""
                 {

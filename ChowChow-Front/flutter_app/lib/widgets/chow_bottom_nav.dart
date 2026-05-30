@@ -50,15 +50,18 @@ class _ChowBottomNavState extends State<ChowBottomNav>
       elevation: 8,
       color: Colors.white,
       child: SizedBox(
-        height: 64 + bottom + 8,
+        height: 60 + bottom,
         child: Padding(
-          padding: EdgeInsets.only(bottom: bottom + 4),
+          padding: EdgeInsets.only(
+            top: 6,
+            bottom: bottom + 6,
+          ),
           child: Stack(
             clipBehavior: Clip.none,
-            alignment: Alignment.bottomCenter,
+            alignment: Alignment.center,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: _NavItem(
@@ -67,7 +70,7 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                       activeIcon: Icons.home,
                       label: '홈',
                       onTap: () => context.go('/'),
-                      align: CrossAxisAlignment.start,
+                      align: CrossAxisAlignment.center,
                     ),
                   ),
                   Expanded(
@@ -81,7 +84,10 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                       align: CrossAxisAlignment.center,
                     ),
                   ),
-                  const SizedBox(width: 56),
+
+                  // 가운데 발바닥 버튼 자리
+                  const Expanded(child: SizedBox()),
+
                   Expanded(
                     child: _NavItem(
                       active: _active('/community'),
@@ -100,7 +106,7 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                       activeIcon: Icons.person,
                       label: '프로필',
                       onTap: () => context.go('/profile'),
-                      align: CrossAxisAlignment.end,
+                      align: CrossAxisAlignment.center,
                     ),
                   ),
                 ],
@@ -140,7 +146,12 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: const Text('🐾', style: TextStyle(fontSize: 26)),
+                        child: Image.asset(
+                          'assets/images/paw.png',
+                          width: 30,
+                          height: 30,
+                          color: Colors.brown,
+                        ),
                       ),
                     ),
                   ),
@@ -178,25 +189,22 @@ class _NavItem extends StatelessWidget {
     final color = active ? ChowColors.orange500 : ChowColors.gray400;
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: align,
-          children: [
-            Icon(
-              active ? activeIcon : icon,
-              size: 26,
-              color: color,
-              fill: filled && active ? 1.0 : null,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(fontSize: 11, color: color, height: 1),
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            active ? activeIcon : icon,
+            size: 26,
+            color: color,
+            fill: filled && active ? 1.0 : null,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: color, height: 1),
+          ),
+        ],
       ),
     );
   }

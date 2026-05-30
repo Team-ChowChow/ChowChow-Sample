@@ -9,6 +9,7 @@ import '../pages/community_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
 import '../pages/home_page.dart';
+
 import '../pages/Notification_Settings_page.dart';
 import '../pages/login_page.dart';
 import '../pages/notices_page.dart';
@@ -18,6 +19,7 @@ import '../pages/recipe_result_page.dart';
 import '../pages/search_page.dart';
 import '../pages/signup_page.dart';
 import '../shell/main_shell.dart';
+import '../pages/create_post.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -105,6 +107,11 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/notices',
         builder: (context, state) => const NoticesPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/create-post',
+        builder: (context, state) => const CreatePostPage(),
       ),
     ],
   );
