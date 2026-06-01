@@ -51,6 +51,15 @@ public class SupabaseStorageService {
     }
 
     /**
+     * 외부 이미지 URL을 다운로드해서 캐릭터 이미지 경로에 저장하고 공개 URL을 반환.
+     * recipe-images 버킷 내 characters/ 하위 경로를 사용해 다른 이미지와 경로 분리.
+     */
+    public String uploadCharacterImageFromUrl(String imageUrl) {
+        String path = "characters/" + UUID.randomUUID() + ".png";
+        return uploadFromUrl(imageUrl, recipeBucket, path);
+    }
+
+    /**
      * 외부 이미지 URL을 다운로드해서 식단 기록 이미지 버킷에 저장하고 공개 URL을 반환.
      */
     public String uploadMealImageFromUrl(String imageUrl) {

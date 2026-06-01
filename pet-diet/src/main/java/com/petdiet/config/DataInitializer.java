@@ -11,9 +11,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -34,6 +35,7 @@ public class DataInitializer implements ApplicationRunner {
         loadAllergyIngredients();
         loadMenus();
         loadRecipeTags();
+        loadRecipesAllCsv();
         log.info("마스터 데이터 초기화 완료");
     }
 
@@ -109,7 +111,6 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private void loadMenus() {
-        if (count("Menus") > 0) return;
         List<Object[]> rows = new ArrayList<>();
         for (CSVRecord r : readCsv("db/csv/menus.csv")) {
             rows.add(new Object[]{
@@ -121,10 +122,11 @@ public class DataInitializer implements ApplicationRunner {
             });
         }
         jdbc.batchUpdate(
-            "INSERT INTO \"Menus\" (\"menuName\", \"menuDescription\", \"petType\", \"menuCategory\", \"menuStatus\") VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+            "INSERT INTO \"Menus\" (\"menuName\", \"menuDescription\", \"petType\", \"menuCategory\", \"menuStatus\") VALUES (?, ?, ?, ?, ?)" +
+            " ON CONFLICT (\"menuName\") DO UPDATE SET \"menuDescription\" = EXCLUDED.\"menuDescription\", \"menuStatus\" = EXCLUDED.\"menuStatus\"",
             rows
         );
-        log.info("Menus 삽입: {}건", rows.size());
+        log.info("Menus upsert: {}건", rows.size());
     }
 
     private void loadRecipeTags() {
@@ -138,6 +140,119 @@ public class DataInitializer implements ApplicationRunner {
             rows
         );
         log.info("RecipeTags 삽입: {}건", rows.size());
+    }
+
+    private void loadRecipesAllCsv() {
+        Long existing = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM \"Recipes\" WHERE \"userId\" IS NULL AND \"recipeTitle\" = '닭가슴살 야채 볶음밥'",
+            Long.class
+        );
+        if (existing != null && existing > 0) {
+            log.info("recipes_all.csv 레시피 이미 존재 - 스킵");
+            return;
+        }
+
+        Map<String, List<CSVRecord>> byTable = new LinkedHashMap<>();
+        for (CSVRecord r : readCsv("db/csv/recipes_all.csv")) {
+            byTable.computeIfAbsent(r.get("source_table"), k -> new ArrayList<>()).add(r);
+        }
+
+        List<CSVRecord> recipeRows    = byTable.getOrDefault("recipes", List.of());
+        List<CSVRecord> allTagRows    = byTable.getOrDefault("recipe_tags", List.of());
+
+        Map<String, List<CSVRecord>> ingByRecipe  = groupBy(byTable.getOrDefault("recipe_ingredients", List.of()), "recipe_id");
+        Map<String, List<CSVRecord>> stepByRecipe = groupBy(byTable.getOrDefault("recipe_steps", List.of()), "recipe_id");
+        Map<String, CSVRecord>       nutByRecipe  = new HashMap<>();
+        for (CSVRecord r : byTable.getOrDefault("recipe_nutrition", List.of())) {
+            nutByRecipe.put(r.get("recipe_id"), r);
+        }
+
+        int inserted = 0;
+        for (CSVRecord row : recipeRows) {
+            String uuid        = row.get("id");
+            String title       = row.get("title");
+            String description = row.get("description");
+            String petType     = "dog".equalsIgnoreCase(row.get("species")) ? "DOG" : "CAT";
+            String category    = row.get("category");
+            String menuName    = resolveMenuName(petType, category);
+            String purpose     = buildPurpose(uuid, allTagRows);
+
+            Integer menuId;
+            try {
+                menuId = jdbc.queryForObject("SELECT \"menuId\" FROM \"Menus\" WHERE \"menuName\" = ?", Integer.class, menuName);
+            } catch (Exception e) {
+                String fallback = "DOG".equals(petType) ? "강아지 기본 일반식" : "고양이 기본 일반식";
+                menuId = jdbc.queryForObject("SELECT \"menuId\" FROM \"Menus\" WHERE \"menuName\" = ?", Integer.class, fallback);
+            }
+
+            Integer recipeDbId = jdbc.queryForObject(
+                "INSERT INTO \"Recipes\" (\"menuId\", \"recipeTitle\", \"recipeDescription\", \"recipePurpose\", " +
+                "\"isAiGenerated\", \"isPublic\", \"recipeStatus\") VALUES (?, ?, ?, ?, false, true, 'ACTIVE') RETURNING \"recipeId\"",
+                Integer.class, menuId, title, description, purpose
+            );
+
+            for (CSVRecord ing : ingByRecipe.getOrDefault(uuid, List.of())) {
+                String ingName = ing.get("name");
+                String amount  = ing.get("amount");
+                Integer ingredientId = null;
+                try {
+                    ingredientId = jdbc.queryForObject(
+                        "SELECT \"ingredientId\" FROM \"Ingredients\" WHERE \"ingredientName\" = ?", Integer.class, ingName);
+                } catch (Exception ignored) {}
+                jdbc.update(
+                    "INSERT INTO \"RecipeIngredients\" (\"recipeId\", \"ingredientId\", \"ingredientAmount\", \"ingredientUnit\", \"ingredientNote\") VALUES (?, ?, ?, ?, ?)",
+                    recipeDbId, ingredientId,
+                    amount.isBlank() ? null : new BigDecimal(amount),
+                    ing.get("unit"), ingName
+                );
+            }
+
+            for (CSVRecord step : stepByRecipe.getOrDefault(uuid, List.of())) {
+                int stepNo = parseIntSafe(step.get("order_no"), 1);
+                jdbc.update("INSERT INTO \"RecipeSteps\" (\"recipeId\", \"stepNumber\", \"stepDescription\") VALUES (?, ?, ?)",
+                    recipeDbId, stepNo, step.get("description"));
+            }
+
+            CSVRecord nut = nutByRecipe.get(uuid);
+            if (nut != null && !nut.get("calories_per_100g").isBlank()) {
+                jdbc.update(
+                    "INSERT INTO \"RecipeNutritionSummaries\" (\"recipeId\", \"totalCalories\", \"proteinG\", \"fatG\", \"carbohydrateG\") VALUES (?, ?, ?, ?, ?)",
+                    recipeDbId,
+                    new BigDecimal(nut.get("calories_per_100g")),
+                    new BigDecimal(nut.get("protein_g")),
+                    new BigDecimal(nut.get("fat_g")),
+                    new BigDecimal(nut.get("carbs_g"))
+                );
+            }
+
+            inserted++;
+            log.info("레시피 등록: {}", title);
+        }
+        log.info("recipes_all.csv 레시피 등록 완료: {}건", inserted);
+    }
+
+    private Map<String, List<CSVRecord>> groupBy(List<CSVRecord> rows, String key) {
+        Map<String, List<CSVRecord>> map = new LinkedHashMap<>();
+        for (CSVRecord r : rows) map.computeIfAbsent(r.get(key), k -> new ArrayList<>()).add(r);
+        return map;
+    }
+
+    private String resolveMenuName(String petType, String category) {
+        boolean isDog = "DOG".equals(petType);
+        if (category.contains("수분")) return isDog ? "강아지 기본 일반식" : "고양이 수분 보충식";
+        if (category.contains("간식") || category.contains("디저트")) return isDog ? "강아지 수제 간식" : "고양이 수제 간식";
+        return isDog ? "강아지 기본 일반식" : "고양이 기본 일반식";
+    }
+
+    private String buildPurpose(String recipeUuid, List<CSVRecord> tagRows) {
+        return tagRows.stream()
+            .filter(r -> recipeUuid.equals(r.get("recipe_id")) && "purpose".equals(r.get("tag_type")))
+            .map(r -> r.get("tag_value"))
+            .collect(Collectors.joining(", "));
+    }
+
+    private int parseIntSafe(String s, int defaultVal) {
+        try { return Integer.parseInt(s.trim()); } catch (Exception e) { return defaultVal; }
     }
 
     private long count(String table) {

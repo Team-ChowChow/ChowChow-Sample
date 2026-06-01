@@ -23,6 +23,12 @@ class _SignupPageState extends State<SignupPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // 이메일 인증 상태
+  bool _emailSent = false;
+  bool _emailVerified = false;
+  bool _sendingEmail = false;
+  bool _checkingVerify = false;
+
   @override
   void dispose() {
     for (final c in [_nameCtrl, _nicknameCtrl, _emailCtrl, _pwCtrl, _pw2Ctrl]) {
@@ -31,7 +37,58 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
+  Future<void> _sendVerifyEmail() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _errorMessage = '올바른 이메일을 입력해주세요.');
+      return;
+    }
+    setState(() { _sendingEmail = true; _errorMessage = null; });
+    try {
+      await ApiClient.post('/api/auth/send-email-verify', {'email': email}, auth: false);
+      setState(() { _emailSent = true; _emailVerified = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('인증 이메일을 발송했습니다. 메일함을 확인해주세요.')),
+        );
+      }
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (_) {
+      setState(() => _errorMessage = '서버에 연결할 수 없습니다.');
+    } finally {
+      if (mounted) setState(() => _sendingEmail = false);
+    }
+  }
+
+  Future<void> _checkVerified() async {
+    final email = _emailCtrl.text.trim();
+    setState(() { _checkingVerify = true; _errorMessage = null; });
+    try {
+      final res = await ApiClient.get(
+        '/api/auth/check-pre-verified',
+        auth: false,
+        query: {'email': email},
+      ) as Map<String, dynamic>;
+      final verified = res['verified'] as bool? ?? false;
+      setState(() => _emailVerified = verified);
+      if (!verified && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('아직 인증이 완료되지 않았습니다. 메일함을 확인해주세요.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => _errorMessage = '인증 상태를 확인할 수 없습니다.');
+    } finally {
+      if (mounted) setState(() => _checkingVerify = false);
+    }
+  }
+
   Future<void> _handleSignup() async {
+    if (!_emailVerified) {
+      setState(() => _errorMessage = '이메일 인증을 먼저 완료해주세요.');
+      return;
+    }
     if (_pwCtrl.text != _pw2Ctrl.text) {
       setState(() => _errorMessage = '비밀번호가 일치하지 않습니다.');
       return;
@@ -54,7 +111,7 @@ class _SignupPageState extends State<SignupPage> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('회원가입이 완료되었습니다. 이메일을 확인해 주세요.')),
+        const SnackBar(content: Text('회원가입이 완료되었습니다.')),
       );
       context.go('/login');
     } on ApiException catch (e) {
@@ -88,12 +145,74 @@ class _SignupPageState extends State<SignupPage> {
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _emailCtrl,
-            decoration: const InputDecoration(labelText: '이메일'),
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _emailCtrl,
+                  decoration: InputDecoration(
+                    labelText: '이메일',
+                    suffixIcon: _emailVerified
+                        ? const Icon(Icons.check_circle, color: Color(0xFF22C55E))
+                        : null,
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  enabled: !_emailVerified,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _emailVerified
+                        ? const Color(0xFF22C55E)
+                        : const Color(0xFFF97316),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  onPressed: (_sendingEmail || _emailVerified) ? null : _sendVerifyEmail,
+                  child: _sendingEmail
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text(_emailVerified ? '인증완료' : '인증요청', style: const TextStyle(fontSize: 13)),
+                ),
+              ),
+            ],
           ),
+          if (_emailSent && !_emailVerified) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFDBA74)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '📧 인증 메일을 발송했습니다.\n메일함의 링크를 클릭한 후 아래 버튼을 눌러주세요.',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: _checkingVerify ? null : _checkVerified,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFF97316)),
+                      foregroundColor: const Color(0xFFF97316),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    child: _checkingVerify
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('인증 완료 확인', style: TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _pwCtrl,

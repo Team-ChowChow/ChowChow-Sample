@@ -40,6 +40,7 @@ public class SecurityConfig {
                     "/api/auth/send-email-verify",
                     "/api/auth/pre-verify",
                     "/api/auth/check-pre-verified",
+                    "/api/auth/refresh",
                     "/api/admin/**",
                     "/api/ai/image/recipe",
                     "/api/v1/recipes",

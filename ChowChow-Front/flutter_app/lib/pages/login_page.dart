@@ -50,7 +50,9 @@ class _LoginPageState extends State<LoginPage> {
         auth: false,
       ) as Map<String, dynamic>;
       final token = res['accessToken'] as String?;
+      final refreshToken = res['refreshToken'] as String?;
       if (token != null) await ApiClient.saveToken(token);
+      if (refreshToken != null) await ApiClient.saveRefreshToken(refreshToken);
       if (!mounted) return;
       context.go('/');
     } on ApiException catch (e) {

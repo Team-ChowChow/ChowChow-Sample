@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 
 class CharacterPage extends StatefulWidget {
@@ -12,12 +16,18 @@ class CharacterPage extends StatefulWidget {
 }
 
 class _CharacterPageState extends State<CharacterPage> with TickerProviderStateMixin {
-  int level = 12;
-  int exp = 750;
-  int maxExp = 1000;
-  int health = 85;
-  int happiness = 92;
-  int hunger = 45;
+  int level = 1;
+  int exp = 0;
+  int maxExp = 100;
+  int health = 80;
+  int happiness = 80;
+  int hunger = 50;
+
+  int? _petId;
+  String _petName = '';
+  String _petType = 'DOG';
+  String? _characterImageUrl;
+  bool _generatingImage = false;
 
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
@@ -44,6 +54,85 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     _idleScale = Tween<double>(begin: 1, end: 1.05).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
     _idleRotate = Tween<double>(begin: -0.035, end: 0.035).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
     _interactCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _loadPet();
+  }
+
+  Future<void> _loadPet() async {
+    try {
+      final res = await ApiClient.get('/api/pets') as List<dynamic>;
+      if (res.isEmpty || !mounted) return;
+      final pet = res.first as Map<String, dynamic>;
+      final petId = pet['petId'] as int?;
+      // Load saved character image
+      String? savedImg;
+      if (petId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        savedImg = prefs.getString('character_image_$petId');
+      }
+      if (!mounted) return;
+      setState(() {
+        _petId = petId;
+        _petName = pet['petName'] as String? ?? '';
+        _petType = pet['petType'] as String? ?? 'DOG';
+        _characterImageUrl = savedImg ?? (pet['petProfileImg'] as String?);
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _generateCharacterImage() async {
+    if (_petId == null || _generatingImage) return;
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked == null || !mounted) return;
+
+    setState(() => _generatingImage = true);
+    try {
+      // 1. Upload photo
+      final uploadedUrl = await ApiClient.uploadImage(File(picked.path), type: 'recipe');
+
+      // 2. Update pet profile with uploaded photo
+      final pet = await ApiClient.get('/api/pets/$_petId') as Map<String, dynamic>;
+      await ApiClient.patch('/api/pets/$_petId', {
+        'petName': pet['petName'],
+        'petType': pet['petType'],
+        'petProfileImg': uploadedUrl,
+      });
+
+      // 3. Generate AI character (fal.ai: ~40–60s)
+      final result = await ApiClient.post(
+        '/api/ai/image/character',
+        {'petId': _petId, 'style': 'cute chibi anime'},
+      );
+      final imageUrl = (result as Map<String, dynamic>?)?['imageUrl'] as String?;
+
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        // Save character image to pet profile in backend (persists across app reinstalls)
+        await ApiClient.patch('/api/pets/$_petId', {
+          'petName': pet['petName'],
+          'petType': pet['petType'],
+          'petProfileImg': imageUrl,
+        });
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('character_image_$_petId', imageUrl);
+        if (mounted) setState(() => _characterImageUrl = imageUrl);
+      } else {
+        throw Exception('imageUrl이 응답에 없습니다: $result');
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('[${e.statusCode}] ${e.message}'), duration: const Duration(seconds: 6)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('오류: $e'), duration: const Duration(seconds: 6)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _generatingImage = false);
+    }
   }
 
   @override
@@ -230,8 +319,23 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                                       ),
                                     ],
                                   ),
+                                  clipBehavior: Clip.hardEdge,
                                   alignment: Alignment.center,
-                                  child: const Text('🐶', style: TextStyle(fontSize: 72)),
+                                  child: _characterImageUrl != null
+                                      ? Image.network(
+                                          _characterImageUrl!,
+                                          fit: BoxFit.cover,
+                                          width: 192,
+                                          height: 192,
+                                          errorBuilder: (_, e, s) => Text(
+                                            _petType == 'CAT' ? '🐱' : '🐶',
+                                            style: const TextStyle(fontSize: 72),
+                                          ),
+                                        )
+                                      : Text(
+                                          _petType == 'CAT' ? '🐱' : '🐶',
+                                          style: const TextStyle(fontSize: 72),
+                                        ),
                                 ),
                               ),
                             ),
@@ -240,10 +344,30 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text('초코', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
-                      const Text('건강한 골든 리트리버', style: TextStyle(fontSize: 13, color: ChowColors.gray500)),
+                      Text(
+                        _petName.isNotEmpty ? _petName : '나의 반려동물',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: ChowColors.gray800),
+                      ),
+                      Text(
+                        _petType == 'CAT' ? '사랑스러운 고양이' : '건강한 강아지',
+                        style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
+                      ),
                       const SizedBox(height: 8),
                       const Text('👆 클릭해서 쓰다듬어 주세요!', style: TextStyle(fontSize: 12, color: ChowColors.orange500)),
+                      const SizedBox(height: 10),
+                      ElevatedButton.icon(
+                        onPressed: _generatingImage ? null : _generateCharacterImage,
+                        icon: _generatingImage
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.auto_fix_high, size: 18),
+                        label: Text(_generatingImage ? 'AI 변환 중...' : 'AI 캐릭터 변환'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ChowColors.orange500,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        ),
+                      ),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
