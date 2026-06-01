@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/sample_data.dart';
+import '../services/api_client.dart';
+import '../services/community_service.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
 
@@ -21,21 +23,39 @@ class PostDetailPage extends StatefulWidget {
 
 class _PostDetailPageState extends State<PostDetailPage> {
   final _commentController = TextEditingController();
-  late final CommunityPost _post;
-  late List<_PostComment> _comments;
-  late int _commentCount;
+  CommunityPost? _post;
+  List<_PostComment> _comments = [];
   bool _isLiked = false;
+
+  int get _commentCount => _comments.length;
 
   @override
   void initState() {
     super.initState();
-    _post = widget.initialPost ??
-        kCommunityPosts.firstWhere(
-          (post) => post.id == widget.postId,
-          orElse: () => kCommunityPosts.first,
-    );
-    _comments = _initialComments();
-    _commentCount = _countComments(_comments);
+    if (widget.initialPost != null) {
+      _post = widget.initialPost;
+      _isLiked = widget.initialPost!.likedByMe;
+    }
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final post = await CommunityService.getPost(widget.postId);
+      final apiComments = await CommunityService.getComments(widget.postId);
+      if (!mounted) return;
+      setState(() {
+        _post = post;
+        _isLiked = post.likedByMe;
+        _comments = apiComments.map(_PostComment.fromApiComment).toList();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _post ??= widget.initialPost ?? kCommunityPosts.first;
+        _comments = _initialComments();
+      });
+    }
   }
 
   @override
@@ -65,35 +85,48 @@ class _PostDetailPageState extends State<PostDetailPage> {
     });
   }
 
-  void _submitComment() {
+  Future<void> _togglePostLike() async {
+    setState(() => _isLiked = !_isLiked);
+    try {
+      await CommunityService.toggleLike(widget.postId);
+      if (_isLiked) {
+        ApiClient.post('/api/coins/earn', {'amount': 2, 'reason': '커뮤니티 좋아요'}).ignore();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLiked = !_isLiked);
+    }
+  }
+
+  Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
-
-    setState(() {
-      _comments.add(
-        _PostComment(
+    _commentController.clear();
+    try {
+      final created = await CommunityService.createComment(widget.postId, text);
+      ApiClient.post('/api/coins/earn', {'amount': 5, 'reason': '커뮤니티 댓글'}).ignore();
+      if (!mounted) return;
+      setState(() => _comments.add(_PostComment.fromApiComment(created)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _comments.add(_PostComment(
           id: DateTime.now().millisecondsSinceEpoch,
           author: '나',
           avatar: '🙂',
           timeAgo: '방금',
           content: text,
           likes: 0,
-        ),
-      );
-      _commentCount++;
-      _commentController.clear();
-    });
-  }
-
-  int _countComments(List<_PostComment> comments) {
-    return comments.fold<int>(
-      0,
-      (total, comment) => total + 1 + _countComments(comment.replies),
-    );
+        ));
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final post = _post;
+    if (post == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       backgroundColor: ChowColors.gray50,
       body: SafeArea(
@@ -105,11 +138,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 padding: const EdgeInsets.only(bottom: 18),
                 children: [
                   _PostContentSection(
-                    post: _post,
+                    post: post,
                     isLiked: _isLiked,
-                    likes: _isLiked ? _post.likes + 1 : _post.likes,
+                    likes: _isLiked ? post.likes + 1 : post.likes,
                     commentCount: _commentCount,
-                    onToggleLike: () => setState(() => _isLiked = !_isLiked),
+                    onToggleLike: _togglePostLike,
                   ),
                   _CommentsSection(
                     comments: _comments,
@@ -743,6 +776,15 @@ class _PostComment {
     this.isLiked = false,
     this.replies = const [],
   });
+
+  factory _PostComment.fromApiComment(CommunityComment c) => _PostComment(
+        id: c.id,
+        author: c.author,
+        avatar: c.avatar,
+        timeAgo: c.timeAgo,
+        content: c.content,
+        likes: c.likes,
+      );
 
   final int id;
   final String author;

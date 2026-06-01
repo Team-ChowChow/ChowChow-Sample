@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_client.dart';
@@ -18,16 +16,16 @@ class CharacterPage extends StatefulWidget {
 class _CharacterPageState extends State<CharacterPage> with TickerProviderStateMixin {
   int level = 1;
   int exp = 0;
+  int _coins = 0;
   int maxExp = 100;
   int health = 80;
   int happiness = 80;
   int hunger = 50;
 
-  int? _petId;
+
   String _petName = '';
   String _petType = 'DOG';
   String? _characterImageUrl;
-  bool _generatingImage = false;
 
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
@@ -55,6 +53,8 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     _idleRotate = Tween<double>(begin: -0.035, end: 0.035).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
     _interactCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _loadPet();
+    _loadCoinBalance();
+    _claimDailyLogin();
   }
 
   Future<void> _loadPet() async {
@@ -63,7 +63,6 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
       if (res.isEmpty || !mounted) return;
       final pet = res.first as Map<String, dynamic>;
       final petId = pet['petId'] as int?;
-      // Load saved character image
       String? savedImg;
       if (petId != null) {
         final prefs = await SharedPreferences.getInstance();
@@ -71,7 +70,6 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
       }
       if (!mounted) return;
       setState(() {
-        _petId = petId;
         _petName = pet['petName'] as String? ?? '';
         _petType = pet['petType'] as String? ?? 'DOG';
         _characterImageUrl = savedImg ?? (pet['petProfileImg'] as String?);
@@ -79,61 +77,49 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     } catch (_) {}
   }
 
-  Future<void> _generateCharacterImage() async {
-    if (_petId == null || _generatingImage) return;
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null || !mounted) return;
-
-    setState(() => _generatingImage = true);
+  Future<void> _loadCoinBalance() async {
     try {
-      // 1. Upload photo
-      final uploadedUrl = await ApiClient.uploadImage(File(picked.path), type: 'recipe');
+      final res = await ApiClient.get('/api/coins/balance') as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() => _coins = (res['balance'] as num?)?.toInt() ?? 0);
+    } catch (_) {}
+  }
 
-      // 2. Update pet profile with uploaded photo
-      final pet = await ApiClient.get('/api/pets/$_petId') as Map<String, dynamic>;
-      await ApiClient.patch('/api/pets/$_petId', {
-        'petName': pet['petName'],
-        'petType': pet['petType'],
-        'petProfileImg': uploadedUrl,
-      });
-
-      // 3. Generate AI character (fal.ai: ~40–60s)
-      final result = await ApiClient.post(
-        '/api/ai/image/character',
-        {'petId': _petId, 'style': 'cute chibi anime'},
-      );
-      final imageUrl = (result as Map<String, dynamic>?)?['imageUrl'] as String?;
-
-      if (imageUrl != null && imageUrl.isNotEmpty) {
-        // Save character image to pet profile in backend (persists across app reinstalls)
-        await ApiClient.patch('/api/pets/$_petId', {
-          'petName': pet['petName'],
-          'petType': pet['petType'],
-          'petProfileImg': imageUrl,
-        });
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('character_image_$_petId', imageUrl);
-        if (mounted) setState(() => _characterImageUrl = imageUrl);
-      } else {
-        throw Exception('imageUrl이 응답에 없습니다: $result');
-      }
-    } on ApiException catch (e) {
-      if (mounted) {
+  Future<void> _claimDailyLogin() async {
+    try {
+      final res = await ApiClient.post('/api/coins/daily-login', {}) as Map<String, dynamic>;
+      if (!mounted) return;
+      final newBalance = (res['balance'] as num?)?.toInt() ?? _coins;
+      if (newBalance > _coins) {
+        setState(() => _coins = newBalance);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('[${e.statusCode}] ${e.message}'), duration: const Duration(seconds: 6)),
+          const SnackBar(content: Text('🪙 출석 보상 +5 코인!'), duration: Duration(seconds: 2)),
         );
       }
-    } catch (e) {
+    } catch (_) {}
+  }
+
+  Future<bool> _trySpendCoins(int cost, String reason) async {
+    if (cost == 0) return true;
+    if (_coins < cost) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('오류: $e'), duration: const Duration(seconds: 6)),
+          SnackBar(content: Text('코인이 부족합니다. (보유: $_coins / 필요: $cost)')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _generatingImage = false);
+      return false;
+    }
+    try {
+      final res = await ApiClient.post('/api/coins/spend', {'amount': cost, 'reason': reason})
+          as Map<String, dynamic>;
+      if (!mounted) return false;
+      setState(() => _coins = (res['balance'] as num?)?.toInt() ?? (_coins - cost));
+      return true;
+    } catch (_) {
+      return false;
     }
   }
+
 
   @override
   void dispose() {
@@ -181,26 +167,49 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
   }
 
   Future<void> _handleActivity(_ActivityData activity) async {
+    // 코인 차감 확인
+    if (activity.cost > 0) {
+      final ok = await _trySpendCoins(activity.cost, '${activity.label} 활동');
+      if (!ok) return;
+    }
+
     switch (activity.label) {
       case '밥주기':
         await _runInteract(_InteractAnim.wiggle, duration: const Duration(milliseconds: 500), onDone: () {
           hunger = (hunger - 20).clamp(0, 100);
           health = (health + 5).clamp(0, 100);
+          exp = (exp + 5).clamp(0, maxExp);
         });
       case '쓰다듬기':
         await _runInteract(_InteractAnim.scale, duration: const Duration(milliseconds: 400), onDone: () {
           happiness = (happiness + 10).clamp(0, 100);
+          exp = (exp + 3).clamp(0, maxExp);
         });
       case '운동하기':
         await _runInteract(_InteractAnim.shake, duration: const Duration(milliseconds: 1000), onDone: () {
-          health = (health + 10).clamp(0, 100);
+          health = (health + 15).clamp(0, 100);
           hunger = (hunger + 10).clamp(0, 100);
+          exp = (exp + 15).clamp(0, maxExp);
         });
       case '목욕시키기':
         await _runInteract(_InteractAnim.wiggle, duration: const Duration(milliseconds: 800), onDone: () {
-          happiness = (happiness + 15).clamp(0, 100);
+          happiness = (happiness + 20).clamp(0, 100);
+          health = (health + 5).clamp(0, 100);
+          exp = (exp + 20).clamp(0, maxExp);
         });
     }
+
+    // 경험치 만렙 레벨업
+    if (exp >= maxExp) {
+      exp = exp - maxExp;
+      level++;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('🎉 레벨 업! Lv.$level'), duration: const Duration(seconds: 2)),
+        );
+      }
+    }
+
     _spawnParticles([activity.emoji], count: 8);
     setState(() {});
   }
@@ -243,12 +252,38 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                   border: Border(bottom: BorderSide(color: ChowColors.gray200)),
                 ),
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-                child: const Column(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('캐릭터 키우기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ChowColors.gray800)),
-                    SizedBox(height: 4),
-                    Text('우리 아이와 함께 성장해요', style: TextStyle(fontSize: 13, color: ChowColors.gray500)),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('캐릭터 키우기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ChowColors.gray800)),
+                          SizedBox(height: 4),
+                          Text('우리 아이와 함께 성장해요', style: TextStyle(fontSize: 13, color: ChowColors.gray500)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ChowColors.orange100),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🪙', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$_coins',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.orange600),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -354,20 +389,6 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                       ),
                       const SizedBox(height: 8),
                       const Text('👆 클릭해서 쓰다듬어 주세요!', style: TextStyle(fontSize: 12, color: ChowColors.orange500)),
-                      const SizedBox(height: 10),
-                      ElevatedButton.icon(
-                        onPressed: _generatingImage ? null : _generateCharacterImage,
-                        icon: _generatingImage
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.auto_fix_high, size: 18),
-                        label: Text(_generatingImage ? 'AI 변환 중...' : 'AI 캐릭터 변환'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ChowColors.orange500,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        ),
-                      ),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

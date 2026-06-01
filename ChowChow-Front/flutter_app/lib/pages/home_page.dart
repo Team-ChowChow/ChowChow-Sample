@@ -57,6 +57,8 @@ class _HomePageState extends State<HomePage> {
     setState(() => _mealPhoto = File(picked.path));
     try {
       await ApiClient.uploadImage(File(picked.path), type: 'meal');
+      // 식단 추가 코인 적립
+      ApiClient.post('/api/coins/earn', {'amount': 10, 'reason': '식단 추가'}).ignore();
     } catch (_) {}
   }
 

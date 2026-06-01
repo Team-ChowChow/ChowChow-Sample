@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
@@ -1113,13 +1116,20 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _PetRow extends StatelessWidget {
+class _PetRow extends StatefulWidget {
   const _PetRow({required this.pet});
-
   final PetModel pet;
+  @override
+  State<_PetRow> createState() => _PetRowState();
+}
+
+class _PetRowState extends State<_PetRow> {
+  bool _generating = false;
 
   static const _placeholder =
       'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80';
+
+  PetModel get pet => widget.pet;
 
   String get _breedAgeLine {
     final breed = pet.breedName ?? pet.displayType;
@@ -1149,12 +1159,55 @@ class _PetRow extends StatelessWidget {
     return '체중: ${rounded}kg';
   }
 
+  Future<void> _generateCharacter() async {
+    if (_generating) return;
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked == null || !mounted) return;
+
+    setState(() => _generating = true);
+    try {
+      final uploadedUrl = await ApiClient.uploadImage(File(picked.path), type: 'recipe');
+      await ApiClient.patch('/api/pets/${pet.petId}', {
+        'petName': pet.petName,
+        'petType': pet.petType,
+        'petProfileImg': uploadedUrl,
+      });
+      final result = await ApiClient.post('/api/ai/image/character', {
+        'petId': pet.petId,
+        'style': 'cute chibi anime',
+      }) as Map<String, dynamic>;
+      final imageUrl = result['imageUrl'] as String?;
+      if (imageUrl != null && imageUrl.isNotEmpty && mounted) {
+        await ApiClient.patch('/api/pets/${pet.petId}', {
+          'petName': pet.petName,
+          'petType': pet.petType,
+          'petProfileImg': imageUrl,
+        });
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI 캐릭터 변환 완료!')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('변환 실패: $e'), duration: const Duration(seconds: 5)),
+      );
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final weightLabel = _weightLabel;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+      Padding(
+      padding: const EdgeInsets.only(bottom: 4),
       child: Material(
         color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(14),
@@ -1251,6 +1304,30 @@ class _PetRow extends StatelessWidget {
           ),
         ),
       ),
+      ),
+      if (_generating)
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: LinearProgressIndicator(color: ChowColors.orange500),
+        )
+      else
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: OutlinedButton.icon(
+            onPressed: _generateCharacter,
+            icon: const Icon(Icons.auto_fix_high, size: 16),
+            label: const Text('AI 캐릭터 변환'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: ChowColors.orange500,
+              side: const BorderSide(color: ChowColors.orange500),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: const Size(0, 36),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
+    ],
     );
   }
 }

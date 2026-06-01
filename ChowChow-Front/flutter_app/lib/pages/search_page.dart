@@ -33,29 +33,8 @@ class _SearchPageState extends State<SearchPage> {
   bool _loading = false;
   Timer? _debounce;
 
-  final List<String> _popularCategories = const [
-    '#트렌드',
-    '#저지방',
-    '#알러지프리',
-    '#시니어',
-    '#피부/키트',
-    '#다이어트',
-    '#치아건강',
-    '#면역력',
-  ];
-
-  final List<_PopularSearchTerm> _popularSearchTerms = const [
-    _PopularSearchTerm(rank: 1, keyword: '닭가슴살 레시피'),
-    _PopularSearchTerm(rank: 2, keyword: '다이어트 펫푸드', isNew: true),
-    _PopularSearchTerm(rank: 3, keyword: '알레르기 대응식'),
-    _PopularSearchTerm(rank: 4, keyword: '강아지 간식'),
-    _PopularSearchTerm(rank: 5, keyword: '연어 고구마', isNew: true),
-    _PopularSearchTerm(rank: 6, keyword: '생식 레시피'),
-    _PopularSearchTerm(rank: 7, keyword: '저지방 식단'),
-    _PopularSearchTerm(rank: 8, keyword: '시니어 건강식', isNew: true),
-    _PopularSearchTerm(rank: 9, keyword: '치킨 야채볼'),
-    _PopularSearchTerm(rank: 10, keyword: '면역력 강화'),
-  ];
+  List<String> _popularCategories = [];
+  List<_PopularSearchTerm> _popularSearchTerms = [];
 
   final List<String> _suggestionSeeds = const [
     '닭고기',
@@ -92,6 +71,25 @@ class _SearchPageState extends State<SearchPage> {
     });
 
     _search();
+    _loadSearchMeta();
+  }
+
+  Future<void> _loadSearchMeta() async {
+    try {
+      final results = await Future.wait([
+        ApiClient.get('/api/v1/search/popular', auth: false),
+        ApiClient.get('/api/v1/search/categories', auth: false),
+      ]);
+      if (!mounted) return;
+      final popular = (results[0] as Map<String, dynamic>)['popular'] as List<dynamic>? ?? [];
+      final cats = (results[1] as Map<String, dynamic>)['categories'] as List<dynamic>? ?? [];
+      setState(() {
+        _popularSearchTerms = popular.asMap().entries
+            .map((e) => _PopularSearchTerm(rank: e.key + 1, keyword: e.value.toString()))
+            .toList();
+        _popularCategories = cats.map((c) => '#$c').toList();
+      });
+    } catch (_) {}
   }
 
   @override

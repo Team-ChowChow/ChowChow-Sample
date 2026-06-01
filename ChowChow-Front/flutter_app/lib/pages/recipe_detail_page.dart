@@ -26,6 +26,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _isLiked = false;
   _RecipeDetailTab _activeTab = _RecipeDetailTab.recipe;
   _RecipeDetailData? _recipe;
+  List<_RelatedRecipe> _similarRecipes = const [];
 
   static const _placeholder =
       'https://images.unsplash.com/photo-1588378898429-6950f6b4f72a?auto=format&fit=crop&w=1080&q=80';
@@ -46,6 +47,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _recipe = _RecipeDetailData.fromJson(res, fallback: _recipe);
         _loading = false;
       });
+      _loadSimilarRecipes();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -53,6 +55,26 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _loadSimilarRecipes() async {
+    try {
+      final res = await ApiClient.get(
+        '/api/v1/recipes/${widget.recipeId}/similar',
+        auth: false,
+      ) as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _similarRecipes = res.map((e) {
+          final m = e as Map<String, dynamic>;
+          return _RelatedRecipe(
+            title: m['recipeTitle'] as String? ?? '',
+            imageUrl: m['imageUrl'] as String? ?? _placeholder,
+            rating: (m['averageRating'] as num?)?.toDouble() ?? 0.0,
+          );
+        }).toList();
+      });
+    } catch (_) {}
   }
 
   void _goBack() {
@@ -98,7 +120,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     _InstructionsSection(steps: recipe.steps),
                     _NutritionSection(items: recipe.nutrition),
                     _TipsSection(tips: recipe.tips),
-                    _RelatedSection(recipes: _relatedRecipes),
+                    if (_similarRecipes.isNotEmpty)
+                      _RelatedSection(recipes: _similarRecipes),
                   ] else
                     _ReviewsSection(recipe: recipe, reviews: _reviews),
                   _ActionSection(
@@ -1383,15 +1406,3 @@ const _reviews = [
   ),
 ];
 
-const _relatedRecipes = [
-  _RelatedRecipe(
-    title: '연어 오메가3 영양밥',
-    imageUrl: 'https://images.unsplash.com/photo-1580683750935-cecfc7ea57f0?w=400',
-    rating: 4.9,
-  ),
-  _RelatedRecipe(
-    title: '소고기 단호박 영양식',
-    imageUrl: 'https://images.unsplash.com/photo-1618788856642-8e491177d973?w=400',
-    rating: 4.7,
-  ),
-];
