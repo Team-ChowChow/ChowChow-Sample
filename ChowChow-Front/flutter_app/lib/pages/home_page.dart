@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
@@ -24,11 +26,38 @@ class _HomePageState extends State<HomePage> {
   List<RecipeModel> _recipes = [];
   bool _loading = true;
 
+  String _tipText = '';
+  String _tipDetail = '';
+  File? _mealPhoto;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     _loadRecipes();
+    _loadTip();
+  }
+
+  Future<void> _loadTip() async {
+    try {
+      final res = await ApiClient.get('/api/llm/tip') as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _tipText = res['tip'] as String? ?? '';
+          _tipDetail = res['detail'] as String? ?? '';
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pickMealPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+    setState(() => _mealPhoto = File(picked.path));
+    try {
+      await ApiClient.uploadImage(File(picked.path), type: 'meal');
+    } catch (_) {}
   }
 
   Future<void> _loadRecipes() async {
@@ -255,22 +284,42 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(96),
-                          side: const BorderSide(color: ChowColors.gray300, width: 2),
-                          shape: RoundedRectangleBorder(
+                      child: GestureDetector(
+                        onTap: _pickMealPhoto,
+                        child: Container(
+                          height: 96,
+                          decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ChowColors.gray300, width: 2),
+                            color: ChowColors.gray50,
                           ),
-                          foregroundColor: ChowColors.gray600,
-                        ),
-                        child: const Column(
-                          children: [
-                            Icon(Icons.camera_alt_outlined, size: 32, color: ChowColors.gray400),
-                            SizedBox(height: 8),
-                            Text('식단 사진 추가하기', style: TextStyle(fontSize: 14)),
-                          ],
+                          clipBehavior: Clip.hardEdge,
+                          child: _mealPhoto != null
+                              ? Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.file(_mealPhoto!, fit: BoxFit.cover),
+                                    Positioned(
+                                      right: 8, top: 8,
+                                      child: GestureDetector(
+                                        onTap: () => setState(() => _mealPhoto = null),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.camera_alt_outlined, size: 32, color: ChowColors.gray400),
+                                    SizedBox(height: 8),
+                                    Text('식단 사진 추가하기', style: TextStyle(fontSize: 14, color: ChowColors.gray600)),
+                                  ],
+                                ),
                         ),
                       ),
                     ),
@@ -307,19 +356,20 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              '반려견에게 양파, 마늘, 포도는 절대 급여하지 마세요. 중독 증상을 유발할 수 있습니다.',
-                              style: TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
+                            Text(
+                              _tipText.isNotEmpty ? _tipText : '반려동물에게 신선한 물을 매일 충분히 제공하세요.',
+                              style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
                             ),
-                            TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.white.withValues(alpha: 0.9),
-                                padding: EdgeInsets.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            if (_tipDetail.isNotEmpty)
+                              TextButton(
+                                onPressed: () => context.push('/tip-detail', extra: {'tip': _tipText, 'detail': _tipDetail}),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white.withValues(alpha: 0.9),
+                                  padding: EdgeInsets.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text('더 알아보기', style: TextStyle(decoration: TextDecoration.underline)),
                               ),
-                              child: const Text('더 알아보기', style: TextStyle(decoration: TextDecoration.underline)),
-                            ),
                           ],
                         ),
                       ),

@@ -168,6 +168,30 @@ public class SupabaseAuthClient {
         }
     }
 
+    public SupabaseTokenResult refresh(String refreshToken) {
+        try {
+            String response = webClient.post()
+                    .uri("/auth/v1/token?grant_type=refresh_token")
+                    .bodyValue(Map.of("refresh_token", refreshToken))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode root = objectMapper.readTree(response);
+            String accessToken = root.path("access_token").stringValue();
+            String newRefreshToken = root.path("refresh_token").stringValue();
+            JsonNode user = root.path("user");
+            UUID authUuid = UUID.fromString(user.path("id").stringValue());
+            String userEmail = user.path("email").stringValue();
+
+            return new SupabaseTokenResult(accessToken, newRefreshToken, authUuid, userEmail);
+        } catch (WebClientResponseException e) {
+            throw new IllegalStateException("토큰 갱신에 실패했습니다. 다시 로그인해주세요.");
+        } catch (Exception e) {
+            throw new RuntimeException("토큰 갱신 중 오류가 발생했습니다.", e);
+        }
+    }
+
     public void logout(String accessToken) {
         try {
             webClient.post()

@@ -137,6 +137,18 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthResponse refresh(String refreshToken) {
+        SupabaseTokenResult result = supabaseAuthClient.refresh(refreshToken);
+        User user = userRepository.findByAuthUuid(result.authUuid())
+                .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
+        AuthAccount account = authAccountRepository.findByUserAndAuthProvider(user, "EMAIL").orElse(null);
+        return AuthResponse.of(user, account, false).toBuilder()
+                .accessToken(result.accessToken())
+                .refreshToken(result.refreshToken())
+                .build();
+    }
+
+    @Transactional
     public AuthResponse login(LoginRequest req) {
         List<AuthAccount> accounts = authAccountRepository.findAllByAuthEmail(req.getEmail());
         if (!accounts.isEmpty()) {

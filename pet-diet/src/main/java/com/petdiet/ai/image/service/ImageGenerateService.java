@@ -67,9 +67,10 @@ public class ImageGenerateService {
         }
 
         String prompt = buildCharacterPrompt(pet, style);
-        String imageUrl = callFalImageToImage(petImageUrl, prompt);
+        String characterUrl = callFalImageToImage(petImageUrl, prompt);
+        String noBgUrl = callFalRemoveBackground(characterUrl);
         return ImageGenerateResponse.builder()
-                .imageUrl(supabaseStorageService.uploadRecipeImageFromUrl(imageUrl))
+                .imageUrl(supabaseStorageService.uploadCharacterImageFromUrl(noBgUrl))
                 .build();
     }
 
@@ -105,6 +106,13 @@ public class ImageGenerateService {
         );
     }
 
+    private String buildCharacterNegativePrompt() {
+        return "photograph, photo, realistic, raw photo, DSLR, " +
+               "scary, horror, creepy, uncanny valley, disturbing, aggressive, " +
+               "deformed, distorted, mutated, extra eyes, disfigured, " +
+               "ugly, blurry, noise, low quality, bad anatomy";
+    }
+
     private String buildRecipePrompt(String recipeName, List<String> ingredients, String description) {
         StringBuilder sb = new StringBuilder();
         sb.append("A real photograph of homemade pet food '").append(recipeName).append("'");
@@ -128,22 +136,30 @@ public class ImageGenerateService {
         body.put("num_images", 1);
         body.put("guidance_scale", 3.5);
         body.put("num_inference_steps", 35);
-        return callFal("/" + recipeImageModel, body);
+        return callFal("/" + recipeImageModel, body, "images");
     }
 
     private String callFalImageToImage(String imageUrl, String prompt) {
         Map<String, Object> body = new HashMap<>();
         body.put("image_url", imageUrl);
         body.put("prompt", prompt);
+        body.put("negative_prompt", buildCharacterNegativePrompt());
         body.put("strength", 0.65);
         body.put("image_size", "square_hd");
         body.put("num_images", 1);
         body.put("guidance_scale", 8.0);
         body.put("num_inference_steps", 40);
-        return callFal("/" + characterImageModel, body);
+        return callFal("/" + characterImageModel, body, "images");
     }
 
-    private String callFal(String path, Map<String, Object> body) {
+    private String callFalRemoveBackground(String imageUrl) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("image_url", imageUrl);
+        body.put("model", "General Use (Light)");
+        return callFal("/fal-ai/birefnet", body, "image");
+    }
+
+    private String callFal(String path, Map<String, Object> body, String imageField) {
         try {
             String responseBody = webClient.post()
                     .uri(path)
@@ -154,9 +170,15 @@ public class ImageGenerateService {
                     .block();
 
             JsonNode root = objectMapper.readTree(responseBody);
-            return root.path("images").get(0).path("url").stringValue();
+            // "images":[{"url":"..."}] or "image":{"url":"..."}
+            JsonNode node = root.path(imageField);
+            if (node.isArray()) {
+                return node.get(0).path("url").stringValue();
+            } else {
+                return node.path("url").stringValue();
+            }
         } catch (Exception e) {
-            log.error("fal.ai 이미지 생성 API 호출 실패 [path={}]", path, e);
+            log.error("fal.ai API 호출 실패 [path={}]", path, e);
             throw new RuntimeException("AI 이미지 생성 중 오류가 발생했습니다.", e);
         }
     }

@@ -24,6 +24,7 @@ import '../data/sample_data.dart';
 import '../services/models.dart';
 import '../shell/main_shell.dart';
 import '../pages/create_post.dart';
+import '../pages/tip_detail_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -146,6 +147,17 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/create-post',
         builder: (context, state) => const CreatePostPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/tip-detail',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, String>?;
+          return TipDetailPage(
+            tip: extra?['tip'] ?? '',
+            detail: extra?['detail'] ?? '',
+          );
+        },
       ),
     ],
   );
