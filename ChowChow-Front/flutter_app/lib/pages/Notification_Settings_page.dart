@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
@@ -24,6 +25,32 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   bool updates = true;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final res = await ApiClient.get('/api/notifications/settings') as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        pushEnabled = res['pushEnabled'] as bool? ?? true;
+        emailEnabled = res['emailEnabled'] as bool? ?? true;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _saveSettings() async {
+    try {
+      await ApiClient.patch('/api/notifications/settings', {
+        'pushEnabled': pushEnabled,
+        'emailEnabled': emailEnabled,
+      });
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ChowColors.gray50,
@@ -42,9 +69,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                       subtitle: '앱에서 실시간으로 받는 알림',
                       value: pushEnabled,
                       onChanged: (value) {
-                        setState(() {
-                          pushEnabled = value;
-                        });
+                        setState(() => pushEnabled = value);
+                        _saveSettings();
                       },
                       children: pushEnabled
                           ? [
@@ -111,9 +137,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                       subtitle: '이메일로 받는 소식',
                       value: emailEnabled,
                       onChanged: (value) {
-                        setState(() {
-                          emailEnabled = value;
-                        });
+                        setState(() => emailEnabled = value);
+                        _saveSettings();
                       },
                       children: emailEnabled
                           ? [

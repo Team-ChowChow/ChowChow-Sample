@@ -66,7 +66,7 @@ public class DietRecipeSaveService {
     }
 
     private Integer resolveMenuId(UserPet pet, DietRecommendResponse response) {
-        String petType = pet.getPetType();
+        String petType = (pet != null) ? pet.getPetType() : "DOG";
         String category = inferMenuCategory(response);
 
         Optional<Menu> menu = menuRepository.findFirstByPetTypeAndMenuCategoryAndMenuStatus(

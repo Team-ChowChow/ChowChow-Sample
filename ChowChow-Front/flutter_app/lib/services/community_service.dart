@@ -49,6 +49,26 @@ class CommunityService {
     );
     return CommunityComment.fromJson(res as Map<String, dynamic>);
   }
+
+  static Future<CommunityPost> createPost({
+    required String content,
+    String? category,
+    List<String> tags = const [],
+    String? imageUrl,
+  }) async {
+    final res = await ApiClient.post('/api/community/posts', {
+      'postContent': content,
+      'postCategory': category ?? '기타',
+      'postStatus': 'ACTIVE',
+      if (imageUrl != null) 'postImageUrl': imageUrl,
+      if (tags.isNotEmpty) 'tagNames': tags,
+    });
+    return CommunityPost.fromJson(res as Map<String, dynamic>);
+  }
+
+  static Future<void> deletePost(int postId) async {
+    await ApiClient.delete('/api/community/posts/$postId');
+  }
 }
 
 class CommunityComment {

@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ import java.util.Map;
 public class RecipeV1Controller {
 
     private final RecipeService recipeService;
+    private final JdbcTemplate jdbc;
 
     @PostMapping("/recipes/convert")
     public ResponseEntity<?> convertRecipe() {
@@ -123,5 +125,55 @@ public class RecipeV1Controller {
     @GetMapping("/menus")
     public ResponseEntity<List<Object>> getMenus() {
         return ResponseEntity.ok(List.of());
+    }
+
+    /**
+     * 유사한 레시피 추천: recipePurpose 태그가 2개 이상 겹치는 레시피, 최대 4개 반환
+     */
+    @GetMapping("/recipes/{recipeId}/similar")
+    public ResponseEntity<List<RecipeResponse>> getSimilarRecipes(@PathVariable Integer recipeId) {
+        // 기준 레시피의 purpose 태그 목록
+        String purposeRaw = jdbc.queryForObject(
+            "SELECT COALESCE(\"recipePurpose\", '') FROM \"Recipes\" WHERE \"recipeId\" = ?",
+            String.class, recipeId
+        );
+        if (purposeRaw == null || purposeRaw.isBlank()) {
+            return ResponseEntity.ok(recipeService.getPublicRecipes(
+                org.springframework.data.domain.PageRequest.of(0, 4)).getContent());
+        }
+
+        String[] tags = purposeRaw.split(",");
+        // 각 태그를 LIKE 조건으로 검색해 2개 이상 매칭되는 레시피
+        StringBuilder sql = new StringBuilder(
+            "SELECT r.\"recipeId\", COUNT(*) AS match_count FROM \"Recipes\" r WHERE r.\"recipeId\" != ? " +
+            "AND r.\"isPublic\" = true AND r.\"recipeStatus\" = 'ACTIVE' AND ("
+        );
+        List<Object> params = new java.util.ArrayList<>();
+        params.add(recipeId);
+        for (int i = 0; i < tags.length; i++) {
+            if (i > 0) sql.append(" OR ");
+            sql.append("r.\"recipePurpose\" LIKE ?");
+            params.add("%" + tags[i].trim() + "%");
+        }
+        sql.append(") GROUP BY r.\"recipeId\" HAVING COUNT(*) >= 2 ORDER BY match_count DESC LIMIT 4");
+
+        List<Integer> similarIds = jdbc.queryForList(sql.toString(), params.toArray(), Integer.class);
+        List<RecipeResponse> similar = similarIds.stream()
+            .map(id -> recipeService.getRecipe(id))
+            .toList();
+
+        // 결과가 부족하면 최신순으로 채움
+        if (similar.size() < 4) {
+            List<RecipeResponse> fallback = recipeService.getPublicRecipes(
+                org.springframework.data.domain.PageRequest.of(0, 8)).getContent();
+            for (RecipeResponse r : fallback) {
+                if (similar.size() >= 4) break;
+                if (!r.getRecipeId().equals(recipeId) && similar.stream().noneMatch(s -> s.getRecipeId().equals(r.getRecipeId()))) {
+                    similar = new java.util.ArrayList<>(similar);
+                    ((java.util.ArrayList<RecipeResponse>) similar).add(r);
+                }
+            }
+        }
+        return ResponseEntity.ok(similar);
     }
 }

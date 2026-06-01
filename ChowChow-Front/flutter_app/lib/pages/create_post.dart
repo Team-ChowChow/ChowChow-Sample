@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../services/api_client.dart';
+import '../services/community_service.dart';
 import '../theme/chow_theme.dart';
 
 class CreatePostPage extends StatefulWidget {
@@ -22,7 +25,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
+  String? _selectedImagePath;
   String? _selectedCategory;
+  bool _isPosting = false;
 
   bool get _canPost => _contentController.text.trim().isNotEmpty;
 
@@ -79,6 +84,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     setState(() {
       _selectedImageBytes = bytes;
       _selectedImageName = image.name;
+      _selectedImagePath = image.path;
     });
   }
 
@@ -86,19 +92,39 @@ class _CreatePostPageState extends State<CreatePostPage> {
     setState(() {
       _selectedImageBytes = null;
       _selectedImageName = null;
+      _selectedImagePath = null;
     });
   }
 
-  void _handlePost() {
-    if (!_canPost) return;
-
-    // TODO: 백엔드 API 연결 시 이 부분에서 게시글 등록 요청을 보내면 됩니다.
-    debugPrint('content: ${_contentController.text.trim()}');
-    debugPrint('category: $_selectedCategory');
-    debugPrint('tags: $_tags');
-    debugPrint('imageName: $_selectedImageName');
-
-    context.go('/community');
+  Future<void> _handlePost() async {
+    if (!_canPost || _isPosting) return;
+    setState(() => _isPosting = true);
+    try {
+      String? imageUrl;
+      if (_selectedImagePath != null) {
+        imageUrl = await ApiClient.uploadImage(
+          File(_selectedImagePath!),
+          type: 'recipe',
+        );
+      }
+      await CommunityService.createPost(
+        content: _contentController.text.trim(),
+        category: _selectedCategory,
+        tags: _tags,
+        imageUrl: imageUrl,
+      );
+      // 커뮤니티 글쓰기 코인 적립
+      ApiClient.post('/api/coins/earn', {'amount': 10, 'reason': '커뮤니티 글쓰기'}).ignore();
+      if (mounted) context.go('/community');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('게시글 등록에 실패했습니다.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPosting = false);
+    }
   }
 
   @override

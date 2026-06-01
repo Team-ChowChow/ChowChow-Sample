@@ -1,10 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 
 class AppSettingsPage extends StatelessWidget {
   const AppSettingsPage({super.key});
+
+  Future<void> _handleWithdraw(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('회원 탈퇴'),
+        content: const Text('계정을 영구적으로 삭제합니다.\n정말 탈퇴하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('탈퇴', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await ApiClient.delete('/api/users/me');
+      await ApiClient.clearToken();
+      if (context.mounted) context.go('/login');
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원 탈퇴에 실패했습니다.')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +62,7 @@ class AppSettingsPage extends StatelessWidget {
           _section(
             '기타',
             [
-              _tile(context, '회원 탈퇴', '계정을 영구적으로 삭제합니다', Icons.delete_forever_outlined, () {}, danger: true),
+              _tile(context, '회원 탈퇴', '계정을 영구적으로 삭제합니다', Icons.delete_forever_outlined, () => _handleWithdraw(context), danger: true),
             ],
           ),
         ],
