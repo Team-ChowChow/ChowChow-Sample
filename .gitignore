@@ -2,6 +2,14 @@
 .env
 pet-diet/.env
 
+# 구버전 프론트 폴더 (삭제 전 백업본)
+ChowChow-Front-main/
+
+# Flutter 빌드 캐시
+**/.dart_tool/
+**/flutter_app/build/
+**/flutter_app/windows/flutter/ephemeral/
+
 node_modules/
 dist/
 .gradle/
