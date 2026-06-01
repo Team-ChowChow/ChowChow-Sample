@@ -68,6 +68,15 @@ public class CharacterController {
                 principal.authUuid(), petId, body.get("activityType")));
     }
 
+    @PostMapping("/{characterId}/activity")
+    public ResponseEntity<CharacterResponse> performActivity(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PathVariable Integer characterId,
+            @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(characterService.performActivity(
+                principal.authUuid(), characterId, body.get("activityType")));
+    }
+
     @GetMapping("/pets/{petId}/logs")
     public ResponseEntity<List<GrowthLogResponse>> getGrowthLogs(
             @AuthenticationPrincipal SupabasePrincipal principal,
@@ -99,8 +108,10 @@ public class CharacterController {
     @GetMapping("/{characterId}/growth-logs")
     public ResponseEntity<List<GrowthLogResponse>> getGrowthLogsByCharacter(
             @AuthenticationPrincipal SupabasePrincipal principal,
-            @PathVariable Integer characterId) {
-        return ResponseEntity.ok(characterService.getGrowthLogsByCharacterId(principal.authUuid(), characterId));
+            @PathVariable Integer characterId,
+            @RequestParam(required = false) String filter) {
+        return ResponseEntity.ok(characterService.getGrowthLogsByCharacterId(
+                principal.authUuid(), characterId, filter));
     }
 
     @GetMapping("/{characterId}/assets")

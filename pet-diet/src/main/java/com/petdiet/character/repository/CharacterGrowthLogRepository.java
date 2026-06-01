@@ -9,4 +9,7 @@ import java.util.List;
 public interface CharacterGrowthLogRepository extends JpaRepository<CharacterGrowthLog, Integer> {
 
     List<CharacterGrowthLog> findAllByCharacterOrderByCreatedAtDesc(PetCharacter character);
+
+    List<CharacterGrowthLog> findAllByCharacterAndActivityTypeOrderByCreatedAtDesc(
+            PetCharacter character, String activityType);
 }

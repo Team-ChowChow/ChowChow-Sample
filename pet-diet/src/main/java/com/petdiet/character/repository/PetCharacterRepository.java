@@ -16,5 +16,7 @@ public interface PetCharacterRepository extends JpaRepository<PetCharacter, Inte
 
     List<PetCharacter> findAllByPet_User(User user);
 
+    List<PetCharacter> findAllByPet_UserAndCharacterStatus(User user, String characterStatus);
+
     Optional<PetCharacter> findByCharacterIdAndPet_User(Integer characterId, User user);
 }
