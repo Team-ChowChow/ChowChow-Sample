@@ -12,6 +12,7 @@ import java.util.List;
 public class PostResponse {
     private Integer postId;
     private Integer userId;
+    private String userNickname;
     private Integer petId;
     private Integer recipeId;
     private String postTitle;
@@ -28,10 +29,13 @@ public class PostResponse {
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
-    public static PostResponse from(CommunityPost post, long likeCount) {
+    public static PostResponse from(CommunityPost post, long likeCount, boolean likedByMe) {
         return PostResponse.builder()
                 .postId(post.getPostId())
                 .userId(post.getUser().getUserId())
+                .userNickname(post.getUser().getUserNickname())
+                .petId(post.getPetId())
+                .recipeId(post.getRecipeId())
                 .postTitle(post.getPostTitle())
                 .postContentPreview(post.getPostContent() == null ? null :
                         (post.getPostContent().length() > 50 ? post.getPostContent().substring(0, 50) + "..." : post.getPostContent()))
@@ -40,9 +44,9 @@ public class PostResponse {
                 .postCategory(post.getPostCategory())
                 .viewCount(post.getViewCount())
                 .likeCount(likeCount)
-                .commentCount(post.getComments() == null ? 0 : post.getComments().size())
+                .commentCount(post.getCommentCount())
                 .postStatus(post.getPostStatus())
-                .likedByMe(false)
+                .likedByMe(likedByMe)
                 .tagNames(List.of())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())

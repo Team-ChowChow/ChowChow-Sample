@@ -56,7 +56,12 @@ class CommunityService {
     List<String> tags = const [],
     String? imageUrl,
   }) async {
+    final lines = content.trim().split('\n');
+    final title = lines.first.length > 50
+        ? '${lines.first.substring(0, 50)}...'
+        : lines.first;
     final res = await ApiClient.post('/api/community/posts', {
+      'postTitle': title,
       'postContent': content,
       'postCategory': category ?? '기타',
       'postStatus': 'ACTIVE',
