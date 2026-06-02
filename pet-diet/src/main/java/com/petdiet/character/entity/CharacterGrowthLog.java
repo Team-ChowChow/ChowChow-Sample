@@ -23,7 +23,7 @@ public class CharacterGrowthLog {
     @JoinColumn(name = "\"characterId\"", nullable = false)
     private PetCharacter character;
 
-    @Column(name = "\"userId\"")
+    @Column(name = "\"userId\"", nullable = false)
     private Integer userId;
 
     @Column(name = "\"activityType\"", nullable = false)
@@ -36,16 +36,18 @@ public class CharacterGrowthLog {
     @Column(name = "\"activityDescription\"")
     private String activityDescription;
 
-    @Column(name = "\"expGained\"")
-    private Integer expGained;
-
-    @Column(name = "\"currentExp\"")
-    private Integer currentExp;
-
-    @Column(name = "\"currentLevel\"")
-    private Integer currentLevel;
-
     @CreationTimestamp
     @Column(name = "\"createdAt\"", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    public static CharacterGrowthLog activity(PetCharacter character, Integer userId,
+                                              String activityType, int expAmount, String description) {
+        return CharacterGrowthLog.builder()
+                .character(character)
+                .userId(userId)
+                .activityType(activityType)
+                .expAmount(expAmount)
+                .activityDescription(description)
+                .build();
+    }
 }

@@ -149,41 +149,131 @@ class UserModel {
   String get displayName => userNickname ?? userName ?? '사용자';
 }
 
+class BreedModel {
+  final int breedId;
+  final String breedName;
+  final String breedNameKo;
+  final String petType;
+
+  BreedModel({
+    required this.breedId,
+    required this.breedName,
+    required this.breedNameKo,
+    required this.petType,
+  });
+
+  factory BreedModel.fromJson(Map<String, dynamic> j) => BreedModel(
+        breedId: j['breedId'] as int,
+        breedName: j['breedName'] as String? ?? '',
+        breedNameKo: j['breedNameKo'] as String? ?? j['breedName'] as String? ?? '',
+        petType: j['petType'] as String? ?? '',
+      );
+
+  String get displayName => breedNameKo.isNotEmpty ? breedNameKo : breedName;
+}
+
 class CharacterModel {
   final int characterId;
   final int petId;
-  final String? characterName;
+  final String characterName;
   final String? characterImageUrl;
+  final String? description;
+  final String? petType;
+  final String? petTypeLabel;
+  final int? breedId;
+  final String? breedName;
   final int level;
   final int exp;
-  final int maxExp;
-  final int? health;
-  final int? happiness;
-  final int? hunger;
+  final int requiredExp;
+  final int expToNextLevel;
+  final int health;
+  final int happiness;
+  final int hunger;
 
   CharacterModel({
     required this.characterId,
     required this.petId,
-    this.characterName,
+    required this.characterName,
     this.characterImageUrl,
+    this.description,
+    this.petType,
+    this.petTypeLabel,
+    this.breedId,
+    this.breedName,
     required this.level,
     required this.exp,
-    required this.maxExp,
-    this.health,
-    this.happiness,
-    this.hunger,
+    required this.requiredExp,
+    required this.expToNextLevel,
+    required this.health,
+    required this.happiness,
+    required this.hunger,
   });
 
   factory CharacterModel.fromJson(Map<String, dynamic> j) => CharacterModel(
         characterId: j['characterId'] as int,
         petId: j['petId'] as int,
-        characterName: j['characterName'] as String?,
+        characterName: j['characterName'] as String? ?? '',
         characterImageUrl: j['characterImageUrl'] as String?,
-        level: j['level'] as int? ?? 1,
-        exp: j['exp'] as int? ?? 0,
-        maxExp: j['maxExp'] as int? ?? 1000,
-        health: j['health'] as int?,
-        happiness: j['happiness'] as int?,
-        hunger: j['hunger'] as int?,
+        description: j['description'] as String?,
+        petType: j['petType'] as String?,
+        petTypeLabel: j['petTypeLabel'] as String?,
+        breedId: j['breedId'] as int?,
+        breedName: j['breedName'] as String?,
+        level: j['characterLevel'] as int? ?? j['level'] as int? ?? 1,
+        exp: j['currentExp'] as int? ?? j['exp'] as int? ?? 0,
+        requiredExp: j['requiredExp'] as int? ?? 100,
+        expToNextLevel: j['expToNextLevel'] as int? ?? 0,
+        health: j['health'] as int? ?? 80,
+        happiness: j['happiness'] as int? ?? 80,
+        hunger: j['hunger'] as int? ?? 50,
+      );
+
+  String get typeBreedLine {
+    final type = petTypeLabel ?? '';
+    final breed = breedName ?? '';
+    if (type.isEmpty && breed.isEmpty) return '';
+    if (breed.isEmpty) return type;
+    return '$type · $breed';
+  }
+
+  double get expFraction =>
+      requiredExp > 0 ? (exp / requiredExp).clamp(0.0, 1.0) : 0.0;
+}
+
+class GrowthLogModel {
+  final int growthLogId;
+  final String activityType;
+  final String activityLabel;
+  final int expGained;
+  final String? statusChanges;
+  final bool levelUp;
+  final int? previousLevel;
+  final int? newLevel;
+  final DateTime? createdAt;
+
+  GrowthLogModel({
+    required this.growthLogId,
+    required this.activityType,
+    required this.activityLabel,
+    required this.expGained,
+    this.statusChanges,
+    required this.levelUp,
+    this.previousLevel,
+    this.newLevel,
+    this.createdAt,
+  });
+
+  factory GrowthLogModel.fromJson(Map<String, dynamic> j) => GrowthLogModel(
+        growthLogId: j['growthLogId'] as int,
+        activityType: j['activityType'] as String? ?? '',
+        activityLabel: j['activityLabel'] as String? ?? j['activityType'] as String? ?? '',
+        expGained: j['expGained'] as int? ?? j['growthValue'] as int? ?? 0,
+        statusChanges: j['statusChanges'] as String? ?? j['description'] as String?,
+        levelUp: j['levelUp'] as bool? ?? false,
+        previousLevel: j['previousLevel'] as int?,
+        newLevel: j['newLevel'] as int?,
+        createdAt: j['createdAt'] != null
+            ? DateTime.tryParse(j['createdAt'].toString())
+            : null,
       );
 }
