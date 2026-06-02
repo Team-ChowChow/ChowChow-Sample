@@ -63,8 +63,29 @@ class CommunityService {
     final res = await ApiClient.post('/api/community/posts', {
       'postTitle': title,
       'postContent': content,
-      'postCategory': category ?? '기타',
+      'postCategory': category ?? '자유',
       'postStatus': 'ACTIVE',
+      if (imageUrl != null) 'postImageUrl': imageUrl,
+      if (tags.isNotEmpty) 'tagNames': tags,
+    });
+    return CommunityPost.fromJson(res as Map<String, dynamic>);
+  }
+
+  static Future<CommunityPost> updatePost({
+    required int postId,
+    required String content,
+    String? category,
+    List<String> tags = const [],
+    String? imageUrl,
+  }) async {
+    final lines = content.trim().split('\n');
+    final title = lines.first.length > 50
+        ? '${lines.first.substring(0, 50)}...'
+        : lines.first;
+    final res = await ApiClient.patch('/api/community/posts/$postId', {
+      'postTitle': title,
+      'postContent': content,
+      'postCategory': category ?? '자유',
       if (imageUrl != null) 'postImageUrl': imageUrl,
       if (tags.isNotEmpty) 'tagNames': tags,
     });

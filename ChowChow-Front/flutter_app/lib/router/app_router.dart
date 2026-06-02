@@ -146,7 +146,12 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: '/create-post',
-        builder: (context, state) => const CreatePostPage(),
+        builder: (context, state) {
+          final initialPost = state.extra is CommunityPost
+              ? state.extra as CommunityPost
+              : null;
+          return CreatePostPage(initialPost: initialPost);
+        },
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

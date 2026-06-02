@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/sample_data.dart';
+import '../services/api_client.dart';
 import '../services/community_service.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
@@ -14,31 +16,65 @@ class CommunityPage extends StatefulWidget {
 }
 
 class _CommunityPageState extends State<CommunityPage> {
-  static const _categories = ['전체', '레시피', '질문', '후기', '정보공유', '기타'];
+  static const _categories = ['전체', '자유', '질문', '후기', '질환정보'];
 
   String _selectedCategory = '전체';
   List<CommunityPost> _posts = kCommunityPosts;
   bool _isLoading = true;
+  Set<int> _bookmarkedIds = {};
+  int? _currentUserId;
 
   List<CommunityPost> get _filteredPosts {
     if (_selectedCategory == '전체') return _posts;
-
-    return _posts
-        .where((post) => _normalizeCategory(post.category) == _selectedCategory)
-        .toList();
-  }
-
-  String _normalizeCategory(String category) {
-    if (_categories.contains(category) && category != '전체') {
-      return category;
-    }
-    return '기타';
+    return _posts.where((post) => post.category == _selectedCategory).toList();
   }
 
   @override
   void initState() {
     super.initState();
     _loadPosts();
+    _loadBookmarks();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final res = await ApiClient.get('/api/users/me');
+      final id = (res as Map<String, dynamic>)['userId'] as int?;
+      if (!mounted) return;
+      setState(() => _currentUserId = id);
+    } catch (_) {}
+  }
+
+  Future<void> _loadBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList('bookmarkedPostIds') ?? [];
+    if (!mounted) return;
+    setState(() {
+      _bookmarkedIds = ids.map(int.parse).toSet();
+    });
+  }
+
+  Future<void> _toggleBookmark(int postId) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      if (_bookmarkedIds.contains(postId)) {
+        _bookmarkedIds.remove(postId);
+      } else {
+        _bookmarkedIds.add(postId);
+      }
+    });
+    await prefs.setStringList(
+      'bookmarkedPostIds',
+      _bookmarkedIds.map((id) => id.toString()).toList(),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_bookmarkedIds.contains(postId) ? '게시글을 저장했습니다.' : '저장을 취소했습니다.'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
   }
 
   Future<void> _loadPosts() async {
@@ -222,7 +258,19 @@ class _CommunityPageState extends State<CommunityPage> {
                   sliver: SliverList.separated(
                     itemCount: posts.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (context, i) => _PostCard(post: posts[i]),
+                    itemBuilder: (context, i) {
+                      final post = posts[i];
+                      return _PostCard(
+                        key: ValueKey(post.id),
+                        post: post,
+                        currentUserId: _currentUserId,
+                        isBookmarked: _bookmarkedIds.contains(post.id),
+                        onBookmarkToggle: () => _toggleBookmark(post.id),
+                        onDeleted: () => setState(
+                          () => _posts.removeWhere((p) => p.id == post.id),
+                        ),
+                      );
+                    },
                   ),
                 ),
             ],
@@ -237,7 +285,7 @@ class _CommunityPageState extends State<CommunityPage> {
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap: () => context.push('/create-post'),
+              onTap: () => context.push('/create-post').then((_) => _loadPosts()),
               child: const SizedBox(
                 width: 56,
                 height: 56,
@@ -290,9 +338,20 @@ class _TabChip extends StatelessWidget {
 }
 
 class _PostCard extends StatefulWidget {
-  const _PostCard({required this.post});
+  const _PostCard({
+    super.key,
+    required this.post,
+    this.currentUserId,
+    this.isBookmarked = false,
+    this.onBookmarkToggle,
+    this.onDeleted,
+  });
 
   final CommunityPost post;
+  final int? currentUserId;
+  final bool isBookmarked;
+  final VoidCallback? onBookmarkToggle;
+  final VoidCallback? onDeleted;
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -308,6 +367,16 @@ class _PostCardState extends State<_PostCard> {
     super.initState();
     _post = widget.post;
     _comments = const [];
+  }
+
+  @override
+  void didUpdateWidget(_PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 부모에서 같은 postId로 새 데이터가 오면 반영, 단 낙관적 업데이트 유지를 위해
+    // likedByMe·likes는 현재 상태 우선
+    if (oldWidget.post.id != widget.post.id) {
+      _post = widget.post;
+    }
   }
 
   Future<void> _toggleLike() async {
@@ -326,15 +395,53 @@ class _PostCardState extends State<_PostCard> {
 
     try {
       await CommunityService.toggleLike(previous.id);
-      final freshPost = await CommunityService.getPost(previous.id);
-      if (!mounted) return;
-      setState(() => _post = freshPost);
+      // 서버의 getPost는 likedByMe를 항상 false로 반환하므로 낙관적 업데이트만 유지
     } catch (_) {
       if (!mounted) return;
       setState(() => _post = previous);
     } finally {
+      if (mounted) setState(() => _likeBusy = false);
+    }
+  }
+
+  Future<void> _handleEdit() async {
+    final result = await context.push<CommunityPost>(
+      '/create-post',
+      extra: _post,
+    );
+    if (result != null && mounted) {
+      setState(() => _post = result);
+    }
+  }
+
+  Future<void> _handleDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('게시글 삭제'),
+        content: const Text('이 게시글을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: ChowColors.red500),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await CommunityService.deletePost(_post.id);
+      widget.onDeleted?.call();
+    } catch (_) {
       if (mounted) {
-        setState(() => _likeBusy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('삭제에 실패했습니다.')),
+        );
       }
     }
   }
@@ -402,7 +509,14 @@ class _PostCardState extends State<_PostCard> {
                     ),
                   ),
                   _CategoryBadge(category: post.category),
-                  _PostMenuButton(isOwner: isCurrentUserPost(post)),
+                  _PostMenuButton(
+                    isOwner: widget.currentUserId != null &&
+                        post.userId == widget.currentUserId,
+                    isBookmarked: widget.isBookmarked,
+                    onBookmark: widget.onBookmarkToggle,
+                    onEdit: _handleEdit,
+                    onDelete: _handleDelete,
+                  ),
                 ],
               ),
             ),
@@ -436,10 +550,11 @@ class _PostCardState extends State<_PostCard> {
                 ],
               ),
             ),
-            AspectRatio(
-              aspectRatio: 1,
-              child: ChowNetworkImage(url: post.image),
-            ),
+            if (post.image.isNotEmpty)
+              AspectRatio(
+                aspectRatio: 1,
+                child: ChowNetworkImage(url: post.image),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
@@ -1006,9 +1121,19 @@ class _SheetCommentThreadData {
 enum _PostMenuAction { save, share, edit, delete }
 
 class _PostMenuButton extends StatelessWidget {
-  const _PostMenuButton({required this.isOwner});
+  const _PostMenuButton({
+    required this.isOwner,
+    this.isBookmarked = false,
+    this.onBookmark,
+    this.onEdit,
+    this.onDelete,
+  });
 
   final bool isOwner;
+  final bool isBookmarked;
+  final VoidCallback? onBookmark;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1019,9 +1144,13 @@ class _PostMenuButton extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       itemBuilder: (context) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: _PostMenuAction.save,
-          child: _PostMenuItem(icon: Icons.bookmark_border, label: '저장하기'),
+          child: _PostMenuItem(
+            icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            label: isBookmarked ? '저장 취소' : '저장하기',
+            color: isBookmarked ? ChowColors.orange500 : ChowColors.gray800,
+          ),
         ),
         const PopupMenuItem(
           value: _PostMenuAction.share,
@@ -1042,7 +1171,18 @@ class _PostMenuButton extends StatelessWidget {
             ),
           ),
       ],
-      onSelected: (_) {},
+      onSelected: (action) {
+        switch (action) {
+          case _PostMenuAction.save:
+            onBookmark?.call();
+          case _PostMenuAction.edit:
+            onEdit?.call();
+          case _PostMenuAction.delete:
+            onDelete?.call();
+          case _PostMenuAction.share:
+            break;
+        }
+      },
     );
   }
 }

@@ -5,12 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../data/sample_data.dart';
 import '../services/api_client.dart';
 import '../services/community_service.dart';
 import '../theme/chow_theme.dart';
 
 class CreatePostPage extends StatefulWidget {
-  const CreatePostPage({super.key});
+  const CreatePostPage({super.key, this.initialPost});
+
+  /// null이면 새 글 작성, non-null이면 수정 모드
+  final CommunityPost? initialPost;
 
   @override
   State<CreatePostPage> createState() => _CreatePostPageState();
@@ -26,23 +30,34 @@ class _CreatePostPageState extends State<CreatePostPage> {
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
   String? _selectedImagePath;
+  String? _existingImageUrl; // 수정 모드에서 기존 이미지 URL 보관
   String? _selectedCategory;
   bool _isPosting = false;
 
+  bool get _isEditMode => widget.initialPost != null;
   bool get _canPost => _contentController.text.trim().isNotEmpty;
 
   static const List<String> _suggestedCategories = [
-    '레시피',
+    '자유',
     '질문',
     '후기',
-    '정보공유',
-    '기타',
+    '질환정보',
   ];
 
   @override
   void initState() {
     super.initState();
     _contentController.addListener(() => setState(() {}));
+    // 수정 모드: 기존 데이터 pre-fill
+    final post = widget.initialPost;
+    if (post != null) {
+      _contentController.text = post.content;
+      _selectedCategory = _suggestedCategories.contains(post.category) ? post.category : null;
+      // 기존 이미지 URL은 별도 보관 (로컬 파일 없이 URL만 유지)
+      if (post.image.isNotEmpty) {
+        _existingImageUrl = post.image;
+      }
+    }
   }
 
   @override
@@ -93,6 +108,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       _selectedImageBytes = null;
       _selectedImageName = null;
       _selectedImagePath = null;
+      _existingImageUrl = null; // 기존 이미지도 제거
     });
   }
 
@@ -100,26 +116,41 @@ class _CreatePostPageState extends State<CreatePostPage> {
     if (!_canPost || _isPosting) return;
     setState(() => _isPosting = true);
     try {
-      String? imageUrl;
+      // 새 이미지를 선택했으면 업로드, 없으면 기존 URL 사용
+      String? imageUrl = _existingImageUrl;
       if (_selectedImagePath != null) {
         imageUrl = await ApiClient.uploadImage(
           File(_selectedImagePath!),
           type: 'recipe',
         );
       }
-      await CommunityService.createPost(
-        content: _contentController.text.trim(),
-        category: _selectedCategory,
-        tags: _tags,
-        imageUrl: imageUrl,
-      );
-      // 커뮤니티 글쓰기 코인 적립
-      ApiClient.post('/api/coins/earn', {'amount': 10, 'reason': '커뮤니티 글쓰기'}).ignore();
-      if (mounted) context.go('/community');
+
+      if (_isEditMode) {
+        // 수정 모드
+        final updated = await CommunityService.updatePost(
+          postId: widget.initialPost!.id,
+          content: _contentController.text.trim(),
+          category: _selectedCategory,
+          tags: _tags,
+          imageUrl: imageUrl,
+        );
+        if (mounted) context.pop(updated); // 수정된 post 반환
+      } else {
+        // 새 글 작성
+        await CommunityService.createPost(
+          content: _contentController.text.trim(),
+          category: _selectedCategory,
+          tags: _tags,
+          imageUrl: imageUrl,
+        );
+        // 커뮤니티 글쓰기 코인 적립
+        ApiClient.post('/api/coins/earn', {'amount': 10, 'reason': '커뮤니티 글쓰기'}).ignore();
+        if (mounted) context.go('/community');
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('게시글 등록에 실패했습니다.')),
+          SnackBar(content: Text(_isEditMode ? '수정에 실패했습니다.' : '게시글 등록에 실패했습니다.')),
         );
       }
     } finally {
@@ -135,8 +166,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
         child: Column(
           children: [
             _CreatePostHeader(
+              isEditMode: _isEditMode,
               canPost: _canPost,
-              onClose: () => context.go('/community'),
+              onClose: () => _isEditMode ? context.pop() : context.go('/community'),
               onPost: _handlePost,
             ),
             Expanded(
@@ -166,9 +198,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
                             onRemove: _removeImage,
                           ),
                           const SizedBox(height: 16),
+                        ] else if (_existingImageUrl != null) ...[
+                          _ExistingImagePreviewCard(
+                            imageUrl: _existingImageUrl!,
+                            onRemove: _removeImage,
+                          ),
+                          const SizedBox(height: 16),
                         ],
                         _ImageUploadCard(
-                          hasImage: _selectedImageBytes != null,
+                          hasImage: _selectedImageBytes != null || _existingImageUrl != null,
                           onTap: _pickImage,
                         ),
                         const SizedBox(height: 16),
@@ -194,11 +232,13 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
 class _CreatePostHeader extends StatelessWidget {
   const _CreatePostHeader({
+    required this.isEditMode,
     required this.canPost,
     required this.onClose,
     required this.onPost,
   });
 
+  final bool isEditMode;
   final bool canPost;
   final VoidCallback onClose;
   final VoidCallback onPost;
@@ -224,9 +264,9 @@ class _CreatePostHeader extends StatelessWidget {
               visualDensity: VisualDensity.compact,
             ),
             const Spacer(),
-            const Text(
-              '글쓰기',
-              style: TextStyle(
+            Text(
+              isEditMode ? '글 수정' : '글쓰기',
+              style: const TextStyle(
                 fontSize: 18,
                 color: ChowColors.gray800,
                 fontWeight: FontWeight.w600,
@@ -247,9 +287,9 @@ class _CreatePostHeader extends StatelessWidget {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: const StadiumBorder(),
                 ),
-                child: const Text(
-                  '게시',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                child: Text(
+                  isEditMode ? '수정' : '게시',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -309,6 +349,53 @@ class _ImagePreviewCard extends StatelessWidget {
               imageBytes,
               width: double.infinity,
               fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Material(
+              color: Colors.black.withValues(alpha: 0.5),
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onRemove,
+                child: const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Icon(Icons.close, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExistingImagePreviewCard extends StatelessWidget {
+  const _ExistingImagePreviewCard({
+    required this.imageUrl,
+    required this.onRemove,
+  });
+
+  final String imageUrl;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      padding: const EdgeInsets.all(16),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              imageUrl,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const SizedBox(height: 120),
             ),
           ),
           Positioned(

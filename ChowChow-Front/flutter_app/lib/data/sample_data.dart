@@ -51,6 +51,7 @@ class SearchRecipe {
 class CommunityPost {
   const CommunityPost({
     required this.id,
+    this.userId,
     required this.author,
     required this.avatar,
     required this.category,
@@ -64,6 +65,7 @@ class CommunityPost {
     this.likedByMe = false,
   });
   final int id;
+  final int? userId; // 서버에서 받은 게시글 작성자 ID
   final String author;
   final String avatar;
   final String category;
@@ -79,6 +81,7 @@ class CommunityPost {
   factory CommunityPost.fromJson(Map<String, dynamic> json) {
     return CommunityPost(
       id: json['postId'] as int? ?? json['id'] as int? ?? 0,
+      userId: json['userId'] as int?,
       author: json['userNickname'] as String? ??
           json['author'] as String? ??
           '사용자 ${json['userId'] ?? ''}'.trim(),
@@ -89,9 +92,7 @@ class CommunityPost {
           json['postContentPreview'] as String? ??
           json['content'] as String? ??
           '',
-      image: json['postImageUrl'] as String? ??
-          json['image'] as String? ??
-          'https://images.unsplash.com/photo-1760445528367-7f0fa0229d19?auto=format&fit=crop&w=1080&q=80',
+      image: json['postImageUrl'] as String? ?? json['image'] as String? ?? '',
       likes: (json['likeCount'] as num?)?.toInt() ??
           (json['likes'] as num?)?.toInt() ??
           0,
@@ -116,6 +117,7 @@ class CommunityPost {
   }) {
     return CommunityPost(
       id: id,
+      userId: userId,
       author: author,
       avatar: avatar,
       category: category,
@@ -129,12 +131,6 @@ class CommunityPost {
       likedByMe: likedByMe ?? this.likedByMe,
     );
   }
-}
-
-const kCurrentUserNickname = '명랑이엄마';
-
-bool isCurrentUserPost(CommunityPost post) {
-  return post.author == kCurrentUserNickname;
 }
 
 String _timeAgo(String? value) {
@@ -296,7 +292,7 @@ final kCommunityPosts = <CommunityPost>[
   ),
   CommunityPost(
     id: 3,
-    category: '정보공유',
+    category: '질환정보',
     author: '펫푸드마스터',
     avatar: '👨‍🍳',
     timeAgo: '1일 전',

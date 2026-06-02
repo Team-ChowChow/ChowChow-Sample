@@ -26,6 +26,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   CommunityPost? _post;
   List<_PostComment> _comments = [];
   bool _isLiked = false;
+  int? _currentUserId;
 
   int get _commentCount => _comments.length;
 
@@ -37,6 +38,60 @@ class _PostDetailPageState extends State<PostDetailPage> {
       _isLiked = widget.initialPost!.likedByMe;
     }
     _loadData();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final res = await ApiClient.get('/api/users/me');
+      final id = (res as Map<String, dynamic>)['userId'] as int?;
+      if (!mounted) return;
+      setState(() => _currentUserId = id);
+    } catch (_) {}
+  }
+
+  Future<void> _handleEdit() async {
+    if (_post == null) return;
+    final result = await context.push<CommunityPost>(
+      '/create-post',
+      extra: _post,
+    );
+    if (result != null && mounted) {
+      setState(() => _post = result);
+    }
+  }
+
+  Future<void> _handleDelete() async {
+    if (_post == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('게시글 삭제'),
+        content: const Text('이 게시글을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await CommunityService.deletePost(_post!.id);
+      if (mounted) _goBack();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('삭제에 실패했습니다.')),
+        );
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -142,7 +197,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     isLiked: _isLiked,
                     likes: _isLiked ? post.likes + 1 : post.likes,
                     commentCount: _commentCount,
+                    currentUserId: _currentUserId,
                     onToggleLike: _togglePostLike,
+                    onEdit: _handleEdit,
+                    onDelete: _handleDelete,
                   ),
                   _CommentsSection(
                     comments: _comments,
@@ -213,6 +271,9 @@ class _PostContentSection extends StatelessWidget {
     required this.likes,
     required this.commentCount,
     required this.onToggleLike,
+    this.currentUserId,
+    this.onEdit,
+    this.onDelete,
   });
 
   final CommunityPost post;
@@ -220,6 +281,9 @@ class _PostContentSection extends StatelessWidget {
   final int likes;
   final int commentCount;
   final VoidCallback onToggleLike;
+  final int? currentUserId;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -278,14 +342,18 @@ class _PostContentSection extends StatelessWidget {
                   ),
                   child: const Text('팔로우'),
                 ),
-                _PostMenuButton(isOwner: isCurrentUserPost(post)),
+                _PostMenuButton(
+                  isOwner: currentUserId != null && post.userId == currentUserId,
+                  onEdit: onEdit,
+                  onDelete: onDelete,
+                ),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: Text(
-              _detailContent(post),
+              post.content,
               style: const TextStyle(
                 color: ChowColors.gray800,
                 fontSize: 15,
@@ -312,11 +380,8 @@ class _PostContentSection extends StatelessWidget {
                   .toList(),
             ),
           ),
-          _PostImageGrid(images: [
-            post.image,
-            'https://images.unsplash.com/photo-1588378898429-6950f6b4f72a?w=600',
-            'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=600',
-          ]),
+          if (post.image.isNotEmpty)
+            _PostImageGrid(images: [post.image]),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
             child: Row(
@@ -346,9 +411,15 @@ class _PostContentSection extends StatelessWidget {
 enum _PostMenuAction { save, share, edit, delete }
 
 class _PostMenuButton extends StatelessWidget {
-  const _PostMenuButton({required this.isOwner});
+  const _PostMenuButton({
+    required this.isOwner,
+    this.onEdit,
+    this.onDelete,
+  });
 
   final bool isOwner;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -382,7 +453,16 @@ class _PostMenuButton extends StatelessWidget {
             ),
           ),
       ],
-      onSelected: (_) {},
+      onSelected: (action) {
+        switch (action) {
+          case _PostMenuAction.edit:
+            onEdit?.call();
+          case _PostMenuAction.delete:
+            onDelete?.call();
+          default:
+            break;
+        }
+      },
     );
   }
 }
@@ -859,15 +939,3 @@ List<_PostComment> _initialComments() {
   ];
 }
 
-String _detailContent(CommunityPost post) {
-  return '''${post.content}
-
-레시피는 정말 간단해요.
-1. 닭가슴살을 삶아서 작게 찢기
-2. 고구마, 브로콜리, 당근을 찜기에 찌기
-3. 올리브 오일을 아주 조금만 더해서 섞기
-
-완전한 꿀팁은 올리브 오일을 많이 넣지 않는 거예요. 너무 많이 넣으면 소화가 부담될 수 있어요.
-
-우리 아이가 평소보다 밥을 더 잘 먹어서 여러분도 한번 시도해보셨으면 좋겠어요!''';
-}
