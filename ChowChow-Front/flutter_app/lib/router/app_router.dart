@@ -25,6 +25,7 @@ import '../services/models.dart';
 import '../shell/main_shell.dart';
 import '../pages/create_post.dart';
 import '../pages/tip_detail_page.dart';
+import '../pages/my_posts_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -152,6 +153,16 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
               : null;
           return CreatePostPage(initialPost: initialPost);
         },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/my-posts',
+        builder: (context, state) => const MyPostsPage(mode: MyPostsMode.myPosts),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/saved-posts',
+        builder: (context, state) => const MyPostsPage(mode: MyPostsMode.savedPosts),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

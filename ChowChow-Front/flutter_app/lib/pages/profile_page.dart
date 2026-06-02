@@ -959,6 +959,23 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SliverToBoxAdapter(
                   child: _MenuSection(
+                    title: '내 활동',
+                    items: [
+                      _MenuItem(
+                        label: '내가 작성한 글',
+                        icon: Icons.edit_note,
+                        onTap: () => context.push('/my-posts'),
+                      ),
+                      _MenuItem(
+                        label: '저장한 글',
+                        icon: Icons.bookmark_border,
+                        onTap: () => context.push('/saved-posts'),
+                      ),
+                    ],
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _MenuSection(
                     title: '계정',
                     items: [
                       _MenuItem(
