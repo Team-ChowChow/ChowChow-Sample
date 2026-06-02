@@ -12,6 +12,8 @@ public interface RecipeReviewRepository extends JpaRepository<RecipeReview, Inte
 
     List<RecipeReview> findAllByRecipe(Recipe recipe);
 
+    List<RecipeReview> findByRecipeRecipeId(Integer recipeId);
+
     Optional<RecipeReview> findByRecipeAndUser(Recipe recipe, User user);
 
     boolean existsByRecipeAndUser(Recipe recipe, User user);

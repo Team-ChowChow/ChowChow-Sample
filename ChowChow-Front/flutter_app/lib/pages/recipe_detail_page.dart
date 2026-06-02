@@ -24,9 +24,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _loading = true;
   bool _isSaved = false;
   bool _isLiked = false;
+  int _likeCount = 0;
   _RecipeDetailTab _activeTab = _RecipeDetailTab.recipe;
   _RecipeDetailData? _recipe;
   List<_RelatedRecipe> _similarRecipes = const [];
+  List<_Review> _reviews = [];
 
   static const _placeholder =
       'https://images.unsplash.com/photo-1588378898429-6950f6b4f72a?auto=format&fit=crop&w=1080&q=80';
@@ -35,7 +37,140 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   void initState() {
     super.initState();
     _recipe = _RecipeDetailData.fromRecipeModel(widget.initialRecipe);
+    _likeCount = widget.initialRecipe?.likeCount ?? 0;
     _loadRecipe();
+    _loadReviews();
+  }
+
+  Future<void> _toggleLike() async {
+    final newLiked = !_isLiked;
+    setState(() => _isLiked = newLiked);
+    try {
+      final res = await ApiClient.post(
+        '/api/v1/recipes/${widget.recipeId}/like', {},
+      ) as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _isLiked = res['liked'] as bool? ?? newLiked;
+        _likeCount = (res['likeCount'] as num?)?.toInt() ?? _likeCount;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLiked = !newLiked);
+    }
+  }
+
+  Future<void> _loadReviews() async {
+    try {
+      final res = await ApiClient.get('/api/v1/recipes/${widget.recipeId}/reviews') as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _reviews = res.map((e) {
+          final m = e as Map<String, dynamic>;
+          final createdAt = m['createdAt'] as String?;
+          final date = createdAt != null ? createdAt.substring(0, 10).replaceAll('-', '.') : '';
+          final rawRating = (m['rating'] ?? m['starRating'] as dynamic);
+          return _Review(
+            author: m['userNickname'] as String? ?? '사용자',
+            rating: (rawRating as num?)?.toInt() ?? 5,
+            date: date,
+            content: m['reviewContent'] as String? ?? '',
+            likes: 0,
+          );
+        }).toList();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _submitReview(int rating, String content) async {
+    try {
+      await ApiClient.post('/api/v1/recipes/${widget.recipeId}/reviews', {
+        'rating': rating.toDouble(),
+        'reviewContent': content,
+      });
+      await _loadReviews();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('리뷰가 등록되었습니다.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('리뷰 등록에 실패했습니다.')),
+        );
+      }
+    }
+  }
+
+  void _openWriteReview() {
+    int selectedRating = 5;
+    final contentCtrl = TextEditingController();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: ChowColors.gray300, borderRadius: BorderRadius.circular(99))),
+              const SizedBox(height: 16),
+              const Text('리뷰 작성', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) => GestureDetector(
+                  onTap: () => setSheet(() => selectedRating = i + 1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Icon(
+                      i < selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: ChowColors.yellow500,
+                      size: 36,
+                    ),
+                  ),
+                )),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contentCtrl,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: '레시피에 대한 솔직한 리뷰를 남겨주세요...',
+                  hintStyle: const TextStyle(color: ChowColors.gray400, fontSize: 14),
+                  filled: true,
+                  fillColor: ChowColors.gray50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.all(14),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ChowColors.orange500,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    final text = contentCtrl.text.trim();
+                    Navigator.of(ctx).pop();
+                    _submitReview(selectedRating, text);
+                  },
+                  child: const Text('등록하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadRecipe() async {
@@ -45,13 +180,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       if (!mounted) return;
       setState(() {
         _recipe = _RecipeDetailData.fromJson(res, fallback: _recipe);
+        _likeCount = (res['likeCount'] as num?)?.toInt() ?? _likeCount;
+        _isLiked = res['likedByMe'] as bool? ?? _isLiked;
         _loading = false;
       });
       _loadSimilarRecipes();
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _recipe ??= _RecipeDetailData.sample(widget.recipeId);
+        _recipe ??= _RecipeDetailData._empty(widget.recipeId);
         _loading = false;
       });
     }
@@ -87,7 +224,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final recipe = _recipe ?? _RecipeDetailData.sample(widget.recipeId);
+    final recipe = _recipe ?? _RecipeDetailData._empty(widget.recipeId);
 
     return Scaffold(
       backgroundColor: ChowColors.gray50,
@@ -100,9 +237,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 28),
                 children: [
-                  _HeroImage(
-                    imageUrl: recipe.imageUrl ?? _placeholder,
+                  _HeroImage(imageUrl: recipe.imageUrl ?? _placeholder),
+                  _InstagramActionBar(
+                    isLiked: _isLiked,
+                    likeCount: _likeCount,
                     isSaved: _isSaved,
+                    onToggleLiked: _toggleLike,
                     onToggleSaved: () => setState(() => _isSaved = !_isSaved),
                   ),
                   if (_loading) const LinearProgressIndicator(minHeight: 2),
@@ -122,12 +262,16 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     _TipsSection(tips: recipe.tips),
                     if (_similarRecipes.isNotEmpty)
                       _RelatedSection(recipes: _similarRecipes),
+                    _CookingCompleteButton(
+                      recipeTitle: recipe.title,
+                      recipeId: widget.recipeId,
+                    ),
                   ] else
-                    _ReviewsSection(recipe: recipe, reviews: _reviews),
-                  _ActionSection(
-                    isLiked: _isLiked,
-                    onToggleLiked: () => setState(() => _isLiked = !_isLiked),
-                  ),
+                    _ReviewsSection(
+                      recipe: recipe,
+                      reviews: _reviews,
+                      onWriteReview: _openWriteReview,
+                    ),
                 ],
               ),
             ),
@@ -180,45 +324,77 @@ class _DetailHeader extends StatelessWidget {
 }
 
 class _HeroImage extends StatelessWidget {
-  const _HeroImage({
-    required this.imageUrl,
-    required this.isSaved,
-    required this.onToggleSaved,
-  });
+  const _HeroImage({required this.imageUrl});
 
   final String imageUrl;
-  final bool isSaved;
-  final VoidCallback onToggleSaved;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 260,
-      child: Stack(
-        fit: StackFit.expand,
+      child: ChowNetworkImage(url: imageUrl),
+    );
+  }
+}
+
+class _InstagramActionBar extends StatelessWidget {
+  const _InstagramActionBar({
+    required this.isLiked,
+    required this.likeCount,
+    required this.isSaved,
+    required this.onToggleLiked,
+    required this.onToggleSaved,
+  });
+
+  final bool isLiked;
+  final int likeCount;
+  final bool isSaved;
+  final VoidCallback onToggleLiked;
+  final VoidCallback onToggleSaved;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ChowNetworkImage(url: imageUrl),
-          Positioned(
-            top: 14,
-            right: 14,
-            child: Material(
-              color: isSaved ? ChowColors.orange500 : Colors.white,
-              shape: const CircleBorder(),
-              elevation: 5,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onToggleSaved,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(
-                    isSaved ? Icons.bookmark : Icons.bookmark_border,
-                    color: isSaved ? Colors.white : ChowColors.gray700,
-                    size: 22,
-                  ),
+          Row(
+            children: [
+              IconButton(
+                onPressed: onToggleLiked,
+                icon: Icon(
+                  isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: isLiked ? ChowColors.red500 : ChowColors.gray800,
+                  size: 28,
                 ),
               ),
-            ),
+              const Spacer(),
+              IconButton(
+                onPressed: onToggleSaved,
+                icon: Icon(
+                  isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  color: isSaved ? ChowColors.orange500 : ChowColors.gray800,
+                  size: 28,
+                ),
+              ),
+            ],
           ),
+          if (likeCount > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Text(
+                '좋아요 $likeCount개',
+                style: const TextStyle(
+                  color: ChowColors.gray900,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
+            const SizedBox(height: 8),
         ],
       ),
     );
@@ -282,8 +458,8 @@ class _TitleSection extends StatelessWidget {
             children: [
               const CircleAvatar(
                 radius: 22,
-                backgroundColor: ChowColors.gray100,
-                child: Icon(Icons.person, color: ChowColors.gray500),
+                backgroundColor: ChowColors.orange50,
+                child: Icon(Icons.pets, color: ChowColors.orange400),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -291,7 +467,7 @@ class _TitleSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '멍냥요리사',
+                      '관리자',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -300,24 +476,11 @@ class _TitleSection extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      '레시피 24개 · 팔로워 1,234',
+                      '공식 레시피',
                       style: TextStyle(fontSize: 12, color: ChowColors.gray500),
                     ),
                   ],
                 ),
-              ),
-              FilledButton(
-                onPressed: () {},
-                style: FilledButton.styleFrom(
-                  backgroundColor: ChowColors.orange500,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text('팔로우'),
               ),
             ],
           ),
@@ -698,10 +861,12 @@ class _ReviewsSection extends StatelessWidget {
   const _ReviewsSection({
     required this.recipe,
     required this.reviews,
+    required this.onWriteReview,
   });
 
   final _RecipeDetailData recipe;
   final List<_Review> reviews;
+  final VoidCallback onWriteReview;
 
   @override
   Widget build(BuildContext context) {
@@ -738,7 +903,7 @@ class _ReviewsSection extends StatelessWidget {
                 ),
                 const Spacer(),
                 FilledButton(
-                  onPressed: () {},
+                  onPressed: onWriteReview,
                   style: FilledButton.styleFrom(
                     backgroundColor: ChowColors.orange500,
                     foregroundColor: Colors.white,
@@ -759,62 +924,6 @@ class _ReviewsSection extends StatelessWidget {
   }
 }
 
-class _ActionSection extends StatelessWidget {
-  const _ActionSection({
-    required this.isLiked,
-    required this.onToggleLiked,
-  });
-
-  final bool isLiked;
-  final VoidCallback onToggleLiked;
-
-  @override
-  Widget build(BuildContext context) {
-    return _WhiteSection(
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: onToggleLiked,
-              icon: Icon(
-                isLiked ? Icons.favorite : Icons.favorite_border,
-                color: isLiked ? ChowColors.red500 : ChowColors.gray700,
-              ),
-              label: Text(isLiked ? '좋아요 취소' : '좋아요'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor:
-                    isLiked ? ChowColors.red500 : ChowColors.gray700,
-                side: BorderSide(
-                  color: isLiked ? ChowColors.red500 : ChowColors.gray300,
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: const Text('댓글 쓰기'),
-              style: FilledButton.styleFrom(
-                backgroundColor: ChowColors.orange500,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _WhiteSection extends StatelessWidget {
   const _WhiteSection({
@@ -1152,14 +1261,14 @@ class _RecipeDetailData {
     required this.nutrition,
     required this.tips,
     this.imageUrl,
-    this.rating = 4.8,
-    this.reviewCount = 234,
-    this.likes = 1520,
-    this.saves = 892,
+    this.rating = 0.0,
+    this.reviewCount = 0,
+    this.likes = 0,
+    this.saves = 0,
     this.cookTime = '30분',
     this.servings = '2회분',
     this.difficulty = '보통',
-    this.calories = '165kcal',
+    this.calories = '-',
   });
 
   final int id;
@@ -1182,19 +1291,19 @@ class _RecipeDetailData {
   final List<String> tips;
 
   factory _RecipeDetailData.fromRecipeModel(RecipeModel? recipe) {
-    if (recipe == null) return _RecipeDetailData.sample(0);
+    if (recipe == null) return _RecipeDetailData._empty(0);
     return _RecipeDetailData(
       id: recipe.recipeId,
       title: recipe.recipeTitle,
       subtitle: recipe.recipePurpose ?? recipe.menuCategory ?? '건강한 맞춤 식단',
-      description: recipe.recipeDescription ?? _sampleDescription,
+      description: recipe.recipeDescription ?? '',
       imageUrl: recipe.imageUrl,
-      tags: _buildTags(recipe.petType, recipe.menuCategory, recipe.recipePurpose),
-      ingredients: _sampleIngredients,
-      steps: _sampleSteps,
-      nutrition: _sampleNutrition,
-      tips: _sampleTips,
-      servings: recipe.feedingAmount ?? '2회분',
+      tags: _buildTags(recipe.petType, recipe.menuCategory, recipe.recipePurpose, isAiGenerated: recipe.isAiGenerated),
+      ingredients: const [],
+      steps: const [],
+      nutrition: const [],
+      tips: const [],
+      servings: recipe.feedingAmount ?? '-',
     );
   }
 
@@ -1202,7 +1311,7 @@ class _RecipeDetailData {
     Map<String, dynamic> json, {
     _RecipeDetailData? fallback,
   }) {
-    final base = fallback ?? _RecipeDetailData.sample(json['recipeId'] as int? ?? 0);
+    final base = fallback ?? _RecipeDetailData._empty(json['recipeId'] as int? ?? 0);
     final ingredients = (json['ingredients'] as List<dynamic>?)
             ?.map((item) => _Ingredient.fromJson(item as Map<String, dynamic>))
             .where((item) => item.name.isNotEmpty)
@@ -1218,34 +1327,52 @@ class _RecipeDetailData {
     final category = json['menuCategory'] as String?;
     final purpose = json['recipePurpose'] as String?;
 
+    // 영양정보 파싱
+    final nutritionJson = json['nutrition'] as Map<String, dynamic>?;
+    final nutritionItems = <_NutritionItem>[];
+    if (nutritionJson != null) {
+      if (nutritionJson['proteinG'] != null) nutritionItems.add(_NutritionItem(label: '단백질', value: '${(nutritionJson['proteinG'] as num).toStringAsFixed(1)}g'));
+      if (nutritionJson['fatG'] != null) nutritionItems.add(_NutritionItem(label: '지방', value: '${(nutritionJson['fatG'] as num).toStringAsFixed(1)}g'));
+      if (nutritionJson['carbohydrateG'] != null) nutritionItems.add(_NutritionItem(label: '탄수화물', value: '${(nutritionJson['carbohydrateG'] as num).toStringAsFixed(1)}g'));
+      if (nutritionJson['sodiumMg'] != null) nutritionItems.add(_NutritionItem(label: '나트륨', value: '${(nutritionJson['sodiumMg'] as num).toStringAsFixed(0)}mg'));
+    }
+
+    // 태그 파싱 (API가 tagNames 리스트 반환 시 우선 사용)
+    final apiTags = (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList();
+    final builtTags = _buildTags(petType, category, purpose, fallback: base.tags, isAiGenerated: json['isAiGenerated'] as bool? ?? false);
+
     return _RecipeDetailData(
       id: json['recipeId'] as int? ?? base.id,
       title: json['recipeTitle'] as String? ?? base.title,
       subtitle: purpose ?? category ?? base.subtitle,
-      description:
-          json['recipeDescription'] as String? ?? base.description,
+      description: json['recipeDescription'] as String? ?? base.description,
       imageUrl: json['imageUrl'] as String? ?? base.imageUrl,
-      tags: _buildTags(petType, category, purpose, fallback: base.tags),
-      ingredients: ingredients.isEmpty ? base.ingredients : ingredients,
-      steps: steps.isEmpty ? base.steps : steps,
-      nutrition: base.nutrition,
-      tips: _tipsFromWarnings(json['warnings'] as String?) ?? base.tips,
+      tags: (apiTags != null && apiTags.isNotEmpty) ? apiTags : builtTags,
+      ingredients: ingredients,
+      steps: steps,
+      nutrition: nutritionItems,
+      tips: _tipsFromWarnings(json['warnings'] as String?) ?? const [],
       servings: json['feedingAmount'] as String? ?? base.servings,
+      cookTime: json['cookTime'] as String? ?? base.cookTime,
+      difficulty: json['difficulty'] as String? ?? base.difficulty,
+      calories: json['calories'] as String? ?? base.calories,
+      rating: (json['averageRating'] as num?)?.toDouble() ?? base.rating,
+      reviewCount: (json['reviewCount'] as num?)?.toInt() ?? base.reviewCount,
+      likes: (json['likeCount'] as num?)?.toInt() ?? base.likes,
     );
   }
 
-  factory _RecipeDetailData.sample(int id) {
+  factory _RecipeDetailData._empty(int id) {
     return _RecipeDetailData(
       id: id,
-      title: '저지방 닭가슴살 고구마 레시피',
-      subtitle: '건강한 다이어트 식단',
-      description: _sampleDescription,
-      imageUrl: _RecipeDetailPageState._placeholder,
-      tags: const ['저지방', '다이어트', '고단백'],
-      ingredients: _sampleIngredients,
-      steps: _sampleSteps,
-      nutrition: _sampleNutrition,
-      tips: _sampleTips,
+      title: '',
+      subtitle: '',
+      description: '',
+      tags: const [],
+      ingredients: const [],
+      steps: const [],
+      nutrition: const [],
+      tips: const [],
     );
   }
 }
@@ -1326,15 +1453,46 @@ List<String> _buildTags(
   String? category,
   String? purpose, {
   List<String> fallback = const [],
+  bool isAiGenerated = false,
 }) {
-  final tags = <String>[
-    if (petType == 'DOG') '강아지',
-    if (petType == 'CAT') '고양이',
-    if (category != null && category.isNotEmpty) category,
-    if (purpose != null && purpose.isNotEmpty) purpose,
-  ];
+  final tags = <String>[];
+
+  if (petType == 'DOG') tags.add('강아지');
+  if (petType == 'CAT') tags.add('고양이');
+  if (isAiGenerated) tags.add('AI생성');
+
+  // 카테고리 태그 (6자 이하로 축약)
+  if (category != null && category.isNotEmpty) {
+    tags.add(category.length > 6 ? category.substring(0, 6) : category);
+  }
+
+  // purpose 키워드 기반 태그 추출
+  if (purpose != null && purpose.isNotEmpty) {
+    const keywordMap = {
+      '다이어트': ['다이어트', '체중 관리', '비만', '감량', '저칼로리'],
+      '고단백': ['단백질', '고단백', '근육'],
+      '소화': ['소화', '위장', '장', '소화기'],
+      '관절': ['관절', '뼈', '연골'],
+      '피부모질': ['피부', '모질', '털', '피모'],
+      '노령': ['노령', '시니어', '노견', '노묘', '고령'],
+      '저지방': ['저지방', '지방 감소'],
+      '면역': ['면역', '항산화'],
+      '알레르기': ['알레르기', '알러지', '저알레르기'],
+    };
+    for (final entry in keywordMap.entries) {
+      if (entry.value.any((kw) => purpose.contains(kw))) {
+        if (!tags.contains(entry.key)) tags.add(entry.key);
+      }
+    }
+    // 키워드 매핑이 없으면 purpose 자체를 짧게 추가
+    if (tags.length < 2) {
+      final short = purpose.length > 5 ? purpose.substring(0, 5) : purpose;
+      if (!tags.contains(short)) tags.add(short);
+    }
+  }
+
   if (tags.isEmpty) return fallback.isEmpty ? const ['맞춤식'] : fallback;
-  return tags.toSet().take(3).toList();
+  return tags.toSet().take(5).toList();
 }
 
 List<String>? _tipsFromWarnings(String? warnings) {
@@ -1347,62 +1505,115 @@ List<String>? _tipsFromWarnings(String? warnings) {
       .toList();
 }
 
-const _sampleDescription =
-    '반려동물을 위한 건강하고 맛있는 홈메이드 레시피입니다. 알러지와 영양 균형을 고려해 부담 없이 급여할 수 있도록 구성했습니다.';
+class _CookingCompleteButton extends StatefulWidget {
+  const _CookingCompleteButton({
+    required this.recipeTitle,
+    required this.recipeId,
+  });
+  final String recipeTitle;
+  final int recipeId;
 
-const _sampleIngredients = [
-  _Ingredient(name: '닭가슴살', amount: '200g'),
-  _Ingredient(name: '고구마', amount: '150g'),
-  _Ingredient(name: '브로콜리', amount: '50g'),
-  _Ingredient(name: '당근', amount: '50g'),
-  _Ingredient(name: '현미밥', amount: '100g'),
-  _Ingredient(name: '올리브 오일', amount: '1 tsp'),
-];
+  @override
+  State<_CookingCompleteButton> createState() => _CookingCompleteButtonState();
+}
 
-const _sampleSteps = [
-  _RecipeStep(step: 1, description: '닭가슴살은 깨끗이 씻어 한입 크기로 자른 뒤 완전히 익을 때까지 삶아주세요.'),
-  _RecipeStep(step: 2, description: '고구마와 당근은 1cm 크기로 깍둑썰기해 찜기에 쪄주세요.'),
-  _RecipeStep(step: 3, description: '브로콜리는 끓는 물에 2-3분간 데쳐 부드럽게 만들어주세요.'),
-  _RecipeStep(step: 4, description: '익힌 닭가슴살을 식힌 뒤 올리브 오일을 살짝 더해주세요.'),
-  _RecipeStep(step: 5, description: '현미밥과 모든 재료를 골고루 섞어주세요.'),
-  _RecipeStep(step: 6, description: '완전히 식힌 후 반려동물에게 급여하세요.'),
-];
+class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
+  bool _done = false;
+  bool _loading = false;
 
-const _sampleNutrition = [
-  _NutritionItem(label: '단백질', value: '28g'),
-  _NutritionItem(label: '탄수화물', value: '12g'),
-  _NutritionItem(label: '지방', value: '4g'),
-  _NutritionItem(label: '식이섬유', value: '3g'),
-];
+  Future<void> _confirmAndComplete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: ChowColors.orange500),
+            SizedBox(width: 8),
+            Text('조리 완료', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Text(
+          '"${widget.recipeTitle}" 레시피로 조리를 완료했나요?\n완료 기록이 저장됩니다.',
+          style: const TextStyle(fontSize: 14, color: ChowColors.gray700, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소', style: TextStyle(color: ChowColors.gray500)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ChowColors.orange500,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('완료했어요'),
+          ),
+        ],
+      ),
+    );
 
-const _sampleTips = [
-  '처음 급여할 때는 소량으로 시작해주세요.',
-  '냉장 보관은 3일, 냉동 보관은 2주까지 가능합니다.',
-  '닭가슴살 대신 연어나 소고기로 대체할 수 있습니다.',
-];
+    if (confirmed != true || !mounted) return;
+    setState(() => _loading = true);
+    try {
+      await ApiClient.post('/api/meal-records', {
+        'mealTitle': widget.recipeTitle,
+        'mealDate': DateTime.now().toIso8601String().substring(0, 10),
+        'mealNote': '레시피 #${widget.recipeId} 조리 완료',
+      });
+      if (!mounted) return;
+      setState(() { _done = true; _loading = false; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('조리 완료 기록이 저장됐어요!'),
+          backgroundColor: ChowColors.orange500,
+        ),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
-const _reviews = [
-  _Review(
-    author: '복실이맘',
-    rating: 5,
-    date: '2026.05.28',
-    content: '우리 아이가 정말 잘 먹어요. 알러지도 없고 건강하게 잘 지내고 있습니다.',
-    likes: 42,
-    imageUrl: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=400',
-  ),
-  _Review(
-    author: '골든아빠',
-    rating: 5,
-    date: '2026.05.26',
-    content: '만들기도 쉽고 다이어트 식단으로도 만족스럽습니다.',
-    likes: 28,
-  ),
-  _Review(
-    author: '초코엄마',
-    rating: 4,
-    date: '2026.05.24',
-    content: '레시피대로 만들었는데 잘 먹네요. 브로콜리는 조금 더 잘게 썰면 좋을 것 같아요.',
-    likes: 15,
-  ),
-];
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: SizedBox(
+        width: double.infinity,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: ChowColors.orange500))
+            : _done
+                ? Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: ChowColors.orange50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: ChowColors.orange500),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle, color: ChowColors.orange500, size: 20),
+                        SizedBox(width: 8),
+                        Text('조리 완료 기록됨', style: TextStyle(color: ChowColors.orange500, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  )
+                : FilledButton.icon(
+                    onPressed: _confirmAndComplete,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('조리 완료', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ChowColors.orange500,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+      ),
+    );
+  }
+}
+
+
 
