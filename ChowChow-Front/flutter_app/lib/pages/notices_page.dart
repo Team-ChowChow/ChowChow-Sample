@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NoticesPage extends StatefulWidget {
   const NoticesPage({super.key});
@@ -10,6 +11,27 @@ class NoticesPage extends StatefulWidget {
 
 class _NoticesPageState extends State<NoticesPage> {
   int? _expandedNoticeId;
+  Set<int> _readIds = {};
+
+  static const _prefsKey = 'read_notice_ids';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReadState();
+  }
+
+  Future<void> _loadReadState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_prefsKey) ?? [];
+    if (!mounted) return;
+    setState(() => _readIds = saved.map(int.parse).toSet());
+  }
+
+  Future<void> _saveReadState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_prefsKey, _readIds.map((id) => id.toString()).toList());
+  }
 
   final List<_NoticeItem> _notices = const [
     _NoticeItem(
@@ -141,8 +163,13 @@ class _NoticesPageState extends State<NoticesPage> {
   void _toggleNotice(int noticeId) {
     setState(() {
       _expandedNoticeId = _expandedNoticeId == noticeId ? null : noticeId;
+      _readIds.add(noticeId);
     });
+    _saveReadState();
   }
+
+  bool _isNew(_NoticeItem notice) =>
+      notice.isNew && !_readIds.contains(notice.id);
 
   @override
   Widget build(BuildContext context) {
@@ -170,8 +197,8 @@ class _NoticesPageState extends State<NoticesPage> {
 
                                   return _NoticeTile(
                                     notice: notice,
-                                    isExpanded:
-                                        _expandedNoticeId == notice.id,
+                                    isExpanded: _expandedNoticeId == notice.id,
+                                    isNew: _isNew(notice),
                                     onTap: () => _toggleNotice(notice.id),
                                   );
                                 },
@@ -319,11 +346,13 @@ class _NoticeTile extends StatelessWidget {
   const _NoticeTile({
     required this.notice,
     required this.isExpanded,
+    required this.isNew,
     required this.onTap,
   });
 
   final _NoticeItem notice;
   final bool isExpanded;
+  final bool isNew;
   final VoidCallback onTap;
 
   @override
@@ -354,6 +383,7 @@ class _NoticeTile extends StatelessWidget {
                       child: _NoticeTextContent(
                         notice: notice,
                         style: style,
+                        isNew: isNew,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -422,10 +452,12 @@ class _NoticeTextContent extends StatelessWidget {
   const _NoticeTextContent({
     required this.notice,
     required this.style,
+    required this.isNew,
   });
 
   final _NoticeItem notice;
   final _NoticeTypeStyle style;
+  final bool isNew;
 
   @override
   Widget build(BuildContext context) {
@@ -440,7 +472,7 @@ class _NoticeTextContent extends StatelessWidget {
               color: style.badge,
               minWidth: _categoryBadgeMinWidth(notice.type),
             ),
-            if (notice.isNew) ...[
+            if (isNew) ...[
               const SizedBox(width: 6),
               const _Badge(
                 text: 'NEW',

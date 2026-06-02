@@ -9,6 +9,10 @@ class RecipeModel {
   final String? petType;
   final String? menuName;
   final String? menuCategory;
+  final double averageRating;
+  final int reviewCount;
+  final int likeCount;
+  final String authorNickname;
 
   RecipeModel({
     required this.recipeId,
@@ -21,6 +25,10 @@ class RecipeModel {
     this.petType,
     this.menuName,
     this.menuCategory,
+    this.averageRating = 0.0,
+    this.reviewCount = 0,
+    this.likeCount = 0,
+    this.authorNickname = '관리자',
   });
 
   factory RecipeModel.fromJson(Map<String, dynamic> j) => RecipeModel(
@@ -34,6 +42,10 @@ class RecipeModel {
         petType: j['petType'] as String?,
         menuName: j['menuName'] as String?,
         menuCategory: j['menuCategory'] as String?,
+        averageRating: (j['averageRating'] as num?)?.toDouble() ?? 0.0,
+        reviewCount: (j['reviewCount'] as num?)?.toInt() ?? 0,
+        likeCount: (j['likeCount'] as num?)?.toInt() ?? 0,
+        authorNickname: j['authorNickname'] as String? ?? '관리자',
       );
 }
 
