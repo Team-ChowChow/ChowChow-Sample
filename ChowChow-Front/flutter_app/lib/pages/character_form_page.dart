@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/character_service.dart';
@@ -24,32 +21,74 @@ class CharacterFormPage extends StatefulWidget {
 class _CharacterFormPageState extends State<CharacterFormPage> {
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _imageUrlCtrl = TextEditingController();
 
-  String _petType = '';
+  // 반려동물 선택
+  List<PetModel> _pets = [];
+  PetModel? _selectedPet;
+
+  // 수정 모드용
   int? _breedId;
-  String? _breedName;
-  List<BreedModel> _breeds = [];
-  String? _imageUrl;
+
+  // 이미 캐릭터가 있는 petId 목록
+  Set<int> _characterizedPetIds = {};
+
+  int _coinBalance = 0;
   bool _loading = true;
   bool _saving = false;
+  bool _generatingImage = false;
+
+  static const _placeholder =
+      'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80';
 
   @override
   void initState() {
     super.initState();
-    if (widget.isEdit) {
-      _loadCharacter();
-    } else {
-      _loading = false;
-    }
+    _init();
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _descCtrl.dispose();
-    _imageUrlCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _init() async {
+    await Future.wait([
+      _loadPets(),
+      _loadCharacterizedPetIds(),
+      _loadCoin(),
+      if (widget.isEdit) _loadCharacter(),
+    ]);
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _loadCharacterizedPetIds() async {
+    try {
+      final chars = await CharacterService.fetchCharacters();
+      if (!mounted) return;
+      setState(() {
+        _characterizedPetIds = chars.map((c) => c.petId).toSet();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadPets() async {
+    try {
+      final res = await ApiClient.get('/api/pets') as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _pets = res.map((e) => PetModel.fromJson(e as Map<String, dynamic>)).toList();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadCoin() async {
+    try {
+      final res = await ApiClient.get('/api/coins/balance') as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() => _coinBalance = (res['balance'] as num?)?.toInt() ?? 0);
+    } catch (_) {}
   }
 
   Future<void> _loadCharacter() async {
@@ -59,92 +98,84 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
       setState(() {
         _nameCtrl.text = c.characterName;
         _descCtrl.text = c.description ?? '';
-        _petType = c.petType ?? 'DOG';
         _breedId = c.breedId;
-        _breedName = c.breedName;
-        _imageUrl = c.characterImageUrl;
-        _imageUrlCtrl.text = c.characterImageUrl ?? '';
-        _loading = false;
       });
-      await _loadBreeds(_petType);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('불러오기 실패: $e')));
     }
   }
 
-  Future<void> _loadBreeds(String petType) async {
-    try {
-      final breeds = await CharacterService.fetchBreeds(petType);
-      if (!mounted) return;
-      setState(() {
-        _breeds = breeds;
-        if (_breedId != null && !_breeds.any((b) => b.breedId == _breedId)) {
-          _breedId = null;
-          _breedName = null;
-        }
-      });
-    } catch (_) {
-      setState(() => _breeds = []);
-    }
+  void _selectPet(PetModel pet) {
+    if (_characterizedPetIds.contains(pet.petId)) return;
+    setState(() {
+      _selectedPet = pet;
+      if (_nameCtrl.text.isEmpty) _nameCtrl.text = pet.petName;
+    });
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024);
-    if (file == null) return;
-    setState(() => _saving = true);
-    try {
-      final url = await ApiClient.uploadImage(File(file.path), type: 'character');
-      if (!mounted) return;
-      setState(() {
-        _imageUrl = url;
-        _imageUrlCtrl.text = url;
-        _saving = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('이미지 업로드 실패: $e')));
-    }
+  bool get _valid {
+    if (_nameCtrl.text.trim().isEmpty) return false;
+    if (widget.isEdit) return true;
+    if (_selectedPet == null) return false;
+    return !_characterizedPetIds.contains(_selectedPet!.petId);
   }
-
-  bool get _valid =>
-      _nameCtrl.text.trim().isNotEmpty && _petType.isNotEmpty && _breedId != null;
 
   Future<void> _save() async {
     if (!_valid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이름, 종류, 품종을 입력해 주세요.')),
+        const SnackBar(content: Text('반려동물을 선택하고 이름을 입력해 주세요.')),
       );
       return;
     }
     setState(() => _saving = true);
-    final image = _imageUrlCtrl.text.trim().isNotEmpty ? _imageUrlCtrl.text.trim() : _imageUrl;
     try {
       if (widget.isEdit) {
         await CharacterService.updateCharacter(
           widget.characterId!,
           characterName: _nameCtrl.text.trim(),
           breedId: _breedId,
-          characterImageUrl: image,
           description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         );
+        if (!mounted) return;
+        context.pop(true);
       } else {
-        await CharacterService.createCharacter(
+        final pet = _selectedPet!;
+        // 1. 캐릭터 생성
+        final created = await CharacterService.createCharacter(
           characterName: _nameCtrl.text.trim(),
-          petType: _petType,
-          breedId: _breedId,
-          characterImageUrl: image,
+          petType: pet.petType ?? 'DOG',
+          petId: pet.petId,
           description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         );
+        if (!mounted) return;
+        setState(() { _saving = false; _generatingImage = true; });
+
+        // 2. 반려동물 프로필 이미지가 있으면 AI 캐릭터 이미지 생성
+        if (pet.petProfileImg != null && pet.petProfileImg!.isNotEmpty) {
+          try {
+            final imgRes = await ApiClient.post('/api/ai/image/character', {
+              'petId': pet.petId,
+              'style': 'cute chibi anime',
+            }) as Map<String, dynamic>;
+            final imageUrl = imgRes['imageUrl'] as String?;
+            if (imageUrl != null && imageUrl.isNotEmpty) {
+              await CharacterService.updateCharacter(
+                created.characterId,
+                characterImageUrl: imageUrl,
+              );
+            }
+          } catch (_) {
+            // 이미지 생성 실패해도 캐릭터는 생성됨
+          }
+        }
+
+        if (!mounted) return;
+        context.pop(true);
       }
-      if (!mounted) return;
-      context.pop(true);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _saving = false);
+      setState(() { _saving = false; _generatingImage = false; });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
     }
   }
@@ -154,161 +185,283 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEdit ? '캐릭터 수정' : '새 캐릭터 생성'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: ChowColors.orange50,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: ChowColors.orange100),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.monetization_on, color: ChowColors.orange500, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$_coinBalance',
+                      style: const TextStyle(
+                        color: ChowColors.orange600,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: ChowColors.orange500))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: GestureDetector(
-                      onTap: _saving ? null : _pickImage,
-                      child: CircleAvatar(
-                        radius: 52,
-                        backgroundColor: ChowColors.orange100,
-                        child: _imageUrl != null && _imageUrl!.isNotEmpty
-                            ? ClipOval(
-                                child: SizedBox(
-                                  width: 104,
-                                  height: 104,
-                                  child: ChowNetworkImage(url: _imageUrl!, fit: BoxFit.cover),
-                                ),
-                              )
-                            : const Icon(Icons.add_a_photo, size: 40, color: ChowColors.orange500),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Center(
-                    child: Text('탭하여 이미지 선택', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _nameCtrl,
-                    decoration: const InputDecoration(labelText: '이름 *'),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('종류 *', style: TextStyle(fontWeight: FontWeight.w600, color: ChowColors.gray700)),
-                  const SizedBox(height: 8),
-                  Row(
+          : _generatingImage
+              ? _GeneratingImageOverlay(petName: _selectedPet?.petName ?? '')
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: _TypeChip(
-                          label: '강아지',
-                          selected: _petType == 'DOG',
-                          onTap: () async {
-                            setState(() {
-                              _petType = 'DOG';
-                              _breedId = null;
-                              _breedName = null;
-                            });
-                            await _loadBreeds('DOG');
-                          },
+                      if (!widget.isEdit) ...[
+                        _PetSelectionSection(
+                          pets: _pets,
+                          selectedPet: _selectedPet,
+                          characterizedPetIds: _characterizedPetIds,
+                          onSelect: _selectPet,
+                          placeholder: _placeholder,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      TextField(
+                        controller: _nameCtrl,
+                        onChanged: (_) => setState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: '캐릭터 이름 *',
+                          hintText: '반려동물 이름을 입력하세요',
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _TypeChip(
-                          label: '고양이',
-                          selected: _petType == 'CAT',
-                          onTap: () async {
-                            setState(() {
-                              _petType = 'CAT';
-                              _breedId = null;
-                              _breedName = null;
-                            });
-                            await _loadBreeds('CAT');
-                          },
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _descCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: '설명 (선택)',
+                          alignLabelWithHint: true,
                         ),
+                      ),
+                      const SizedBox(height: 32),
+                      FilledButton(
+                        onPressed: _saving || !_valid ? null : _save,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: ChowColors.orange500,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : Text(
+                                widget.isEdit ? '수정 완료' : '생성하기',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<int>(
-                    value: _breedId,
-                    decoration: InputDecoration(
-                      labelText: _petType.isEmpty ? '품종 (종류를 먼저 선택)' : '품종 *',
-                    ),
-                    items: _breeds
-                        .map((b) => DropdownMenuItem(value: b.breedId, child: Text(b.displayName)))
-                        .toList(),
-                    onChanged: _petType.isEmpty
-                        ? null
-                        : (v) {
-                            setState(() {
-                              _breedId = v;
-                              _breedName = _breeds.firstWhere((b) => b.breedId == v).displayName;
-                            });
-                          },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _imageUrlCtrl,
-                    decoration: const InputDecoration(
-                      labelText: '이미지 URL (선택)',
-                      hintText: 'https://...',
-                    ),
-                    onChanged: (v) => setState(() => _imageUrl = v.trim().isEmpty ? null : v.trim()),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _descCtrl,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: '설명',
-                      alignLabelWithHint: true,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton(
-                    onPressed: _saving || !_valid ? null : _save,
-                    style: FilledButton.styleFrom(backgroundColor: ChowColors.orange500),
-                    child: _saving
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(widget.isEdit ? '수정 완료' : '생성하기'),
-                  ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 }
 
-class _TypeChip extends StatelessWidget {
-  const _TypeChip({required this.label, required this.selected, required this.onTap});
+class _PetSelectionSection extends StatelessWidget {
+  const _PetSelectionSection({
+    required this.pets,
+    required this.selectedPet,
+    required this.characterizedPetIds,
+    required this.onSelect,
+    required this.placeholder,
+  });
 
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  final List<PetModel> pets;
+  final PetModel? selectedPet;
+  final Set<int> characterizedPetIds;
+  final ValueChanged<PetModel> onSelect;
+  final String placeholder;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? ChowColors.orange100 : Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: selected ? ChowColors.orange500 : ChowColors.gray300, width: selected ? 2 : 1),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: selected ? ChowColors.orange600 : ChowColors.gray600,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '반려동물 선택 *',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: ChowColors.gray800),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          '설정에서 등록한 반려동물을 선택하면 AI가 캐릭터 이미지를 자동 생성합니다.',
+          style: TextStyle(fontSize: 12, color: ChowColors.gray500),
+        ),
+        const SizedBox(height: 12),
+        if (pets.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: ChowColors.gray50,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: ChowColors.gray200),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.pets, color: ChowColors.gray300, size: 36),
+                SizedBox(height: 8),
+                Text(
+                  '등록된 반려동물이 없습니다.\n프로필 설정에서 먼저 등록해주세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: ChowColors.gray500, fontSize: 13),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 110,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: pets.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, i) => _PetCard(
+                pet: pets[i],
+                selected: selectedPet?.petId == pets[i].petId,
+                hasCharacter: characterizedPetIds.contains(pets[i].petId),
+                onTap: () => onSelect(pets[i]),
+                placeholder: placeholder,
+              ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+class _PetCard extends StatelessWidget {
+  const _PetCard({
+    required this.pet,
+    required this.selected,
+    required this.hasCharacter,
+    required this.onTap,
+    required this.placeholder,
+  });
+
+  final PetModel pet;
+  final bool selected;
+  final bool hasCharacter;
+  final VoidCallback onTap;
+  final String placeholder;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: hasCharacter ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 88,
+        decoration: BoxDecoration(
+          color: hasCharacter
+              ? ChowColors.gray100
+              : selected
+                  ? ChowColors.orange50
+                  : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasCharacter
+                ? ChowColors.gray200
+                : selected
+                    ? ChowColors.orange500
+                    : ChowColors.gray200,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Opacity(
+                  opacity: hasCharacter ? 0.4 : 1.0,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: ChowNetworkImage(url: pet.petProfileImg ?? placeholder),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  pet.petName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: hasCharacter
+                        ? ChowColors.gray400
+                        : selected
+                            ? ChowColors.orange600
+                            : ChowColors.gray800,
+                  ),
+                ),
+                Text(
+                  hasCharacter ? '이미 있음' : pet.displayType,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: hasCharacter ? ChowColors.gray400 : ChowColors.gray500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GeneratingImageOverlay extends StatelessWidget {
+  const _GeneratingImageOverlay({required this.petName});
+
+  final String petName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: ChowColors.orange500),
+            const SizedBox(height: 24),
+            Text(
+              '$petName의 AI 캐릭터 생성 중...',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '잠시만 기다려주세요.\n고화질 캐릭터 이미지를 만들고 있어요.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: ChowColors.gray500, height: 1.5),
+            ),
+          ],
         ),
       ),
     );

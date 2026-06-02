@@ -25,6 +25,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _isSaved = false;
   bool _isLiked = false;
   int _likeCount = 0;
+  int _saveCount = 0;
   _RecipeDetailTab _activeTab = _RecipeDetailTab.recipe;
   _RecipeDetailData? _recipe;
   List<_RelatedRecipe> _similarRecipes = const [];
@@ -40,6 +41,31 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     _likeCount = widget.initialRecipe?.likeCount ?? 0;
     _loadRecipe();
     _loadReviews();
+  }
+
+  Future<void> _toggleSaved() async {
+    final newSaved = !_isSaved;
+    setState(() {
+      _isSaved = newSaved;
+      _saveCount = newSaved ? _saveCount + 1 : (_saveCount - 1).clamp(0, 999999);
+    });
+    try {
+      final res = await ApiClient.post(
+        '/api/v1/recipes/${widget.recipeId}/bookmark', {},
+      ) as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _isSaved = res['bookmarked'] as bool? ?? newSaved;
+        _saveCount = (res['saveCount'] as num?)?.toInt() ?? _saveCount;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isSaved = !newSaved;
+          _saveCount = newSaved ? (_saveCount - 1).clamp(0, 999999) : _saveCount + 1;
+        });
+      }
+    }
   }
 
   Future<void> _toggleLike() async {
@@ -182,6 +208,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _recipe = _RecipeDetailData.fromJson(res, fallback: _recipe);
         _likeCount = (res['likeCount'] as num?)?.toInt() ?? _likeCount;
         _isLiked = res['likedByMe'] as bool? ?? _isLiked;
+        _isSaved = res['bookmarkedByMe'] as bool? ?? _isSaved;
+        _saveCount = (res['saveCount'] as num?)?.toInt() ?? _saveCount;
         _loading = false;
       });
       _loadSimilarRecipes();
@@ -243,7 +271,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     likeCount: _likeCount,
                     isSaved: _isSaved,
                     onToggleLiked: _toggleLike,
-                    onToggleSaved: () => setState(() => _isSaved = !_isSaved),
+                    onToggleSaved: _toggleSaved,
                   ),
                   if (_loading) const LinearProgressIndicator(minHeight: 2),
                   _TitleSection(recipe: recipe),
@@ -1359,6 +1387,7 @@ class _RecipeDetailData {
       rating: (json['averageRating'] as num?)?.toDouble() ?? base.rating,
       reviewCount: (json['reviewCount'] as num?)?.toInt() ?? base.reviewCount,
       likes: (json['likeCount'] as num?)?.toInt() ?? base.likes,
+      saves: (json['saveCount'] as num?)?.toInt() ?? base.saves,
     );
   }
 

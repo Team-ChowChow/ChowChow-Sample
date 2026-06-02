@@ -7,7 +7,9 @@ import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 
 class CharacterPage extends StatefulWidget {
-  const CharacterPage({super.key});
+  const CharacterPage({super.key, this.characterId});
+
+  final int? characterId;
 
   @override
   State<CharacterPage> createState() => _CharacterPageState();
@@ -52,28 +54,46 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     _idleScale = Tween<double>(begin: 1, end: 1.05).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
     _idleRotate = Tween<double>(begin: -0.035, end: 0.035).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
     _interactCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _loadPet();
+    _loadCharacter();
     _loadCoinBalance();
     _claimDailyLogin();
   }
 
-  Future<void> _loadPet() async {
+  Future<void> _loadCharacter() async {
     try {
-      final res = await ApiClient.get('/api/pets') as List<dynamic>;
-      if (res.isEmpty || !mounted) return;
-      final pet = res.first as Map<String, dynamic>;
-      final petId = pet['petId'] as int?;
-      String? savedImg;
-      if (petId != null) {
-        final prefs = await SharedPreferences.getInstance();
-        savedImg = prefs.getString('character_image_$petId');
+      if (widget.characterId != null) {
+        // characterId로 캐릭터 직접 로드
+        final c = await ApiClient.get('/api/characters/${widget.characterId}') as Map<String, dynamic>;
+        if (!mounted) return;
+        setState(() {
+          _petName = c['characterName'] as String? ?? '';
+          _petType = c['petType'] as String? ?? 'DOG';
+          _characterImageUrl = c['characterImageUrl'] as String?;
+          level = (c['characterLevel'] as num?)?.toInt() ?? 1;
+          exp = (c['currentExp'] as num?)?.toInt() ?? 0;
+          maxExp = (c['requiredExp'] as num?)?.toInt() ?? 100;
+          health = (c['health'] as num?)?.toInt() ?? 80;
+          happiness = (c['happiness'] as num?)?.toInt() ?? 80;
+          hunger = (c['hunger'] as num?)?.toInt() ?? 50;
+        });
+      } else {
+        // 기존 방식: 첫 번째 펫 로드
+        final res = await ApiClient.get('/api/pets') as List<dynamic>;
+        if (res.isEmpty || !mounted) return;
+        final pet = res.first as Map<String, dynamic>;
+        final petId = pet['petId'] as int?;
+        String? savedImg;
+        if (petId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          savedImg = prefs.getString('character_image_$petId');
+        }
+        if (!mounted) return;
+        setState(() {
+          _petName = pet['petName'] as String? ?? '';
+          _petType = pet['petType'] as String? ?? 'DOG';
+          _characterImageUrl = savedImg ?? (pet['petProfileImg'] as String?);
+        });
       }
-      if (!mounted) return;
-      setState(() {
-        _petName = pet['petName'] as String? ?? '';
-        _petType = pet['petType'] as String? ?? 'DOG';
-        _characterImageUrl = savedImg ?? (pet['petProfileImg'] as String?);
-      });
     } catch (_) {}
   }
 
@@ -259,18 +279,27 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                   color: Colors.white,
                   border: Border(bottom: BorderSide(color: ChowColors.gray200)),
                 ),
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                padding: const EdgeInsets.fromLTRB(8, 8, 20, 14),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('캐릭터 키우기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ChowColors.gray800)),
-                          SizedBox(height: 4),
-                          Text('우리 아이와 함께 성장해요', style: TextStyle(fontSize: 13, color: ChowColors.gray500)),
-                        ],
+                    if (widget.characterId != null)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: ChowColors.gray700),
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                      ),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(left: widget.characterId != null ? 0 : 12, top: 8),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('캐릭터 키우기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ChowColors.gray800)),
+                            SizedBox(height: 4),
+                            Text('우리 아이와 함께 성장해요', style: TextStyle(fontSize: 13, color: ChowColors.gray500)),
+                          ],
+                        ),
                       ),
                     ),
                     Container(

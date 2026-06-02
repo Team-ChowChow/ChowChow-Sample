@@ -166,7 +166,7 @@ public class ImageGenerateService {
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(String.class)
-                    .timeout(Duration.ofSeconds(120))
+                    .timeout(Duration.ofSeconds(180))
                     .block();
 
             JsonNode root = objectMapper.readTree(responseBody);

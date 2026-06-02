@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,10 +12,10 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
+  static const _serverUrl = 'http://52.198.125.103:8080';
+
   static String get _baseUrl {
-    if (kIsWeb) return 'http://localhost:8080';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8080';
-    return 'http://localhost:8080';
+    return _serverUrl;
   }
   static const _tokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
@@ -99,13 +98,15 @@ class ApiClient {
     throw ApiException(res.statusCode, msg);
   }
 
+  static const _timeout = Duration(seconds: 15);
+
   static Future<dynamic> get(String path, {bool auth = true, Map<String, String>? query}) async {
     var uri = Uri.parse('$_baseUrl$path');
     if (query != null) uri = uri.replace(queryParameters: query);
-    var res = await http.get(uri, headers: await _headers(auth: auth));
+    var res = await http.get(uri, headers: await _headers(auth: auth)).timeout(_timeout);
     if (res.statusCode == 401 && auth) {
       if (await _tryRefresh()) {
-        res = await http.get(uri, headers: await _headers(auth: auth));
+        res = await http.get(uri, headers: await _headers(auth: auth)).timeout(_timeout);
       }
     }
     return _parse(res);
@@ -113,10 +114,10 @@ class ApiClient {
 
   static Future<dynamic> post(String path, Map<String, dynamic> body, {bool auth = true}) async {
     final uri = Uri.parse('$_baseUrl$path');
-    var res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body));
+    var res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
     if (res.statusCode == 401 && auth) {
       if (await _tryRefresh()) {
-        res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body));
+        res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
       }
     }
     return _parse(res);
@@ -124,10 +125,10 @@ class ApiClient {
 
   static Future<dynamic> put(String path, Map<String, dynamic> body, {bool auth = true}) async {
     final uri = Uri.parse('$_baseUrl$path');
-    var res = await http.put(uri, headers: await _headers(auth: auth), body: jsonEncode(body));
+    var res = await http.put(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
     if (res.statusCode == 401 && auth) {
       if (await _tryRefresh()) {
-        res = await http.put(uri, headers: await _headers(auth: auth), body: jsonEncode(body));
+        res = await http.put(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
       }
     }
     return _parse(res);
@@ -135,10 +136,10 @@ class ApiClient {
 
   static Future<dynamic> patch(String path, Map<String, dynamic> body, {bool auth = true}) async {
     final uri = Uri.parse('$_baseUrl$path');
-    var res = await http.patch(uri, headers: await _headers(auth: auth), body: jsonEncode(body));
+    var res = await http.patch(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
     if (res.statusCode == 401 && auth) {
       if (await _tryRefresh()) {
-        res = await http.patch(uri, headers: await _headers(auth: auth), body: jsonEncode(body));
+        res = await http.patch(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
       }
     }
     return _parse(res);
@@ -146,10 +147,10 @@ class ApiClient {
 
   static Future<dynamic> delete(String path, {bool auth = true}) async {
     final uri = Uri.parse('$_baseUrl$path');
-    var res = await http.delete(uri, headers: await _headers(auth: auth));
+    var res = await http.delete(uri, headers: await _headers(auth: auth)).timeout(_timeout);
     if (res.statusCode == 401 && auth) {
       if (await _tryRefresh()) {
-        res = await http.delete(uri, headers: await _headers(auth: auth));
+        res = await http.delete(uri, headers: await _headers(auth: auth)).timeout(_timeout);
       }
     }
     return _parse(res);

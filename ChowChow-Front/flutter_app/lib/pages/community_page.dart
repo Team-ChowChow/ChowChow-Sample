@@ -23,6 +23,7 @@ class _CommunityPageState extends State<CommunityPage> {
   bool _isLoading = true;
   Set<int> _bookmarkedIds = {};
   int? _currentUserId;
+  List<String> _trendingTopics = [];
 
   List<CommunityPost> get _filteredPosts {
     if (_selectedCategory == '전체') return _posts;
@@ -35,6 +36,16 @@ class _CommunityPageState extends State<CommunityPage> {
     _loadPosts();
     _loadBookmarks();
     _loadCurrentUser();
+    _loadTrendingTopics();
+  }
+
+  Future<void> _loadTrendingTopics() async {
+    try {
+      final res = await ApiClient.get('/api/v1/search/popular') as Map<String, dynamic>;
+      final list = (res['popular'] as List<dynamic>?)?.cast<String>() ?? [];
+      if (!mounted) return;
+      setState(() => _trendingTopics = list);
+    } catch (_) {}
   }
 
   Future<void> _loadCurrentUser() async {
@@ -156,51 +167,38 @@ class _CommunityPageState extends State<CommunityPage> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      SizedBox(
-                        height: 40,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: kTrendingTopics.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 8),
-                          itemBuilder: (context, i) {
-                            final topic = kTrendingTopics[i];
-                            return Material(
-                              color: ChowColors.orange50,
-                              borderRadius: BorderRadius.circular(999),
-                              child: InkWell(
+                      if (_trendingTopics.isEmpty)
+                        const Text('인기 토픽을 불러오는 중...',
+                            style: TextStyle(fontSize: 13, color: ChowColors.gray400))
+                      else
+                        SizedBox(
+                          height: 40,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _trendingTopics.length,
+                            separatorBuilder: (_, _) => const SizedBox(width: 8),
+                            itemBuilder: (context, i) {
+                              final topic = _trendingTopics[i];
+                              return Material(
+                                color: ChowColors.orange50,
                                 borderRadius: BorderRadius.circular(999),
-                                onTap: () {},
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                  child: Text.rich(
-                                    TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: topic.name,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: ChowColors.orange600,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text: ' (${topic.count})',
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: ChowColors.orange500,
-                                          ),
-                                        ),
-                                      ],
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(999),
+                                  onTap: () {},
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                    child: Text(
+                                      topic,
+                                      style: const TextStyle(
+                                          fontSize: 13, color: ChowColors.orange600),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),

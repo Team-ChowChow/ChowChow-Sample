@@ -6,7 +6,7 @@ import '../pages/app_settings_page.dart';
 import '../pages/change_password_page.dart';
 import '../pages/character_list_page.dart';
 import '../pages/character_form_page.dart';
-import '../pages/character_raise_page.dart';
+import '../pages/character_page.dart';
 import '../pages/character_growth_logs_page.dart';
 import '../pages/community_page.dart';
 import '../pages/find_id_page.dart';
@@ -193,7 +193,7 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         path: '/character/:characterId',
         builder: (context, state) {
           final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
-          return CharacterRaisePage(characterId: id);
+          return CharacterPage(characterId: id);
         },
       ),
       GoRoute(

@@ -5,6 +5,7 @@ import com.petdiet.recipe.entity.Recipe;
 import com.petdiet.recipe.entity.RecipeBookmark;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface RecipeBookmarkRepository extends JpaRepository<RecipeBookmark, Integer> {
@@ -12,4 +13,8 @@ public interface RecipeBookmarkRepository extends JpaRepository<RecipeBookmark, 
     Optional<RecipeBookmark> findByRecipeAndUser(Recipe recipe, User user);
 
     boolean existsByRecipeAndUser(Recipe recipe, User user);
+
+    long countByRecipe(Recipe recipe);
+
+    List<RecipeBookmark> findByUserOrderByCreatedAtDesc(User user);
 }

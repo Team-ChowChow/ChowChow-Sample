@@ -172,8 +172,10 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
         if (_selectedPet != null) 'petId': _selectedPet!.petId,
         if (notes.isNotEmpty) 'userNotes': notes,
       };
-      final res = await ApiClient.post('/api/ai/diet/recommend-and-save', body)
-          as Map<String, dynamic>;
+      final res = await ApiClient.post(
+        '/api/ai/diet/recommend-and-save?generateImage=true',
+        body,
+      ) as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _result = DietGenerateModel.fromJson(res);

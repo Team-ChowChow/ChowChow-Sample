@@ -52,6 +52,8 @@ public class SecurityConfig {
                     "/api/v1/recipes/trending",
                     "/api/v1/search/popular",
                     "/api/v1/search/categories",
+                    "/api/v1/allergies",
+                    "/api/v1/diseases",
                     "/error"
                 ).permitAll()
                 .anyRequest().authenticated()
