@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../pages/ai_chat_page.dart';
 import '../pages/app_settings_page.dart';
 import '../pages/change_password_page.dart';
-import '../pages/character_page.dart';
+import '../pages/character_list_page.dart';
+import '../pages/character_form_page.dart';
+import '../pages/character_raise_page.dart';
+import '../pages/character_growth_logs_page.dart';
 import '../pages/community_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
@@ -44,7 +47,7 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
           ),
           GoRoute(
             path: '/character',
-            builder: (context, state) => const CharacterPage(),
+            builder: (context, state) => const CharacterListPage(),
           ),
           GoRoute(
             path: '/community',
@@ -163,6 +166,35 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/saved-posts',
         builder: (context, state) => const MyPostsPage(mode: MyPostsMode.savedPosts),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/character/new',
+        builder: (context, state) => const CharacterFormPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/character/:characterId/edit',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
+          return CharacterFormPage(characterId: id);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/character/:characterId/logs',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
+          return CharacterGrowthLogsPage(characterId: id);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/character/:characterId',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
+          return CharacterRaisePage(characterId: id);
+        },
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

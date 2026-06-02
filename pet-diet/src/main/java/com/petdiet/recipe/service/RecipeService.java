@@ -7,13 +7,16 @@ import com.petdiet.pet.repository.UserPetRepository;
 import com.petdiet.recipe.dto.*;
 import com.petdiet.recipe.entity.*;
 import com.petdiet.recipe.repository.*;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,11 +28,32 @@ public class RecipeService {
     private final RecipeReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final UserPetRepository userPetRepository;
+    private final RecipeNutritionSummaryRepository nutritionRepository;
+    private final JdbcTemplate jdbc;
+
+    @PostConstruct
+    public void initLikesTable() {
+        jdbc.execute(
+            "CREATE TABLE IF NOT EXISTS \"RecipeLikes\" (" +
+            "  \"recipeId\" INT NOT NULL," +
+            "  \"userId\"   INT NOT NULL," +
+            "  \"createdAt\" TIMESTAMPTZ DEFAULT NOW()," +
+            "  PRIMARY KEY (\"recipeId\", \"userId\")" +
+            ")"
+        );
+    }
 
     @Transactional(readOnly = true)
     public Page<RecipeResponse> getPublicRecipes(Pageable pageable) {
         return recipeRepository.findAllByIsPublicTrueAndRecipeStatus("ACTIVE", pageable)
                 .map(RecipeResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeResponse> getTrendingRecipes(int limit) {
+        return recipeRepository.findTrendingRecipes(
+                org.springframework.data.domain.PageRequest.of(0, limit)
+        ).stream().map(RecipeResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
@@ -41,8 +65,49 @@ public class RecipeService {
 
     @Transactional(readOnly = true)
     public RecipeResponse getRecipe(Integer recipeId) {
+        return getRecipe(recipeId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public RecipeResponse getRecipe(Integer recipeId, UUID authUuid) {
         Recipe recipe = findActiveRecipe(recipeId);
-        return RecipeResponse.from(recipe);
+        List<RecipeReview> reviews = reviewRepository.findByRecipeRecipeId(recipeId);
+        double avgRating = reviews.stream().mapToDouble(RecipeReview::getRating).average().orElse(0.0);
+        long reviewCount = reviews.size();
+
+        // 사용자 좋아요 여부 확인
+        boolean likedByMe = false;
+        if (authUuid != null) {
+            try {
+                Integer userId = jdbc.queryForObject(
+                    "SELECT \"userId\" FROM \"Users\" WHERE \"authUuid\" = ?", Integer.class, authUuid);
+                if (userId != null) {
+                    Integer cnt = jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM \"RecipeLikes\" WHERE \"recipeId\" = ? AND \"userId\" = ?",
+                        Integer.class, recipeId, userId);
+                    likedByMe = cnt != null && cnt > 0;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        RecipeResponse base = RecipeResponse.from(recipe).toBuilder()
+                .averageRating(Math.round(avgRating * 10.0) / 10.0)
+                .reviewCount(reviewCount)
+                .likedByMe(likedByMe)
+                .build();
+        var nutrition = nutritionRepository.findByRecipeRecipeId(recipeId);
+        if (nutrition.isEmpty()) return base;
+        var n = nutrition.get();
+        return base.toBuilder()
+                .nutrition(RecipeResponse.NutritionDto.builder()
+                        .totalCalories(n.getTotalCalories() != null ? n.getTotalCalories().doubleValue() : null)
+                        .proteinG(n.getProteinG() != null ? n.getProteinG().doubleValue() : null)
+                        .fatG(n.getFatG() != null ? n.getFatG().doubleValue() : null)
+                        .carbohydrateG(n.getCarbohydrateG() != null ? n.getCarbohydrateG().doubleValue() : null)
+                        .sodiumMg(n.getSodiumMg() != null ? n.getSodiumMg().doubleValue() : null)
+                        .nutritionComment(n.getNutritionComment())
+                        .build())
+                .build();
     }
 
     @Transactional
@@ -93,6 +158,32 @@ public class RecipeService {
         User user = findUser(authUuid);
         Recipe recipe = findOwnedActiveRecipe(recipeId, user);
         recipe.delete();
+    }
+
+    @Transactional
+    public Map<String, Object> toggleLike(UUID authUuid, Integer recipeId) {
+        Recipe recipe = findActiveRecipe(recipeId);
+        boolean nowLiked = false;
+        if (authUuid != null) {
+            Integer userId = jdbc.queryForObject(
+                "SELECT \"userId\" FROM \"Users\" WHERE \"authUuid\" = ?", Integer.class, authUuid);
+            if (userId != null) {
+                Integer cnt = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM \"RecipeLikes\" WHERE \"recipeId\" = ? AND \"userId\" = ?",
+                    Integer.class, recipeId, userId);
+                if (cnt != null && cnt > 0) {
+                    jdbc.update("DELETE FROM \"RecipeLikes\" WHERE \"recipeId\" = ? AND \"userId\" = ?", recipeId, userId);
+                    recipe.toggleLike(false);
+                    nowLiked = false;
+                } else {
+                    jdbc.update("INSERT INTO \"RecipeLikes\" (\"recipeId\", \"userId\") VALUES (?, ?)", recipeId, userId);
+                    recipe.toggleLike(true);
+                    nowLiked = true;
+                }
+                recipeRepository.save(recipe);
+            }
+        }
+        return Map.of("likeCount", recipe.getLikeCount(), "recipeId", recipeId, "liked", nowLiked);
     }
 
     @Transactional

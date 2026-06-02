@@ -23,6 +23,7 @@ class _SearchPageState extends State<SearchPage> {
 
   String _query = '';
   bool _searchFocused = false;
+  String? _selectedTag; // 카테고리 칩으로 선택된 태그
 
   String? _petTypeFilter; // DOG | CAT | ETC | null
   List<String> _purposeFilters = [];
@@ -58,7 +59,10 @@ class _SearchPageState extends State<SearchPage> {
 
     _searchCtrl.addListener(() {
       final q = _searchCtrl.text;
-      setState(() => _query = q);
+      setState(() {
+        _query = q;
+        if (q.isNotEmpty) _selectedTag = null; // 키워드 입력 시 태그 선택 해제
+      });
 
       _debounce?.cancel();
       _debounce = Timer(const Duration(milliseconds: 400), _search);
@@ -109,7 +113,9 @@ class _SearchPageState extends State<SearchPage> {
         'page': '0',
       };
 
-      if (_query.trim().isNotEmpty) {
+      if (_selectedTag != null) {
+        query['tag'] = _selectedTag!;
+      } else if (_query.trim().isNotEmpty) {
         query['keyword'] = _query.trim();
       }
 
@@ -406,10 +412,18 @@ class _SearchPageState extends State<SearchPage> {
                             .map(
                               (label) => _PopularCategoryChip(
                                 label: label,
+                                isSelected: _selectedTag == label.replaceFirst('#', ''),
                                 onTap: () {
-                                  final keyword = label.replaceFirst('#', '');
-                                  _searchCtrl.text = keyword;
-                                  setState(() => _query = keyword);
+                                  final tag = label.replaceFirst('#', '');
+                                  setState(() {
+                                    if (_selectedTag == tag) {
+                                      _selectedTag = null; // 이미 선택된 태그 클릭 → 해제
+                                    } else {
+                                      _selectedTag = tag;
+                                      _searchCtrl.clear();
+                                      _query = '';
+                                    }
+                                  });
                                   _search();
                                 },
                               ),
@@ -730,18 +744,20 @@ class _PopularCategoryChip extends StatelessWidget {
   const _PopularCategoryChip({
     required this.label,
     this.onTap,
+    this.isSelected = false,
   });
 
   final String label;
   final VoidCallback? onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: isSelected ? ChowColors.orange500 : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(999),
-        side: const BorderSide(color: ChowColors.gray200),
+        side: BorderSide(color: isSelected ? ChowColors.orange500 : ChowColors.gray200),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -750,10 +766,10 @@ class _PopularCategoryChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           child: Text(
             label,
-            style: const TextStyle(
-              color: ChowColors.gray600,
+            style: TextStyle(
+              color: isSelected ? Colors.white : ChowColors.gray600,
               fontSize: 12,
-              fontWeight: FontWeight.w400,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               height: 1.2,
             ),
           ),
@@ -973,43 +989,27 @@ class _RecipeRow extends StatelessWidget {
                         const Spacer(),
                         Row(
                           children: [
-                            const Icon(
-                              Icons.star,
-                              size: 13,
-                              color: Color(0xFFFBBF24),
-                            ),
-                            const SizedBox(width: 2),
-                            const Text(
-                              '4.8',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: ChowColors.gray700,
+                            if (recipe.averageRating > 0) ...[
+                              const Icon(Icons.star_rounded, size: 12, color: Color(0xFFFBBF24)),
+                              const SizedBox(width: 2),
+                              Text(
+                                recipe.averageRating.toStringAsFixed(1),
+                                style: const TextStyle(fontSize: 10, color: ChowColors.gray700),
                               ),
-                            ),
-                            const SizedBox(width: 5),
-                            const Text(
-                              '(234)',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: ChowColors.gray500,
+                              Text(
+                                ' (${recipe.reviewCount})',
+                                style: const TextStyle(fontSize: 10, color: ChowColors.gray500),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Icon(
-                              Icons.person,
-                              size: 13,
-                              color: ChowColors.gray500,
-                            ),
+                              const SizedBox(width: 8),
+                            ],
+                            const Icon(Icons.person_outline, size: 12, color: ChowColors.gray400),
                             const SizedBox(width: 2),
                             Flexible(
                               child: Text(
-                                '멍랑이엄마',
+                                recipe.authorNickname,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: ChowColors.gray600,
-                                ),
+                                style: const TextStyle(fontSize: 10, color: ChowColors.gray500),
                               ),
                             ),
                           ],

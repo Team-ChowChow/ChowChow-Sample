@@ -31,8 +31,10 @@ public class RecipeV1Controller {
     }
 
     @GetMapping("/recipes/{recipeId}")
-    public ResponseEntity<RecipeResponse> getRecipe(@PathVariable Integer recipeId) {
-        return ResponseEntity.ok(recipeService.getRecipe(recipeId));
+    public ResponseEntity<RecipeResponse> getRecipe(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PathVariable Integer recipeId) {
+        return ResponseEntity.ok(recipeService.getRecipe(recipeId, principal != null ? principal.authUuid() : null));
     }
 
     @PostMapping("/recipes/{recipeId}/bookmark")
@@ -53,6 +55,14 @@ public class RecipeV1Controller {
         ));
     }
 
+    @GetMapping("/recipes/trending")
+    public ResponseEntity<?> trendingRecipes(
+            @RequestParam(defaultValue = "6") int limit) {
+        return ResponseEntity.ok(Map.of(
+                "data", recipeService.getTrendingRecipes(limit)
+        ));
+    }
+
     @PostMapping("/recipes")
     public ResponseEntity<RecipeResponse> createRecipe(
             @AuthenticationPrincipal SupabasePrincipal principal,
@@ -64,18 +74,53 @@ public class RecipeV1Controller {
     public ResponseEntity<?> searchRecipes(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String petType,
+            @RequestParam(required = false) String tag,
             @RequestParam(required = false) List<Integer> allergyIds,
             @RequestParam(required = false) List<Integer> diseaseIds,
             @RequestParam(defaultValue = "false") Boolean useMyPetFilter,
             Pageable pageable) {
+
+        // 키워드 + 태그 + petType 복합 검색
+        StringBuilder sql = new StringBuilder(
+            "SELECT r.\"recipeId\" FROM \"Recipes\" r " +
+            "LEFT JOIN \"RecipeTagMap\" rtm ON r.\"recipeId\" = rtm.\"recipeId\" " +
+            "LEFT JOIN \"RecipeTags\" rt ON rtm.\"recipeTagId\" = rt.\"recipeTagId\" " +
+            "LEFT JOIN \"Menus\" m ON r.\"menuId\" = m.\"menuId\" " +
+            "WHERE r.\"isPublic\" = true AND r.\"recipeStatus\" = 'ACTIVE'"
+        );
+        List<Object> params = new java.util.ArrayList<>();
+
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND (r.\"recipeTitle\" ILIKE ? OR r.\"recipePurpose\" ILIKE ? OR r.\"recipeDescription\" ILIKE ?)");
+            String kw = "%" + keyword.trim() + "%";
+            params.add(kw); params.add(kw); params.add(kw);
+        }
+        if (tag != null && !tag.isBlank()) {
+            sql.append(" AND rt.\"tagName\" = ?");
+            params.add(tag.trim());
+        }
+        if (petType != null && !petType.isBlank()) {
+            sql.append(" AND m.\"petType\" = ?");
+            params.add(petType.trim());
+        }
+        sql.append(" GROUP BY r.\"recipeId\" ORDER BY r.\"recipeId\" DESC LIMIT 50");
+
+        List<Integer> ids = jdbc.queryForList(sql.toString(), Integer.class, params.toArray());
+        List<RecipeResponse> results = ids.stream().map(id -> recipeService.getRecipe(id)).toList();
+
         return ResponseEntity.ok(Map.of(
                 "keyword", keyword == null ? "" : keyword,
+                "tag", tag == null ? "" : tag,
                 "petType", petType == null ? "" : petType,
-                "allergyIds", allergyIds == null ? List.of() : allergyIds,
-                "diseaseIds", diseaseIds == null ? List.of() : diseaseIds,
-                "useMyPetFilter", useMyPetFilter,
-                "data", recipeService.getPublicRecipes(pageable).getContent()
+                "data", results
         ));
+    }
+
+    @PostMapping("/recipes/{recipeId}/like")
+    public ResponseEntity<?> toggleLike(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PathVariable Integer recipeId) {
+        return ResponseEntity.ok(recipeService.toggleLike(principal != null ? principal.authUuid() : null, recipeId));
     }
 
     @PostMapping("/recipes/{recipeId}/reviews")
@@ -157,7 +202,7 @@ public class RecipeV1Controller {
         }
         sql.append(") GROUP BY r.\"recipeId\" HAVING COUNT(*) >= 2 ORDER BY match_count DESC LIMIT 4");
 
-        List<Integer> similarIds = jdbc.queryForList(sql.toString(), params.toArray(), Integer.class);
+        List<Integer> similarIds = jdbc.queryForList(sql.toString(), Integer.class, params.toArray());
         List<RecipeResponse> similar = similarIds.stream()
             .map(id -> recipeService.getRecipe(id))
             .toList();

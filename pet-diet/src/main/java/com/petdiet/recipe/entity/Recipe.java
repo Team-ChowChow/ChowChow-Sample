@@ -51,6 +51,19 @@ public class Recipe {
     @Column(name = "\"feedingAmount\"")
     private String feedingAmount;
 
+    @Builder.Default
+    @Column(name = "\"likeCount\"", nullable = false)
+    private Integer likeCount = 0;
+
+    @Column(name = "\"cookTime\"")
+    private String cookTime;
+
+    @Column(name = "\"difficulty\"")
+    private String difficulty;
+
+    @Column(name = "\"calories\"")
+    private String calories;
+
     @Column(name = "\"imageUrl\"")
     private String imageUrl;
 
@@ -93,6 +106,20 @@ public class Recipe {
         if (recipePurpose != null) this.recipePurpose = recipePurpose;
         if (feedingAmount != null) this.feedingAmount = feedingAmount;
         if (isPublic != null) this.isPublic = isPublic;
+    }
+
+    public void toggleLike(boolean increment) {
+        if (increment) {
+            this.likeCount = (this.likeCount == null ? 0 : this.likeCount) + 1;
+        } else {
+            this.likeCount = Math.max(0, (this.likeCount == null ? 0 : this.likeCount) - 1);
+        }
+    }
+
+    public void updateMeta(String cookTime, String difficulty, String calories) {
+        if (cookTime != null) this.cookTime = cookTime;
+        if (difficulty != null) this.difficulty = difficulty;
+        if (calories != null) this.calories = calories;
     }
 
     public void updateImage(String imageUrl) {

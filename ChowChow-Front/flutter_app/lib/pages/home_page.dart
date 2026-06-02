@@ -26,15 +26,18 @@ class _HomePageState extends State<HomePage> {
   List<RecipeModel> _recipes = [];
   bool _loading = true;
 
+  List<_MealRecord> _mealRecords = [];
+  bool _mealLoading = true;
+
   String _tipText = '';
   String _tipDetail = '';
-  File? _mealPhoto;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     _loadRecipes();
+    _loadMealRecords();
     _loadTip();
   }
 
@@ -50,23 +53,49 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {}
   }
 
-  Future<void> _pickMealPhoto() async {
+  Future<void> _loadMealRecords() async {
+    try {
+      final res = await ApiClient.get('/api/meal-records') as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _mealRecords = res.map((e) {
+          final m = e as Map<String, dynamic>;
+          return _MealRecord(
+            mealId: m['mealId'] as int? ?? 0,
+            title: m['mealTitle'] as String? ?? '',
+            imageUrl: m['imageUrl'] as String?,
+            petName: m['petName'] as String?,
+            mealDate: m['mealDate'] as String?,
+          );
+        }).toList();
+        _mealLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _mealLoading = false);
+    }
+  }
+
+  Future<void> _addMealRecord() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked == null) return;
-    setState(() => _mealPhoto = File(picked.path));
+    if (picked == null || !mounted) return;
     try {
-      await ApiClient.uploadImage(File(picked.path), type: 'meal');
-      // 식단 추가 코인 적립
-      ApiClient.post('/api/coins/earn', {'amount': 10, 'reason': '식단 추가'}).ignore();
+      final url = await ApiClient.uploadImage(File(picked.path), type: 'meal');
+      await ApiClient.post('/api/meal-records', {
+        'mealTitle': '${DateTime.now().month}/${DateTime.now().day} 식단',
+        'imageUrl': url,
+        'mealDate': DateTime.now().toIso8601String().substring(0, 10),
+      });
+      await _loadMealRecords();
     } catch (_) {}
   }
 
   Future<void> _loadRecipes() async {
     try {
       final res = await ApiClient.get(
-        '/api/v1/recipes',
-        query: {'size': '8', 'page': '0', 'sort': 'recipeId,desc'},
+        '/api/v1/recipes/trending',
+        query: {'limit': '6'},
+        auth: false,
       ) as Map<String, dynamic>;
       final list = (res['data'] as List<dynamic>? ?? [])
           .map((e) => RecipeModel.fromJson(e as Map<String, dynamic>))
@@ -233,7 +262,7 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: _AiChefBanner(
-                        onTap: () => context.push('/recipe-generation?quickStart=true'),
+                        onTap: () => context.push('/recipe-generation'),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -250,7 +279,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () => context.go('/search'),
                             child: const Text(
                               '전체보기',
                               style: TextStyle(
@@ -262,69 +291,68 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.72,
-                        ),
-                        itemCount: _recipes.take(4).length,
-                        itemBuilder: (context, i) => _RecipeCard(
-                          recipe: _recipes[i],
-                          onTap: () => context.push(
-                            '/recipes/${_recipes[i].recipeId}',
-                            extra: _recipes[i],
+                    if (_mealLoading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: LinearProgressIndicator(minHeight: 2),
+                      )
+                    else if (_mealRecords.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: GestureDetector(
+                          onTap: _addMealRecord,
+                          child: Container(
+                            height: 96,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: ChowColors.gray300, width: 2),
+                              color: ChowColors.gray50,
+                            ),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.camera_alt_outlined, size: 32, color: ChowColors.gray400),
+                                SizedBox(height: 8),
+                                Text('오늘의 식단을 기록해보세요', style: TextStyle(fontSize: 14, color: ChowColors.gray600)),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GestureDetector(
-                        onTap: _pickMealPhoto,
-                        child: Container(
-                          height: 96,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: ChowColors.gray300, width: 2),
-                            color: ChowColors.gray50,
-                          ),
-                          clipBehavior: Clip.hardEdge,
-                          child: _mealPhoto != null
-                              ? Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.file(_mealPhoto!, fit: BoxFit.cover),
-                                    Positioned(
-                                      right: 8, top: 8,
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => _mealPhoto = null),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                                          child: const Icon(Icons.close, color: Colors.white, size: 16),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.camera_alt_outlined, size: 32, color: ChowColors.gray400),
-                                    SizedBox(height: 8),
-                                    Text('식단 사진 추가하기', style: TextStyle(fontSize: 14, color: ChowColors.gray600)),
-                                  ],
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.85,
+                              ),
+                              itemCount: _mealRecords.take(4).length,
+                              itemBuilder: (context, i) => _MealRecordCard(record: _mealRecords[i]),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _addMealRecord,
+                                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                                label: const Text('식단 사진 추가'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: ChowColors.orange500,
+                                  side: const BorderSide(color: ChowColors.orange100),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
                     const SizedBox(height: 32),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -394,36 +422,47 @@ class _Header extends StatefulWidget {
 }
 
 class _HeaderState extends State<_Header> {
-  final List<_HeaderNotice> _notifications = [
-    const _HeaderNotice(
-      type: 'recipe',
-      title: '새로운 레시피가 등록되었어요!',
-      message: '초코가 좋아할 만한 닭가슴살 요리',
-      time: '5분 전',
-      isNew: true,
-    ),
-    const _HeaderNotice(
-      type: 'achievement',
-      title: '축하합니다! 🎉',
-      message: '7일 연속 접속 달성',
-      time: '1시간 전',
-      isNew: true,
-    ),
-    const _HeaderNotice(
-      type: 'community',
-      title: '멍멍이엄마님이 댓글을 남겼어요',
-      message: '"정말 유용한 레시피네요!"',
-      time: '2시간 전',
-      isNew: false,
-    ),
-    const _HeaderNotice(
-      type: 'system',
-      title: '식단 기록 알림',
-      message: '오늘 초코의 식단을 기록해주세요',
-      time: '어제',
-      isNew: false,
-    ),
-  ];
+  List<_HeaderNotice> _notifications = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      final res = await ApiClient.get('/api/notifications') as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _notifications = res.map((e) {
+          final m = e as Map<String, dynamic>;
+          final createdAt = m['createdAt'] as String?;
+          String timeStr = '';
+          if (createdAt != null) {
+            try {
+              final dt = DateTime.parse(createdAt).toLocal();
+              final diff = DateTime.now().difference(dt);
+              if (diff.inMinutes < 60) {
+                timeStr = '${diff.inMinutes}분 전';
+              } else if (diff.inHours < 24) {
+                timeStr = '${diff.inHours}시간 전';
+              } else {
+                timeStr = '${diff.inDays}일 전';
+              }
+            } catch (_) {}
+          }
+          return _HeaderNotice(
+            type: m['notificationType'] as String? ?? 'notice',
+            title: m['notificationTitle'] as String? ?? m['title'] as String? ?? '알림',
+            message: m['notificationContent'] as String? ?? m['message'] as String? ?? '',
+            time: timeStr,
+            isNew: !(m['isRead'] as bool? ?? false),
+          );
+        }).toList();
+      });
+    } catch (_) {}
+  }
 
   void _openNotifications() {
     showModalBottomSheet<void>(
@@ -468,9 +507,20 @@ class _HeaderState extends State<_Header> {
                   ),
                   const Divider(height: 1),
                   Expanded(
-                    child: ListView.separated(
+                    child: _notifications.isEmpty
+                        ? const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.notifications_none, size: 48, color: ChowColors.gray300),
+                                SizedBox(height: 12),
+                                Text('알림이 없어요', style: TextStyle(color: ChowColors.gray500, fontSize: 15)),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
                       itemCount: _notifications.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (a, b) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final item = _notifications[index];
                         return Material(
@@ -609,37 +659,6 @@ class _HeaderState extends State<_Header> {
                     ),
               ),
               const Spacer(),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(999),
-                  onTap: () {},
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      gradient: const LinearGradient(
-                        colors: [ChowColors.yellow400, ChowColors.yellow500],
-                      ),
-                      boxShadow: const [
-                        BoxShadow(blurRadius: 8, offset: Offset(0, 2), color: Color(0x22000000)),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    child: const Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 10,
-                          backgroundColor: Colors.white,
-                          child: Text('C', style: TextStyle(fontSize: 11, color: ChowColors.yellow600, fontWeight: FontWeight.bold)),
-                        ),
-                        SizedBox(width: 8),
-                        Text('1,250', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               IconButton(
                 onPressed: _openNotifications,
                 icon: Stack(
@@ -902,7 +921,7 @@ class _RecipeCard extends StatelessWidget {
                     shape: const CircleBorder(),
                     child: InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: () {},
+                      onTap: onTap,
                       child: const Padding(
                         padding: EdgeInsets.all(6),
                         child: Icon(Icons.favorite_border, size: 18, color: ChowColors.gray600),
@@ -969,6 +988,66 @@ class _HeaderNotice {
       message: message ?? this.message,
       time: time ?? this.time,
       isNew: isNew ?? this.isNew,
+    );
+  }
+}
+
+class _MealRecord {
+  const _MealRecord({
+    required this.mealId,
+    required this.title,
+    this.imageUrl,
+    this.petName,
+    this.mealDate,
+  });
+  final int mealId;
+  final String title;
+  final String? imageUrl;
+  final String? petName;
+  final String? mealDate;
+}
+
+class _MealRecordCard extends StatelessWidget {
+  const _MealRecordCard({required this.record});
+  final _MealRecord record;
+
+  static const _placeholder =
+      'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=400&q=80';
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 1,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ChowNetworkImage(url: record.imageUrl ?? _placeholder),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  record.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ChowColors.gray800),
+                ),
+                if (record.mealDate != null)
+                  Text(
+                    record.mealDate!,
+                    style: const TextStyle(fontSize: 10, color: ChowColors.gray500),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

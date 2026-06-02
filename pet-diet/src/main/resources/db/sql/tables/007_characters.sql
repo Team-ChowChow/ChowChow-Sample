@@ -12,6 +12,10 @@ CREATE TABLE "PetCharacters" (
     "characterImageUrl" TEXT         NOT NULL,
     "characterLevel"    INT          NOT NULL DEFAULT 1,
     "currentExp"        INT          NOT NULL DEFAULT 0,
+    "health"            INT          NOT NULL DEFAULT 80,
+    "happiness"         INT          NOT NULL DEFAULT 80,
+    "hunger"            INT          NOT NULL DEFAULT 50,
+    "description"       TEXT         NULL,
     "characterStatus"   VARCHAR(10)  NOT NULL DEFAULT 'ACTIVE'
                             CHECK ("characterStatus" IN ('ACTIVE', 'HIDDEN')),
     "createdAt"         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
@@ -30,7 +34,10 @@ CREATE TABLE "CharacterGrowthLogs" (
     "characterId"         INTEGER      NOT NULL REFERENCES "PetCharacters"("characterId") ON DELETE CASCADE,
     "userId"              INTEGER      NOT NULL REFERENCES "Users"("userId")              ON DELETE CASCADE,
     "activityType"        VARCHAR(30)  NOT NULL
-                              CHECK ("activityType" IN ('RECIPE_USE', 'COMMUNITY_POST', 'COMMENT', 'FEEDING')),
+                              CHECK ("activityType" IN (
+                                  'FEED', 'PET', 'EXERCISE', 'BATH', 'LEVEL_UP',
+                                  'RECIPE_USE', 'COMMUNITY_POST', 'COMMENT', 'FEEDING'
+                              )),
     "expAmount"           INT          NOT NULL DEFAULT 0,
     "activityDescription" VARCHAR(200) NULL,
     "createdAt"           TIMESTAMPTZ  NOT NULL DEFAULT NOW()

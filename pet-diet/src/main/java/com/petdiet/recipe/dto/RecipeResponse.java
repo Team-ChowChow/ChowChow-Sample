@@ -8,7 +8,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class RecipeResponse {
     private Integer recipeId;
     private Integer menuId;
@@ -27,6 +27,17 @@ public class RecipeResponse {
     private OffsetDateTime createdAt;
     private List<RecipeIngredientDto> ingredients;
     private List<RecipeStepDto> steps;
+    // 추가 메타 필드
+    private String cookTime;
+    private String difficulty;
+    private String calories;
+    private List<String> tags;
+    private NutritionDto nutrition;
+    private Integer likeCount;
+    private Double averageRating;
+    private Long reviewCount;
+    private String authorNickname;
+    private Boolean likedByMe;
 
     public static RecipeResponse from(Recipe recipe) {
         return RecipeResponse.builder()
@@ -47,6 +58,22 @@ public class RecipeResponse {
                 .createdAt(recipe.getCreatedAt())
                 .ingredients(recipe.getIngredients().stream().map(RecipeIngredientDto::from).toList())
                 .steps(recipe.getSteps().stream().map(RecipeStepDto::from).toList())
+                .cookTime(recipe.getCookTime())
+                .difficulty(recipe.getDifficulty())
+                .calories(recipe.getCalories())
+                .likeCount(recipe.getLikeCount() != null ? recipe.getLikeCount() : 0)
+                .authorNickname(recipe.getUser() != null ? recipe.getUser().getUserNickname() : "관리자")
                 .build();
+    }
+
+    @Getter
+    @Builder
+    public static class NutritionDto {
+        private Double totalCalories;
+        private Double proteinG;
+        private Double fatG;
+        private Double carbohydrateG;
+        private Double sodiumMg;
+        private String nutritionComment;
     }
 }

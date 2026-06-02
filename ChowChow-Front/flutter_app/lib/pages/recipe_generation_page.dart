@@ -124,7 +124,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
   }
 
   void _startGeneration() {
-    if (!widget.quickStart && _selectedPet == null) return;
+    if (!widget.quickStart && _pets.isNotEmpty && _selectedPet == null) return;
     _progressTimer?.cancel();
     _stepTimer?.cancel();
     setState(() {
@@ -239,30 +239,61 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
 
   Widget _buildNoPetsView() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          const SizedBox(height: 16),
+          Container(
+            width: 88,
+            height: 88,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF7ED),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.pets, color: ChowColors.orange400, size: 44),
+          ),
+          const SizedBox(height: 16),
           const Text(
-            '반려동물 없이도 AI 레시피를 만들 수 있어요',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800),
+            '등록된 반려동물이 없어요',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ChowColors.gray800),
           ),
           const SizedBox(height: 8),
           const Text(
-            '프로필 등록 전에도 일반 맞춤 식단을 추천해 드립니다.',
-            style: TextStyle(fontSize: 13, color: ChowColors.gray500),
+            '반려동물을 등록하면 건강 상태와 알레르기를\n고려한 맞춤 식단을 추천받을 수 있어요',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: ChowColors.gray500, height: 1.5),
           ),
-          const SizedBox(height: 20),
-          const Text(
-            '추가 요청사항 (선택)',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: ChowColors.gray700),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: ChowColors.orange500,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: () => context.go('/profile'),
+              icon: const Icon(Icons.add),
+              label: const Text('반려동물 추가하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '추가 요청사항 (선택)',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: ChowColors.gray700),
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _notesCtrl,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: '예) 닭고기 알러지 있어요, 저지방 식단으로 부탁해요...',
+              hintText: '예) 소형견, 저지방 식단으로 부탁해요...',
               hintStyle: const TextStyle(fontSize: 13, color: ChowColors.gray400),
               filled: true,
               fillColor: ChowColors.gray50,
@@ -277,18 +308,18 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
             const SizedBox(height: 12),
             Text(_errorMsg!, style: const TextStyle(fontSize: 13, color: Color(0xFFEF4444))),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: ChowColors.orange500,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ChowColors.gray600,
+                side: const BorderSide(color: ChowColors.gray300),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               onPressed: _startGeneration,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('AI 레시피 생성하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              child: const Text('반려동물 없이 AI 레시피 생성', style: TextStyle(fontSize: 15)),
             ),
           ),
         ],

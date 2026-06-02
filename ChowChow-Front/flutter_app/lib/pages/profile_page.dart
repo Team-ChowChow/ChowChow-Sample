@@ -20,6 +20,9 @@ class _ProfilePageState extends State<ProfilePage> {
   UserModel? _user;
   List<PetModel> _pets = [];
   bool _loading = true;
+  int _savedRecipes = 0;
+  int _completedCooking = 0;
+  int _writtenReviews = 0;
 
   String _petType = '';
   String _petBreed = '';
@@ -62,36 +65,7 @@ class _ProfilePageState extends State<ProfilePage> {
     '아비시니안',
   ];
 
-  final List<_ProfileNotice> _notifications = [
-    const _ProfileNotice(
-      type: 'recipe',
-      title: '새로운 레시피가 등록되었어요!',
-      message: '초코가 좋아할 만한 닭가슴살 요리',
-      time: '5분 전',
-      isNew: true,
-    ),
-    const _ProfileNotice(
-      type: 'achievement',
-      title: '축하합니다! 🎉',
-      message: '7일 연속 접속 달성',
-      time: '1시간 전',
-      isNew: true,
-    ),
-    const _ProfileNotice(
-      type: 'community',
-      title: '멍멍이엄마님이 댓글을 남겼어요',
-      message: '"정말 유용한 레시피네요!"',
-      time: '2시간 전',
-      isNew: false,
-    ),
-    const _ProfileNotice(
-      type: 'system',
-      title: '식단 기록 알림',
-      message: '오늘 초코의 식단을 기록해주세요',
-      time: '어제',
-      isNew: false,
-    ),
-  ];
+  List<_ProfileNotice> _notifications = [];
 
   bool get _isPetFormValid {
     return _petType.isNotEmpty &&
@@ -112,21 +86,54 @@ class _ProfilePageState extends State<ProfilePage> {
       final results = await Future.wait([
         ApiClient.get('/api/users/me'),
         ApiClient.get('/api/pets'),
+        ApiClient.get('/api/users/me/stats').catchError((_) => <String, dynamic>{}),
+        ApiClient.get('/api/notifications').catchError((_) => <dynamic>[]),
       ]);
 
       if (!mounted) return;
+
+      final stats = results[2] as Map<String, dynamic>? ?? {};
+      final rawNotifs = results[3] as List<dynamic>? ?? [];
 
       setState(() {
         _user = UserModel.fromJson(results[0] as Map<String, dynamic>);
         _pets = (results[1] as List<dynamic>)
             .map((e) => PetModel.fromJson(e as Map<String, dynamic>))
             .toList();
+        _savedRecipes = (stats['savedRecipes'] as num?)?.toInt() ?? 0;
+        _completedCooking = (stats['completedCooking'] as num?)?.toInt() ?? 0;
+        _writtenReviews = (stats['writtenReviews'] as num?)?.toInt() ?? 0;
+        _notifications = rawNotifs.map((e) {
+          final m = e as Map<String, dynamic>;
+          final createdAt = m['createdAt'] as String?;
+          final timeStr = createdAt != null ? _formatNotifTime(createdAt) : '';
+          return _ProfileNotice(
+            type: m['notificationType'] as String? ?? 'notice',
+            title: m['notificationTitle'] as String? ?? m['title'] as String? ?? '알림',
+            message: m['notificationContent'] as String? ?? m['message'] as String? ?? '',
+            time: timeStr,
+            isNew: !(m['isRead'] as bool? ?? false),
+          );
+        }).toList();
         _loading = false;
       });
     } catch (_) {
       if (mounted) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  String _formatNotifTime(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+      if (diff.inHours < 24) return '${diff.inHours}시간 전';
+      return '${diff.inDays}일 전';
+    } catch (_) {
+      return '';
     }
   }
 
@@ -642,7 +649,18 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const Divider(height: 1),
                   Expanded(
-                    child: ListView.separated(
+                    child: _notifications.isEmpty
+                        ? const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.notifications_none, size: 48, color: ChowColors.gray300),
+                                SizedBox(height: 12),
+                                Text('알림이 없어요', style: TextStyle(color: ChowColors.gray500, fontSize: 15)),
+                              ],
+                            ),
+                          )
+                        : ListView.separated(
                       itemCount: _notifications.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (context, index) {
@@ -741,6 +759,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // ignore: unused_element
   IconData _noticeIcon(String type) {
     switch (type) {
       case 'recipe':
@@ -860,28 +879,28 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        const Row(
+                        Row(
                           children: [
                             Expanded(
                               child: _StatTile(
-                                icon: Icons.favorite_border,
-                                value: '-',
+                                icon: Icons.bookmark_border,
+                                value: '$_savedRecipes',
                                 label: '저장한 레시피',
                               ),
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: _StatTile(
-                                icon: Icons.emoji_events_outlined,
-                                value: '-',
+                                icon: Icons.check_circle_outline,
+                                value: '$_completedCooking',
                                 label: '조리 완료',
                               ),
                             ),
-                            SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: _StatTile(
-                                icon: Icons.menu_book_outlined,
-                                value: '-',
+                                icon: Icons.rate_review_outlined,
+                                value: '$_writtenReviews',
                                 label: '작성한 리뷰',
                               ),
                             ),
@@ -1216,6 +1235,73 @@ class _PetRowState extends State<_PetRow> {
     }
   }
 
+  void _openPetDetail(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: ChowColors.gray300, borderRadius: BorderRadius.circular(99))),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () { Navigator.of(ctx).pop(); _generateCharacter(); },
+                child: Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: SizedBox(
+                        width: 120, height: 120,
+                        child: ChowNetworkImage(url: pet.petProfileImg ?? _placeholder),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(color: ChowColors.orange500, shape: BoxShape.circle),
+                      child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 18),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text('사진을 탭하면 변경할 수 있어요', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
+              const SizedBox(height: 16),
+              Text(pet.petName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ChowColors.gray900)),
+              const SizedBox(height: 4),
+              Text(_breedAgeLine, style: const TextStyle(fontSize: 14, color: ChowColors.gray500)),
+              if (_weightLabel != null) ...[
+                const SizedBox(height: 2),
+                Text(_weightLabel!, style: const TextStyle(fontSize: 13, color: ChowColors.gray600)),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () { Navigator.of(ctx).pop(); _generateCharacter(); },
+                  icon: const Icon(Icons.auto_fix_high),
+                  label: const Text('사진 선택 후 AI 캐릭터 자동 변환'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ChowColors.orange500,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final weightLabel = _weightLabel;
@@ -1230,7 +1316,7 @@ class _PetRowState extends State<_PetRow> {
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () {},
+          onTap: () => _openPetDetail(context),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -1259,7 +1345,7 @@ class _PetRowState extends State<_PetRow> {
                         shadowColor: Colors.black26,
                         child: InkWell(
                           customBorder: const CircleBorder(),
-                          onTap: () {},
+                          onTap: () => _openPetDetail(context),
                           child: const SizedBox(
                             width: 28,
                             height: 28,
@@ -1326,23 +1412,6 @@ class _PetRowState extends State<_PetRow> {
         const Padding(
           padding: EdgeInsets.only(top: 8),
           child: LinearProgressIndicator(color: ChowColors.orange500),
-        )
-      else
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: OutlinedButton.icon(
-            onPressed: _generateCharacter,
-            icon: const Icon(Icons.auto_fix_high, size: 16),
-            label: const Text('AI 캐릭터 변환'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: ChowColors.orange500,
-              side: const BorderSide(color: ChowColors.orange500),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              minimumSize: const Size(0, 36),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
         ),
     ],
     );

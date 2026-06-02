@@ -86,12 +86,20 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
   }
 
   Future<void> _claimDailyLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final lastShown = prefs.getString('daily_login_shown');
+
     try {
       final res = await ApiClient.post('/api/coins/daily-login', {}) as Map<String, dynamic>;
       if (!mounted) return;
       final newBalance = (res['balance'] as num?)?.toInt() ?? _coins;
-      if (newBalance > _coins) {
-        setState(() => _coins = newBalance);
+      setState(() => _coins = newBalance);
+
+      // 오늘 이미 스낵바를 띄운 경우 다시 띄우지 않음
+      if (lastShown != todayStr) {
+        await prefs.setString('daily_login_shown', todayStr);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('🪙 출석 보상 +5 코인!'), duration: Duration(seconds: 2)),
         );

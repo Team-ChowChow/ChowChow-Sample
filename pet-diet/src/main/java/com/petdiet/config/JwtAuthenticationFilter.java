@@ -20,11 +20,13 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPoint;
 import java.security.spec.ECPublicKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -65,14 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = extractToken(request);
         if (token != null) {
             try {
-                Claims claims = parseToken(token);
-                UUID authUuid = UUID.fromString(claims.getSubject());
-                String email = claims.get("email", String.class);
-                String name = extractName(claims);
-                String avatarUrl = extractAvatarUrl(claims);
-
-                String provider = extractProvider(claims);
-                SupabasePrincipal principal = new SupabasePrincipal(authUuid, email, name, avatarUrl, provider);
+                SupabasePrincipal principal = parseToken(token);
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         principal, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))
                 );
@@ -84,24 +79,98 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private Claims parseToken(String token) {
-        // ES256: try each key from JWKS (token may be signed by any of them)
+    private SupabasePrincipal parseToken(String token) throws Exception {
+        String[] parts = token.split("\\.");
+        if (parts.length != 3) throw new IllegalArgumentException("Invalid JWT format");
+
+        String headerJson = new String(base64UrlDecode(parts[0]), StandardCharsets.UTF_8);
+        JsonNode header = objectMapper.readTree(headerJson);
+        String alg = textOrNull(header.path("alg"));
+        log.debug("JWT alg: {}", alg);
+
+        if ("ES256".equals(alg)) {
+            return parseEs256Token(parts);
+        } else {
+            return parseHs256Token(token);
+        }
+    }
+
+    private SupabasePrincipal parseEs256Token(String[] parts) throws Exception {
+        byte[] signingInput = (parts[0] + "." + parts[1]).getBytes(StandardCharsets.UTF_8);
+        byte[] rawSig = base64UrlDecode(parts[2]);
+        byte[] derSig = rawSignatureToDer(rawSig);
+
+        boolean verified = false;
         for (PublicKey pk : getEcPublicKeys()) {
             try {
-                return Jwts.parser()
-                        .verifyWith(pk)
-                        .build()
-                        .parseSignedClaims(token)
-                        .getPayload();
-            } catch (Exception ignored) {
+                Signature sig = Signature.getInstance("SHA256withECDSA");
+                sig.initVerify(pk);
+                sig.update(signingInput);
+                if (sig.verify(derSig)) {
+                    verified = true;
+                    break;
+                }
+            } catch (Exception e) {
+                log.debug("EC key verification attempt failed: {}", e.getMessage());
             }
         }
-        // HS256 fallback
-        return Jwts.parser()
+        if (!verified) throw new SecurityException("ES256 signature verification failed");
+
+        String payloadJson = new String(base64UrlDecode(parts[1]), StandardCharsets.UTF_8);
+        JsonNode payload = objectMapper.readTree(payloadJson);
+        return extractPrincipal(payload);
+    }
+
+    private SupabasePrincipal parseHs256Token(String token) {
+        Claims claims = Jwts.parser()
                 .verifyWith(Keys.hmacShaKeyFor(secretKeyBytes))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+
+        UUID authUuid = UUID.fromString(claims.getSubject());
+        String email = claims.get("email", String.class);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> userMeta = (Map<String, Object>) claims.get("user_metadata");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> appMeta = (Map<String, Object>) claims.get("app_metadata");
+
+        String name = "";
+        String avatarUrl = null;
+        if (userMeta != null) {
+            name = (String) userMeta.getOrDefault("full_name", userMeta.getOrDefault("name", ""));
+            avatarUrl = (String) userMeta.get("avatar_url");
+        }
+        String provider = appMeta != null ? appMeta.getOrDefault("provider", "email").toString() : "email";
+
+        return new SupabasePrincipal(authUuid, email, name, avatarUrl, provider);
+    }
+
+    private SupabasePrincipal extractPrincipal(JsonNode payload) {
+        String sub = textOrNull(payload.path("sub"));
+        if (sub == null) throw new IllegalArgumentException("JWT에 sub claim이 없습니다");
+        UUID authUuid = UUID.fromString(sub);
+        String email = textOrNull(payload.path("email"));
+
+        JsonNode userMeta = payload.path("user_metadata");
+        String name = textOrNull(userMeta.path("full_name"));
+        if (name == null || name.isEmpty()) {
+            name = textOrNull(userMeta.path("name"));
+        }
+        if (name == null) name = "";
+        String avatarUrl = textOrNull(userMeta.path("avatar_url"));
+
+        JsonNode appMeta = payload.path("app_metadata");
+        String provider = textOrNull(appMeta.path("provider"));
+        if (provider == null) provider = "email";
+
+        return new SupabasePrincipal(authUuid, email, name, avatarUrl, provider);
+    }
+
+    private static String textOrNull(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) return null;
+        return node.isString() ? node.stringValue() : null;
     }
 
     private List<PublicKey> getEcPublicKeys() {
@@ -139,8 +208,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             for (JsonNode key : keysNode) {
                 if (!"EC".equals(key.path("kty").stringValue())) continue;
                 try {
-                    byte[] xBytes = Base64.getUrlDecoder().decode(key.path("x").stringValue());
-                    byte[] yBytes = Base64.getUrlDecoder().decode(key.path("y").stringValue());
+                    byte[] xBytes = base64UrlDecode(key.path("x").stringValue());
+                    byte[] yBytes = base64UrlDecode(key.path("y").stringValue());
                     ECPoint point = new ECPoint(new BigInteger(1, xBytes), new BigInteger(1, yBytes));
                     result.add(kf.generatePublic(new ECPublicKeySpec(point, ecSpec)));
                 } catch (Exception e) {
@@ -164,27 +233,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractName(Claims claims) {
-        Map<String, Object> meta = (Map<String, Object>) claims.get("user_metadata");
-        if (meta == null) return "";
-        String name = (String) meta.get("full_name");
-        if (name == null) name = (String) meta.get("name");
-        return name != null ? name : "";
+    // JWS 서명(R||S 64바이트)을 Java Signature가 요구하는 DER 형식으로 변환
+    private static byte[] rawSignatureToDer(byte[] rawSig) {
+        int half = rawSig.length / 2;
+        byte[] r = stripLeadingZeros(Arrays.copyOfRange(rawSig, 0, half));
+        byte[] s = stripLeadingZeros(Arrays.copyOfRange(rawSig, half, rawSig.length));
+
+        byte[] rDer = toDerInteger(r);
+        byte[] sDer = toDerInteger(s);
+
+        int seqLen = rDer.length + sDer.length;
+        byte[] der = new byte[2 + seqLen];
+        der[0] = 0x30;
+        der[1] = (byte) seqLen;
+        System.arraycopy(rDer, 0, der, 2, rDer.length);
+        System.arraycopy(sDer, 0, der, 2 + rDer.length, sDer.length);
+        return der;
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractAvatarUrl(Claims claims) {
-        Map<String, Object> meta = (Map<String, Object>) claims.get("user_metadata");
-        if (meta == null) return null;
-        return (String) meta.get("avatar_url");
+    private static byte[] stripLeadingZeros(byte[] value) {
+        int start = 0;
+        while (start < value.length - 1 && value[start] == 0) start++;
+        return start == 0 ? value : Arrays.copyOfRange(value, start, value.length);
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractProvider(Claims claims) {
-        Map<String, Object> appMeta = (Map<String, Object>) claims.get("app_metadata");
-        if (appMeta == null) return "email";
-        Object provider = appMeta.get("provider");
-        return provider != null ? provider.toString() : "email";
+    private static byte[] toDerInteger(byte[] value) {
+        // 최상위 비트가 1이면 0x00을 앞에 붙여 양수로 만듦
+        if ((value[0] & 0x80) != 0) {
+            byte[] padded = new byte[value.length + 1];
+            System.arraycopy(value, 0, padded, 1, value.length);
+            value = padded;
+        }
+        byte[] result = new byte[2 + value.length];
+        result[0] = 0x02;
+        result[1] = (byte) value.length;
+        System.arraycopy(value, 0, result, 2, value.length);
+        return result;
+    }
+
+    // Base64URL 디코딩 (패딩 없는 경우도 처리)
+    private static byte[] base64UrlDecode(String s) {
+        if (s == null || s.isEmpty()) return new byte[0];
+        switch (s.length() % 4) {
+            case 2: s += "=="; break;
+            case 3: s += "="; break;
+            default: break;
+        }
+        return Base64.getUrlDecoder().decode(s);
     }
 }
