@@ -154,7 +154,7 @@ public class DietRecommendService {
         sb.append("\n## 응답 형식 (JSON만 반환, 마크다운 코드블록 없이)\n");
         sb.append("""
                 {
-                  "title": "식단 제목",
+                  "title": "레시피 이름 (반드시 '주재료 + 요리방식' 형태로 작성. 예: 닭가슴살 채소찜, 연어 현미죽, 소고기 호박볶음. 추상적 표현 금지)",
                   "description": "식단 설명 (1~2줄)",
                   "ingredients": [
                     {"name": "재료명", "amount": "용량"}

@@ -289,3 +289,21 @@ class GrowthLogModel {
             : null,
       );
 }
+
+class AllergyModel {
+  final int allergyId;
+  final String allergyName;
+  final String allergyDescription;
+
+  AllergyModel({
+    required this.allergyId,
+    required this.allergyName,
+    required this.allergyDescription,
+  });
+
+  factory AllergyModel.fromJson(Map<String, dynamic> j) => AllergyModel(
+        allergyId: j['allergyId'] as int,
+        allergyName: j['allergyName'] as String,
+        allergyDescription: j['allergyDescription'] as String? ?? '',
+      );
+}

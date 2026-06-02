@@ -16,9 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RestController
@@ -55,49 +53,19 @@ public class DietRecommendController {
                 principal.authUuid(), request.getPetId(), request.getUserNotes());
 
         String imageUrl = null;
-        List<String> stepImages = new ArrayList<>();
+        List<String> stepImages = List.of();
 
         if (generateImage) {
-            List<String> steps = ctx.response().getSteps() != null ? ctx.response().getSteps() : List.of();
             String title = ctx.response().getTitle();
-
-            // 레시피 대표 이미지 + 단계별 이미지를 병렬 생성
             List<String> ingredientNames = ctx.response().getIngredients() != null
                     ? ctx.response().getIngredients().stream().map(i -> i.getName()).toList()
                     : List.of();
 
-            CompletableFuture<String> recipeFuture = CompletableFuture.supplyAsync(() -> {
-                try {
-                    return imageGenerateService.generateRecipeImage(title, ingredientNames, ctx.response().getDescription()).getImageUrl();
-                } catch (Exception e) {
-                    log.warn("대표 이미지 생성 실패: {}", e.getMessage());
-                    return null;
-                }
-            });
-
-            List<CompletableFuture<String>> stepFutures = new ArrayList<>();
-            for (int i = 0; i < steps.size(); i++) {
-                final String step = steps.get(i);
-                final int stepNum = i + 1;
-                stepFutures.add(CompletableFuture.supplyAsync(() -> {
-                    try {
-                        return imageGenerateService.generateStepImage(step, title, stepNum).getImageUrl();
-                    } catch (Exception e) {
-                        log.warn("단계 {} 이미지 생성 실패: {}", stepNum, e.getMessage());
-                        return null;
-                    }
-                }));
-            }
-
-            // 모든 이미지 생성 완료 대기
-            CompletableFuture.allOf(
-                    CompletableFuture.allOf(stepFutures.toArray(new CompletableFuture[0])),
-                    recipeFuture
-            ).join();
-
-            try { imageUrl = recipeFuture.get(); } catch (Exception ignored) {}
-            for (CompletableFuture<String> f : stepFutures) {
-                try { stepImages.add(f.get()); } catch (Exception ignored) { stepImages.add(null); }
+            // 대표 이미지만 생성 (step 이미지는 시간 초과 방지를 위해 생략)
+            try {
+                imageUrl = imageGenerateService.generateRecipeImage(title, ingredientNames, ctx.response().getDescription()).getImageUrl();
+            } catch (Exception e) {
+                log.warn("대표 이미지 생성 실패: {}", e.getMessage());
             }
         }
 

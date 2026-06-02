@@ -75,25 +75,35 @@ public class RecipeService {
         double avgRating = reviews.stream().mapToDouble(RecipeReview::getRating).average().orElse(0.0);
         long reviewCount = reviews.size();
 
-        // 사용자 좋아요 여부 확인
+        // 사용자 좋아요/북마크 여부 확인
         boolean likedByMe = false;
+        boolean bookmarkedByMe = false;
         if (authUuid != null) {
             try {
                 Integer userId = jdbc.queryForObject(
                     "SELECT \"userId\" FROM \"Users\" WHERE \"authUuid\" = ?", Integer.class, authUuid);
                 if (userId != null) {
-                    Integer cnt = jdbc.queryForObject(
+                    Integer likeCnt = jdbc.queryForObject(
                         "SELECT COUNT(*) FROM \"RecipeLikes\" WHERE \"recipeId\" = ? AND \"userId\" = ?",
                         Integer.class, recipeId, userId);
-                    likedByMe = cnt != null && cnt > 0;
+                    likedByMe = likeCnt != null && likeCnt > 0;
+
+                    Integer bookmarkCnt = jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM \"RecipeBookmarks\" WHERE \"recipeId\" = ? AND \"userId\" = ?",
+                        Integer.class, recipeId, userId);
+                    bookmarkedByMe = bookmarkCnt != null && bookmarkCnt > 0;
                 }
             } catch (Exception ignored) {}
         }
+
+        long saveCount = bookmarkRepository.countByRecipe(recipe);
 
         RecipeResponse base = RecipeResponse.from(recipe).toBuilder()
                 .averageRating(Math.round(avgRating * 10.0) / 10.0)
                 .reviewCount(reviewCount)
                 .likedByMe(likedByMe)
+                .bookmarkedByMe(bookmarkedByMe)
+                .saveCount(saveCount)
                 .build();
         var nutrition = nutritionRepository.findByRecipeRecipeId(recipeId);
         if (nutrition.isEmpty()) return base;
@@ -187,13 +197,40 @@ public class RecipeService {
     }
 
     @Transactional
-    public void toggleBookmark(UUID authUuid, Integer recipeId) {
+    public Map<String, Object> toggleBookmark(UUID authUuid, Integer recipeId) {
         User user = findUser(authUuid);
         Recipe recipe = findActiveRecipe(recipeId);
-        bookmarkRepository.findByRecipeAndUser(recipe, user).ifPresentOrElse(
-                bookmarkRepository::delete,
-                () -> bookmarkRepository.save(RecipeBookmark.builder().recipe(recipe).user(user).build())
-        );
+        boolean nowBookmarked;
+        var existing = bookmarkRepository.findByRecipeAndUser(recipe, user);
+        if (existing.isPresent()) {
+            bookmarkRepository.delete(existing.get());
+            nowBookmarked = false;
+        } else {
+            bookmarkRepository.save(RecipeBookmark.builder().recipe(recipe).user(user).build());
+            nowBookmarked = true;
+        }
+        long saveCount = bookmarkRepository.countByRecipe(recipe);
+        return Map.of("recipeId", recipeId, "bookmarked", nowBookmarked, "saveCount", saveCount);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeResponse> getMyBookmarks(UUID authUuid) {
+        User user = findUser(authUuid);
+        return bookmarkRepository.findByUserOrderByCreatedAtDesc(user).stream()
+                .map(bm -> {
+                    Recipe recipe = bm.getRecipe();
+                    var reviews = reviewRepository.findAllByRecipe(recipe);
+                    double avg = reviews.stream().mapToDouble(RecipeReview::getRating).average().orElse(0.0);
+                    long reviewCount = reviews.size();
+                    long saveCount = bookmarkRepository.countByRecipe(recipe);
+                    return RecipeResponse.from(recipe).toBuilder()
+                            .averageRating(Math.round(avg * 10.0) / 10.0)
+                            .reviewCount(reviewCount)
+                            .saveCount(saveCount)
+                            .bookmarkedByMe(true)
+                            .build();
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

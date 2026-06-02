@@ -38,6 +38,8 @@ public class RecipeResponse {
     private Long reviewCount;
     private String authorNickname;
     private Boolean likedByMe;
+    private Boolean bookmarkedByMe;
+    private Long saveCount;
 
     public static RecipeResponse from(Recipe recipe) {
         return RecipeResponse.builder()

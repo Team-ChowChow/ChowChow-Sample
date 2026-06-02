@@ -1,6 +1,7 @@
 package com.petdiet.recipe.controller;
 
 import com.petdiet.config.SupabasePrincipal;
+import com.petdiet.master.repository.AllergyRepository;
 import com.petdiet.recipe.dto.RecipeRequest;
 import com.petdiet.recipe.dto.RecipeResponse;
 import com.petdiet.recipe.dto.ReviewRequest;
@@ -24,6 +25,7 @@ public class RecipeV1Controller {
 
     private final RecipeService recipeService;
     private final JdbcTemplate jdbc;
+    private final AllergyRepository allergyRepository;
 
     @PostMapping("/recipes/convert")
     public ResponseEntity<?> convertRecipe() {
@@ -41,8 +43,7 @@ public class RecipeV1Controller {
     public ResponseEntity<?> bookmarkRecipe(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer recipeId) {
-        recipeService.toggleBookmark(principal.authUuid(), recipeId);
-        return ResponseEntity.ok(Map.of("recipeId", recipeId, "isBookmarked", true));
+        return ResponseEntity.ok(recipeService.toggleBookmark(principal.authUuid(), recipeId));
     }
 
     @GetMapping("/recipes")
@@ -143,8 +144,9 @@ public class RecipeV1Controller {
     }
 
     @GetMapping("/recipes/me/bookmarks")
-    public ResponseEntity<?> getMyBookmarks() {
-        return ResponseEntity.ok(Map.of("bookmarks", List.of(), "totalCount", 0));
+    public ResponseEntity<?> getMyBookmarks(@AuthenticationPrincipal SupabasePrincipal principal) {
+        var bookmarks = recipeService.getMyBookmarks(principal.authUuid());
+        return ResponseEntity.ok(Map.of("bookmarks", bookmarks, "totalCount", bookmarks.size()));
     }
 
     @GetMapping("/recipes/{recipeId}/reviews")
@@ -153,8 +155,16 @@ public class RecipeV1Controller {
     }
 
     @GetMapping("/allergies")
-    public ResponseEntity<List<Object>> getAllergies() {
-        return ResponseEntity.ok(List.of());
+    public ResponseEntity<List<Map<String, Object>>> getAllergies() {
+        return ResponseEntity.ok(
+            allergyRepository.findAll().stream()
+                .map(a -> Map.<String, Object>of(
+                    "allergyId", a.getAllergyId(),
+                    "allergyName", a.getAllergyName(),
+                    "allergyDescription", a.getAllergyDescription() != null ? a.getAllergyDescription() : ""
+                ))
+                .toList()
+        );
     }
 
     @GetMapping("/diseases")

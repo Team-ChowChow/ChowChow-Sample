@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/sample_data.dart';
 import '../services/api_client.dart';
-import '../services/community_service.dart';
+import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
 enum MyPostsMode { myPosts, savedPosts }
@@ -19,6 +19,7 @@ class MyPostsPage extends StatefulWidget {
 
 class _MyPostsPageState extends State<MyPostsPage> {
   List<CommunityPost> _posts = [];
+  List<RecipeModel> _savedRecipes = [];
   bool _loading = true;
   String? _error;
 
@@ -51,7 +52,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
     final items = (res is Map && res['content'] != null)
         ? res['content'] as List<dynamic>
         : res is List
-            ? res as List<dynamic>
+            ? res
             : <dynamic>[];
     if (mounted) {
       setState(() {
@@ -63,13 +64,10 @@ class _MyPostsPageState extends State<MyPostsPage> {
   }
 
   Future<void> _loadSavedPosts() async {
+    // 커뮤니티 저장 글 (로컬)
     final prefs = await SharedPreferences.getInstance();
     final ids = prefs.getStringList('bookmarkedPostIds') ?? [];
-    if (ids.isEmpty) {
-      if (mounted) setState(() => _posts = []);
-      return;
-    }
-    final results = await Future.wait(
+    final postResults = await Future.wait(
       ids.map((id) async {
         try {
           final res = await ApiClient.get('/api/community/posts/$id');
@@ -79,9 +77,19 @@ class _MyPostsPageState extends State<MyPostsPage> {
         }
       }),
     );
+
+    // 레시피 북마크 (서버)
+    List<RecipeModel> recipes = [];
+    try {
+      final res = await ApiClient.get('/api/v1/recipes/me/bookmarks') as Map<String, dynamic>;
+      final list = res['bookmarks'] as List<dynamic>? ?? [];
+      recipes = list.map((e) => RecipeModel.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
-        _posts = results.whereType<CommunityPost>().toList();
+        _posts = postResults.whereType<CommunityPost>().toList();
+        _savedRecipes = recipes;
       });
     }
   }
@@ -132,7 +140,9 @@ class _MyPostsPageState extends State<MyPostsPage> {
                     ],
                   ),
                 )
-              : _posts.isEmpty
+              : (widget.mode == MyPostsMode.savedPosts
+                      ? (_posts.isEmpty && _savedRecipes.isEmpty)
+                      : _posts.isEmpty)
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -155,21 +165,45 @@ class _MyPostsPageState extends State<MyPostsPage> {
                   : RefreshIndicator(
                       onRefresh: _load,
                       color: ChowColors.orange500,
-                      child: ListView.separated(
+                      child: ListView(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        itemCount: _posts.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final post = _posts[index];
-                          return _PostListItem(
-                            post: post,
-                            onTap: () {
-                              context
-                                  .push('/community/posts/${post.id}', extra: post)
-                                  .then((_) => _load());
-                            },
-                          );
-                        },
+                        children: [
+                          // 저장한 레시피 섹션
+                          if (widget.mode == MyPostsMode.savedPosts && _savedRecipes.isNotEmpty) ...[
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 8),
+                              child: Text('저장한 레시피',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.gray700)),
+                            ),
+                            ..._savedRecipes.map((recipe) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _RecipeListItem(
+                                recipe: recipe,
+                                onTap: () => context.push('/recipes/${recipe.recipeId}').then((_) => _load()),
+                              ),
+                            )),
+                            if (_posts.isNotEmpty) ...[
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Text('저장한 커뮤니티 글',
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.gray700)),
+                              ),
+                            ],
+                          ],
+                          // 커뮤니티 글 목록
+                          ..._posts.asMap().entries.map((entry) {
+                            final post = entry.value;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _PostListItem(
+                                post: post,
+                                onTap: () => context
+                                    .push('/community/posts/${post.id}', extra: post)
+                                    .then((_) => _load()),
+                              ),
+                            );
+                          }),
+                        ],
                       ),
                     ),
     );
@@ -255,7 +289,7 @@ class _PostListItem extends StatelessWidget {
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
                 ),
               ],
@@ -278,6 +312,87 @@ class _PostListItem extends StatelessWidget {
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecipeListItem extends StatelessWidget {
+  const _RecipeListItem({required this.recipe, required this.onTap});
+
+  final RecipeModel recipe;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              if (recipe.imageUrl != null && recipe.imageUrl!.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    recipe.imageUrl!,
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox(width: 72, height: 72),
+                  ),
+                )
+              else
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: ChowColors.orange50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.restaurant, color: ChowColors.orange400, size: 32),
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (recipe.menuName != null)
+                      Text(
+                        recipe.menuName!,
+                        style: const TextStyle(fontSize: 11, color: ChowColors.orange500, fontWeight: FontWeight.w600),
+                      ),
+                    const SizedBox(height: 2),
+                    Text(
+                      recipe.recipeTitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.bookmark_rounded, size: 13, color: ChowColors.orange500),
+                        const SizedBox(width: 3),
+                        const Text('저장됨', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
+                        const SizedBox(width: 10),
+                        const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFBBF24)),
+                        const SizedBox(width: 3),
+                        Text(recipe.averageRating.toStringAsFixed(1),
+                            style: const TextStyle(fontSize: 12, color: ChowColors.gray500)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: ChowColors.gray400),
             ],
           ),
         ),

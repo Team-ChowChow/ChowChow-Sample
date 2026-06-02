@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
+import '../services/character_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
@@ -25,53 +26,20 @@ class _ProfilePageState extends State<ProfilePage> {
   int _writtenReviews = 0;
 
   String _petType = '';
-  String _petBreed = '';
+  int? _breedId;
+  String _breedDisplayName = '';
+  List<BreedModel> _availableBreeds = [];
   String _petName = '';
   String _petAge = '';
   String _petWeight = '';
-  String _petAllergies = '';
-
-  final List<String> _dogBreeds = [
-    '골든 리트리버',
-    '시바견',
-    '푸들',
-    '말티즈',
-    '포메라니안',
-    '비글',
-    '웰시코기',
-    '불독',
-    '치와와',
-    '요크셔테리어',
-    '슈나우저',
-    '보더콜리',
-    '닥스훈트',
-    '시츄',
-    '진돗개',
-  ];
-
-  final List<String> _catBreeds = [
-    '코리안 숏헤어',
-    '페르시안',
-    '러시안 블루',
-    '스코티시 폴드',
-    '아메리칸 숏헤어',
-    '브리티시 숏헤어',
-    '메인쿤',
-    '뱅갈',
-    '샴',
-    '터키시 앙고라',
-    '노르웨이 숲',
-    '렉돌',
-    '아비시니안',
-  ];
+  List<AllergyModel> _allAllergies = [];
+  List<int> _selectedAllergyIds = [];
 
   List<_ProfileNotice> _notifications = [];
 
   bool get _isPetFormValid {
     return _petType.isNotEmpty &&
-        _petBreed.isNotEmpty &&
         _petName.trim().isNotEmpty &&
-        _petAge.trim().isNotEmpty &&
         _petWeight.trim().isNotEmpty;
   }
 
@@ -88,17 +56,22 @@ class _ProfilePageState extends State<ProfilePage> {
         ApiClient.get('/api/pets'),
         ApiClient.get('/api/users/me/stats').catchError((_) => <String, dynamic>{}),
         ApiClient.get('/api/notifications').catchError((_) => <dynamic>[]),
+        ApiClient.get('/api/v1/allergies').catchError((_) => <dynamic>[]),
       ]);
 
       if (!mounted) return;
 
       final stats = results[2] as Map<String, dynamic>? ?? {};
       final rawNotifs = results[3] as List<dynamic>? ?? [];
+      final rawAllergies = results[4] as List<dynamic>? ?? [];
 
       setState(() {
         _user = UserModel.fromJson(results[0] as Map<String, dynamic>);
         _pets = (results[1] as List<dynamic>)
             .map((e) => PetModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _allAllergies = rawAllergies
+            .map((e) => AllergyModel.fromJson(e as Map<String, dynamic>))
             .toList();
         _savedRecipes = (stats['savedRecipes'] as num?)?.toInt() ?? 0;
         _completedCooking = (stats['completedCooking'] as num?)?.toInt() ?? 0;
@@ -151,11 +124,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _resetPetForm() {
     _petType = '';
-    _petBreed = '';
+    _breedId = null;
+    _breedDisplayName = '';
+    _availableBreeds = [];
     _petName = '';
     _petAge = '';
     _petWeight = '';
-    _petAllergies = '';
+    _selectedAllergyIds = [];
   }
 
   double? _parseWeight(String value) {
@@ -168,22 +143,26 @@ class _ProfilePageState extends State<ProfilePage> {
     return double.tryParse(cleaned);
   }
 
+  // "3살", "2살" 같은 문자열을 ISO 날짜 문자열로 변환
+  String? _ageToBirthdate(String age) {
+    final match = RegExp(r'(\d+)').firstMatch(age);
+    if (match == null) return null;
+    final years = int.tryParse(match.group(1)!);
+    if (years == null) return null;
+    final birth = DateTime(DateTime.now().year - years, DateTime.now().month, DateTime.now().day);
+    return '${birth.year}-${birth.month.toString().padLeft(2, '0')}-${birth.day.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _submitPetForm() async {
     if (!_isPetFormValid) return;
 
-    final body = {
+    final body = <String, dynamic>{
       'petName': _petName.trim(),
       'petType': _petType == 'dog' ? 'DOG' : 'CAT',
-      'breedName': _petBreed,
-      'petAge': _petAge.trim(),
-      'petWeight': _parseWeight(_petWeight),
-      'allergies': _petAllergies.trim().isEmpty
-          ? <String>[]
-          : _petAllergies
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList(),
+      if (_breedId != null) 'breedId': _breedId,
+      if (_parseWeight(_petWeight) != null) 'petWeight': _parseWeight(_petWeight),
+      if (_petAge.trim().isNotEmpty) 'petBirthdate': _ageToBirthdate(_petAge.trim()),
+      if (_selectedAllergyIds.isNotEmpty) 'allergyIds': _selectedAllergyIds,
     };
 
     try {
@@ -300,15 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               },
                             ),
                             const SizedBox(height: 18),
-                            _buildPetInputField(
-                              label: '알러지',
-                              required: false,
-                              hintText: '예: 닭고기, 밀',
-                              helperText: '여러 알러지가 있다면 쉼표(,)로 구분해주세요',
-                              onChanged: (value) {
-                                updateForm(() => _petAllergies = value);
-                              },
-                            ),
+                            _buildAllergySelector(updateForm),
                             const SizedBox(height: 28),
                             SizedBox(
                               width: double.infinity,
@@ -367,11 +338,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 emoji: '🐶',
                 label: '강아지',
                 selected: _petType == 'dog',
-                onTap: () {
+                onTap: () async {
                   updateForm(() {
                     _petType = 'dog';
-                    _petBreed = '';
+                    _breedId = null;
+                    _breedDisplayName = '';
+                    _availableBreeds = [];
                   });
+                  final breeds = await CharacterService.fetchBreeds('DOG');
+                  updateForm(() => _availableBreeds = breeds);
                 },
               ),
             ),
@@ -381,11 +356,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 emoji: '🐱',
                 label: '고양이',
                 selected: _petType == 'cat',
-                onTap: () {
+                onTap: () async {
                   updateForm(() {
                     _petType = 'cat';
-                    _petBreed = '';
+                    _breedId = null;
+                    _breedDisplayName = '';
+                    _availableBreeds = [];
                   });
+                  final breeds = await CharacterService.fetchBreeds('CAT');
+                  updateForm(() => _availableBreeds = breeds);
                 },
               ),
             ),
@@ -443,80 +422,128 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildBreedSelector(void Function(VoidCallback) updateForm) {
-    final breeds = _petType == 'dog' ? _dogBreeds : _catBreeds;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildPetLabel('품종', required: true),
+        _buildPetLabel('품종', required: false),
         const SizedBox(height: 8),
         Material(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () {
-              showModalBottomSheet<void>(
-                context: context,
-                backgroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                ),
-                builder: (context) {
-                  return SafeArea(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      itemCount: breeds.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final breed = breeds[index];
-
-                        return ListTile(
-                          title: Text(
-                            breed,
-                            style: const TextStyle(fontSize: 15),
+            onTap: _availableBreeds.isEmpty
+                ? null
+                : () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      backgroundColor: Colors.white,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                      builder: (context) {
+                        return SafeArea(
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            itemCount: _availableBreeds.length,
+                            separatorBuilder: (_, _) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final breed = _availableBreeds[index];
+                              return ListTile(
+                                title: Text(breed.displayName, style: const TextStyle(fontSize: 15)),
+                                trailing: _breedId == breed.breedId
+                                    ? const Icon(Icons.check, color: ChowColors.orange500)
+                                    : null,
+                                onTap: () {
+                                  updateForm(() {
+                                    _breedId = breed.breedId;
+                                    _breedDisplayName = breed.displayName;
+                                  });
+                                  Navigator.of(context).pop();
+                                },
+                              );
+                            },
                           ),
-                          trailing: _petBreed == breed
-                              ? const Icon(
-                                  Icons.check,
-                                  color: ChowColors.orange500,
-                                )
-                              : null,
-                          onTap: () {
-                            updateForm(() => _petBreed = breed);
-                            Navigator.of(context).pop();
-                          },
                         );
                       },
-                    ),
-                  );
-                },
-              );
-            },
+                    );
+                  },
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 15,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: ChowColors.gray300),
               ),
-              child: Text(
-                _petBreed.isEmpty ? '품종을 선택하세요' : _petBreed,
-                style: TextStyle(
-                  color: _petBreed.isEmpty
-                      ? ChowColors.gray500
-                      : const Color(0xFF111827),
-                  fontSize: 15,
-                ),
-              ),
+              child: _availableBreeds.isEmpty
+                  ? const Row(
+                      children: [
+                        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: ChowColors.orange500)),
+                        SizedBox(width: 10),
+                        Text('품종 불러오는 중...', style: TextStyle(color: ChowColors.gray500, fontSize: 15)),
+                      ],
+                    )
+                  : Text(
+                      _breedDisplayName.isEmpty ? '품종을 선택하세요 (선택)' : _breedDisplayName,
+                      style: TextStyle(
+                        color: _breedDisplayName.isEmpty ? ChowColors.gray500 : const Color(0xFF111827),
+                        fontSize: 15,
+                      ),
+                    ),
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildAllergySelector(void Function(VoidCallback) updateForm) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPetLabel('알러지', required: false),
+        const SizedBox(height: 8),
+        if (_allAllergies.isEmpty)
+          const Text('알러지 목록을 불러오는 중...', style: TextStyle(color: ChowColors.gray500, fontSize: 13))
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: _allAllergies.map((a) {
+              final selected = _selectedAllergyIds.contains(a.allergyId);
+              return GestureDetector(
+                onTap: () {
+                  updateForm(() {
+                    if (selected) {
+                      _selectedAllergyIds = List.from(_selectedAllergyIds)..remove(a.allergyId);
+                    } else {
+                      _selectedAllergyIds = [..._selectedAllergyIds, a.allergyId];
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: selected ? ChowColors.orange100 : Colors.white,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: selected ? ChowColors.orange500 : ChowColors.gray300,
+                      width: selected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    a.allergyName,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: selected ? ChowColors.orange600 : ChowColors.gray700,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
@@ -662,7 +689,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           )
                         : ListView.separated(
                       itemCount: _notifications.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final item = _notifications[index];
 
