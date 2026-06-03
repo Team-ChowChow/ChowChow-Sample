@@ -6,6 +6,7 @@ import com.petdiet.recipe.dto.RecipeRequest;
 import com.petdiet.recipe.dto.RecipeResponse;
 import com.petdiet.recipe.dto.ReviewRequest;
 import com.petdiet.recipe.dto.ReviewResponse;
+import com.petdiet.recipe.repository.RecipeRepository;
 import com.petdiet.recipe.service.RecipeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class RecipeV1Controller {
 
     private final RecipeService recipeService;
+    private final RecipeRepository recipeRepository;
     private final JdbcTemplate jdbc;
     private final AllergyRepository allergyRepository;
 
@@ -107,7 +109,16 @@ public class RecipeV1Controller {
         sql.append(" GROUP BY r.\"recipeId\" ORDER BY r.\"recipeId\" DESC LIMIT 50");
 
         List<Integer> ids = jdbc.queryForList(sql.toString(), Integer.class, params.toArray());
-        List<RecipeResponse> results = ids.stream().map(id -> recipeService.getRecipe(id)).toList();
+        // N+1 방지: 한 번에 조회 후 ID 순서대로 정렬
+        Map<Integer, RecipeResponse> byId = recipeRepository.findAllById(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        r -> r.getRecipeId(),
+                        r -> RecipeResponse.from(r)
+                ));
+        List<RecipeResponse> results = ids.stream()
+                .filter(byId::containsKey)
+                .map(byId::get)
+                .toList();
 
         return ResponseEntity.ok(Map.of(
                 "keyword", keyword == null ? "" : keyword,
