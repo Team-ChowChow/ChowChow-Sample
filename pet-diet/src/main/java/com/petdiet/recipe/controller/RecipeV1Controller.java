@@ -242,4 +242,28 @@ public class RecipeV1Controller {
         }
         return ResponseEntity.ok(similar);
     }
+
+    @DeleteMapping("/admin/recipes/deduplicate")
+    public ResponseEntity<?> deduplicateRecipes() {
+        // 동일 제목 중 recipeId가 가장 작은 것만 남기고 나머지 삭제
+        List<Integer> toDelete = jdbc.queryForList(
+            "SELECT r.\"recipeId\" FROM \"Recipes\" r " +
+            "WHERE r.\"recipeId\" NOT IN (" +
+            "  SELECT MIN(r2.\"recipeId\") FROM \"Recipes\" r2 GROUP BY r2.\"recipeTitle\"" +
+            ")",
+            Integer.class
+        );
+        if (toDelete.isEmpty()) {
+            return ResponseEntity.ok(Map.of("message", "중복 없음", "deleted", 0));
+        }
+        jdbc.update(
+            "DELETE FROM \"Recipes\" WHERE \"recipeId\" = ANY(?)",
+            (Object) toDelete.stream().mapToInt(Integer::intValue).toArray()
+        );
+        return ResponseEntity.ok(Map.of(
+            "message", "중복 제거 완료",
+            "deleted", toDelete.size(),
+            "deletedIds", toDelete
+        ));
+    }
 }

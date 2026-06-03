@@ -42,6 +42,7 @@ public class SecurityConfig {
                     "/api/auth/check-pre-verified",
                     "/api/auth/refresh",
                     "/api/admin/**",
+                    "/api/v1/admin/**",
                     "/api/recipes/admin/**",
                     "/api/ai/image/recipe",
                     "/api/v1/recipes",

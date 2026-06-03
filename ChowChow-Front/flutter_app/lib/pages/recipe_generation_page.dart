@@ -175,6 +175,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
       final res = await ApiClient.post(
         '/api/ai/diet/recommend-and-save?generateImage=true',
         body,
+        timeout: const Duration(seconds: 90),
       ) as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
