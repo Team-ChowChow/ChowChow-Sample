@@ -4,10 +4,18 @@ import 'api_client.dart';
 class CommunityService {
   const CommunityService._();
 
-  static Future<List<CommunityPost>> getPosts({String? category}) async {
+  static Future<List<CommunityPost>> getPosts({
+    String? category,
+    String? sortBy,
+    String? sortOrder,
+  }) async {
     final query = <String, String>{};
     if (category != null && category != '전체') {
       query['category'] = category;
+    }
+    // 정렬 파라미터 추가 (예: 'likes,desc', 'createdAt,desc')
+    if (sortBy != null) {
+      query['sort'] = '$sortBy,${sortOrder ?? 'desc'}';
     }
 
     final res = await ApiClient.get(
@@ -55,18 +63,26 @@ class CommunityService {
     String? category,
     List<String> tags = const [],
     String? imageUrl,
+    String? title,
+    String? petType,
   }) async {
-    final lines = content.trim().split('\n');
-    final title = lines.first.length > 50
-        ? '${lines.first.substring(0, 50)}...'
-        : lines.first;
+    // 사용자가 제목을 입력했으면 그것을 사용, 아니면 자동 생성
+    final finalTitle = title?.isNotEmpty == true
+        ? title
+        : (content.isEmpty
+            ? ''
+            : (content.split('\n').first.length > 50
+                ? '${content.split('\n').first.substring(0, 50)}...'
+                : content.split('\n').first));
+
     final res = await ApiClient.post('/api/community/posts', {
-      'postTitle': title,
+      'postTitle': finalTitle,
       'postContent': content,
       'postCategory': category ?? '자유',
       'postStatus': 'ACTIVE',
       if (imageUrl != null) 'postImageUrl': imageUrl,
       if (tags.isNotEmpty) 'tagNames': tags,
+      if (petType != null) 'petType': petType,
     });
     return CommunityPost.fromJson(res as Map<String, dynamic>);
   }

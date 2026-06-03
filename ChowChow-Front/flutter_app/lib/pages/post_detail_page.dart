@@ -99,8 +99,16 @@ class _PostDetailPageState extends State<PostDetailPage> {
       final post = await CommunityService.getPost(widget.postId);
       final apiComments = await CommunityService.getComments(widget.postId);
       if (!mounted) return;
+
+      // 백엔드가 tagNames를 응답에 포함하지 않으면,
+      // 이전 _post의 tags를 유지
+      final previousTags = _post?.tags ?? [];
+      final finalPost = (post.tags.isEmpty && previousTags.isNotEmpty)
+          ? post.copyWith(tags: previousTags)
+          : post;
+
       setState(() {
-        _post = post;
+        _post = finalPost;
         _isLiked = post.likedByMe;
         _comments = apiComments.map(_PostComment.fromApiComment).toList();
       });
@@ -350,6 +358,26 @@ class _PostContentSection extends StatelessWidget {
               ],
             ),
           ),
+          // 제목
+          if (post.title != null && post.title!.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                post.title!,
+                style: const TextStyle(
+                  color: ChowColors.gray900,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Divider(color: ChowColors.gray200, height: 1),
+            ),
+          ],
+          // 내용
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: Text(

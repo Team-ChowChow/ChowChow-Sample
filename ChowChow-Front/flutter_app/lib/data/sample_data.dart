@@ -62,6 +62,8 @@ class CommunityPost {
     required this.comments,
     required this.views,
     required this.tags,
+    this.title,
+    this.petType,
     this.likedByMe = false,
   });
   final int id;
@@ -76,9 +78,28 @@ class CommunityPost {
   final int comments;
   final int views;
   final List<String> tags;
+  final String? title; // 게시글 제목
+  final String? petType; // 'DOG' 또는 'CAT'
   final bool likedByMe;
 
   factory CommunityPost.fromJson(Map<String, dynamic> json) {
+    // 태그 파싱 (tagNames 또는 tags 필드 모두 지원)
+    List<String> parsedTags = [];
+    final tagNames = json['tagNames'];
+    final tags = json['tags'];
+
+    if (tagNames is List) {
+      parsedTags = tagNames
+          .whereType<String>()
+          .map((tag) => tag.startsWith('#') ? tag : '#$tag')
+          .toList();
+    } else if (tags is List) {
+      parsedTags = tags
+          .whereType<String>()
+          .map((tag) => tag.startsWith('#') ? tag : '#$tag')
+          .toList();
+    }
+
     return CommunityPost(
       id: json['postId'] as int? ?? json['id'] as int? ?? 0,
       userId: json['userId'] as int?,
@@ -97,15 +118,15 @@ class CommunityPost {
           (json['likes'] as num?)?.toInt() ??
           0,
       comments: (json['commentCount'] as num?)?.toInt() ??
+          (json['commentSize'] as num?)?.toInt() ??
           (json['comments'] as num?)?.toInt() ??
           0,
       views: (json['viewCount'] as num?)?.toInt() ??
           (json['views'] as num?)?.toInt() ??
           0,
-      tags: (json['tagNames'] as List<dynamic>?)
-              ?.map((tag) => '#$tag')
-              .toList() ??
-          const [],
+      tags: parsedTags,
+      title: json['postTitle'] as String?,
+      petType: json['petType'] as String?,
       likedByMe: json['likedByMe'] as bool? ?? false,
     );
   }
@@ -114,6 +135,9 @@ class CommunityPost {
     int? likes,
     int? comments,
     bool? likedByMe,
+    String? title,
+    String? petType,
+    List<String>? tags,
   }) {
     return CommunityPost(
       id: id,
@@ -127,7 +151,9 @@ class CommunityPost {
       likes: likes ?? this.likes,
       comments: comments ?? this.comments,
       views: views,
-      tags: tags,
+      tags: tags ?? this.tags,
+      title: title ?? this.title,
+      petType: petType ?? this.petType,
       likedByMe: likedByMe ?? this.likedByMe,
     );
   }
@@ -319,7 +345,28 @@ final kCommunityPosts = <CommunityPost>[
     views: 98,
     tags: ['#간식', '#보관법', '#잡담'],
   ),
+  CommunityPost(id: 5, category: '자유', author: '펫사랑이', avatar: '🐶', timeAgo: '30분 전', content: '우리 강아지 식단 추천해줄 분 있나요? 요즘 밥을 잘 안 먹어요 ㅠㅠ', image: '', likes: 12, comments: 8, views: 45, tags: ['#식단', '#상담', '#강아지']),
+  CommunityPost(id: 6, category: '후기', author: '냥냥이엄마', avatar: '🐱', timeAgo: '1시간 전', content: '새로운 고양이 사료로 바꿨는데 반응이 정말 좋네요! 추천합니다 😍', image: '', likes: 34, comments: 5, views: 112, tags: ['#고양이', '#사료', '#강추']),
+  CommunityPost(id: 7, category: '질문', author: '건강걱정', avatar: '👩', timeAgo: '2시간 전', content: '반려동물이 소화를 잘 못 하는 것 같은데 어떤 음식이 좋을까요?', image: '', likes: 8, comments: 6, views: 67, tags: ['#건강', '#소화', '#질문']),
+  CommunityPost(id: 8, category: '레시피', author: '요리왕', avatar: '👨‍🍳', timeAgo: '3시간 전', content: '간단한 두부 계란 덮밥 레시피! 우리 애들이 정말 좋아해요 🍚', image: '', likes: 56, comments: 9, views: 203, tags: ['#레시피', '#두부', '#계란']),
+  CommunityPost(id: 9, category: '질환정보', author: '의료정보', avatar: '⚕️', timeAgo: '4시간 전', content: '반려동물 비만 예방법과 관리 방법을 알려드립니다. 운동과 식단이 중요합니다!', image: '', likes: 42, comments: 7, views: 156, tags: ['#비만예방', '#건강', '#정보']),
+  CommunityPost(id: 10, category: '자유', author: '경험자', avatar: '🐕', timeAgo: '5시간 전', content: '강아지 식사 시간을 일정하게 유지하니까 소화가 훨씬 좋아졌어요!', image: '', likes: 28, comments: 4, views: 89, tags: ['#팁', '#일상', '#경험']),
+  CommunityPost(id: 11, category: '후기', author: '행복한집사', avatar: '🐱', timeAgo: '6시간 전', content: '이번 달에 먹인 새 사료, 정말 추천해요! 질도 좋고 가격도 합리적 👍', image: '', likes: 19, comments: 3, views: 76, tags: ['#사료', '#후기', '#추천']),
+  CommunityPost(id: 12, category: '질문', author: '초보집사', avatar: '👨', timeAgo: '7시간 전', content: '반려동물 식이알레르기 있는데 뭘 먹여야 하나요? 도와주세요 ㅠ', image: '', likes: 5, comments: 11, views: 134, tags: ['#알레르기', '#도움', '#질문']),
+  CommunityPost(id: 13, category: '레시피', author: '셰프강아지', avatar: '👨‍🍳', timeAgo: '8시간 전', content: '호박죽 만드는 법! 건강하고 맛있어요 🎃', image: '', likes: 67, comments: 12, views: 267, tags: ['#호박', '#죽', '#레시피']),
+  CommunityPost(id: 14, category: '질환정보', author: '닥터펫', avatar: '⚕️', timeAgo: '9시간 전', content: '반려동물 영양 균형 잡는 방법 - 단백질, 지방, 탄수화물의 비율을 맞춰보세요', image: '', likes: 53, comments: 8, views: 198, tags: ['#영양', '#정보', '#건강']),
+  CommunityPost(id: 15, category: '자유', author: '일상공유', avatar: '🐶', timeAgo: '10시간 전', content: '우리 강아지 밥 먹는 모습이 너무 귀여워서 올려봅니다 😂', image: '', likes: 89, comments: 15, views: 345, tags: ['#귀여움', '#일상', '#공유']),
+  CommunityPost(id: 16, category: '후기', author: '만족고객', avatar: '🐱', timeAgo: '11시간 전', content: '유기농 사료로 바꿨더니 우리 고양이 모질이 더 부드러워졌어요!', image: '', likes: 41, comments: 6, views: 145, tags: ['#유기농', '#사료', '#후기']),
+  CommunityPost(id: 17, category: '질문', author: '식단고민', avatar: '👩', timeAgo: '12시간 전', content: '간헐적 단식이 반려동물에게도 좋을까요?', image: '', likes: 7, comments: 9, views: 112, tags: ['#단식', '#식단', '#질문']),
+  CommunityPost(id: 18, category: '레시피', author: '쿠킹마스터', avatar: '👨‍🍳', timeAgo: '13시간 전', content: '소고기 미역국 만드는 방법 - 보양식으로 좋아요!', image: '', likes: 73, comments: 11, views: 289, tags: ['#소고기', '#미역국', '#보양']),
+  CommunityPost(id: 19, category: '질환정보', author: '수의사', avatar: '⚕️', timeAgo: '14시간 전', content: '반려동물 비타민 B 결핍증 증상과 대처 방법을 알아봅시다', image: '', likes: 38, comments: 5, views: 167, tags: ['#비타민', '#질환', '#건강']),
+  CommunityPost(id: 20, category: '자유', author: '행복기록', avatar: '🐕', timeAgo: '15시간 전', content: '우리 강아지 생일이라 특별한 케이크를 만들어줬어요 🎂', image: '', likes: 112, comments: 18, views: 456, tags: ['#생일', '#축하', '#케이크']),
+  CommunityPost(id: 21, category: '후기', author: '믿을만한', avatar: '🐱', timeAgo: '16시간 전', content: '이 사료 진짜 강추! 내 고양이가 처음으로 맛있게 먹었어요', image: '', likes: 55, comments: 8, views: 198, tags: ['#사료', '#강추', '#만족']),
+  CommunityPost(id: 22, category: '질문', author: '고민많아', avatar: '👨', timeAgo: '17시간 전', content: '반려동물이 너무 빨리 먹는데 천천히 먹게 하는 법이 있나요?', image: '', likes: 14, comments: 13, views: 178, tags: ['#식습관', '#도움', '#질문']),
+  CommunityPost(id: 23, category: '레시피', author: '건강요리', avatar: '👨‍🍳', timeAgo: '18시간 전', content: '닭 가슴살 야채밥 - 다이어트에 최고예요!', image: '', likes: 68, comments: 10, views: 245, tags: ['#다이어트', '#닭가슴살', '#야채']),
+  CommunityPost(id: 24, category: '질환정보', author: '전문가', avatar: '⚕️', timeAgo: '19시간 전', content: '반려동물 저혈당증 예방을 위한 올바른 식사 간격', image: '', likes: 31, comments: 4, views: 124, tags: ['#저혈당', '#예방', '#건강']),
 ];
+
 
 final kUserPets = <UserPet>[
   UserPet(

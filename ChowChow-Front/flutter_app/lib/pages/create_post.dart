@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/sample_data.dart';
 import '../services/api_client.dart';
@@ -21,6 +22,7 @@ class CreatePostPage extends StatefulWidget {
 }
 
 class _CreatePostPageState extends State<CreatePostPage> {
+  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
 
@@ -32,6 +34,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   String? _selectedImagePath;
   String? _existingImageUrl; // 수정 모드에서 기존 이미지 URL 보관
   String? _selectedCategory;
+  String? _selectedPetType; // '강아지', '고양이', null (선택안함)
   bool _isPosting = false;
 
   bool get _isEditMode => widget.initialPost != null;
@@ -51,8 +54,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
     // 수정 모드: 기존 데이터 pre-fill
     final post = widget.initialPost;
     if (post != null) {
+      _titleController.text = post.title ?? '';
       _contentController.text = post.content;
       _selectedCategory = _suggestedCategories.contains(post.category) ? post.category : null;
+      // petType pre-fill
+      if (post.petType == 'DOG') {
+        _selectedPetType = '강아지';
+      } else if (post.petType == 'CAT') {
+        _selectedPetType = '고양이';
+      }
       // 기존 이미지 URL은 별도 보관 (로컬 파일 없이 URL만 유지)
       if (post.image.isNotEmpty) {
         _existingImageUrl = post.image;
@@ -62,6 +72,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
   @override
   void dispose() {
+    _titleController.dispose();
     _contentController.dispose();
     _tagController.dispose();
     super.dispose();
@@ -137,15 +148,38 @@ class _CreatePostPageState extends State<CreatePostPage> {
         if (mounted) context.pop(updated); // 수정된 post 반환
       } else {
         // 새 글 작성
-        await CommunityService.createPost(
+        final petTypeValue = _selectedPetType == '강아지'
+            ? 'DOG'
+            : _selectedPetType == '고양이'
+                ? 'CAT'
+                : null;
+        print('[CreatePost] 전송할 petType: $_selectedPetType -> $petTypeValue');
+
+        final created = await CommunityService.createPost(
           content: _contentController.text.trim(),
           category: _selectedCategory,
           tags: _tags,
           imageUrl: imageUrl,
+          title: _titleController.text.trim(),
+          petType: petTypeValue,
         );
+        print('[CreatePost] 응답 post.petType: ${created.petType}');
+
+        // 백엔드 응답에 tagNames, petType이 없으면, 프론트엔드에서 직접 설정
+        final tagsFormatted = _tags.map((tag) => tag.startsWith('#') ? tag : '#$tag').toList();
+        final postWithTags = created.copyWith(
+          tags: tagsFormatted,
+          petType: created.petType ?? petTypeValue, // 응답에 petType이 없으면 전송한 값 사용
+        );
+
+        // SharedPreferences에 tags 저장 (앱 재시작 후에도 복원하기 위함)
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('post_${created.id}_tags', tagsFormatted);
+
         // 커뮤니티 글쓰기 코인 적립
         ApiClient.post('/api/coins/earn', {'amount': 10, 'reason': '커뮤니티 글쓰기'}).ignore();
-        if (mounted) context.go('/community');
+
+        if (mounted) context.pop(postWithTags); // post를 반환해서 부모에서 처리
       }
     } catch (_) {
       if (mounted) {
@@ -188,6 +222,80 @@ class _CreatePostPageState extends State<CreatePostPage> {
                               _selectedCategory = category;
                             });
                           },
+                        ),
+                        const SizedBox(height: 16),
+                        // 제목 입력
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ChowColors.gray200),
+                          ),
+                          child: TextField(
+                            controller: _titleController,
+                            maxLines: 1,
+                            decoration: const InputDecoration(
+                              hintText: '게시글 제목을 입력해주세요',
+                              hintStyle: TextStyle(
+                                color: ChowColors.gray400,
+                                fontSize: 14,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // 강아지/고양이 선택
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ChowColors.gray200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '반려동물 종류 (선택)',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: ChowColors.gray600,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  _PetTypeOption(
+                                    label: '강아지',
+                                    emoji: '🐶',
+                                    selected: _selectedPetType == '강아지',
+                                    onTap: () => setState(() => _selectedPetType = '강아지'),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _PetTypeOption(
+                                    label: '고양이',
+                                    emoji: '🐱',
+                                    selected: _selectedPetType == '고양이',
+                                    onTap: () => setState(() => _selectedPetType = '고양이'),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _PetTypeOption(
+                                      label: '선택안함',
+                                      emoji: '',
+                                      selected: _selectedPetType == null,
+                                      onTap: () => setState(() => _selectedPetType = null),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         _ContentInputCard(controller: _contentController),
@@ -672,6 +780,57 @@ class _WhiteCard extends StatelessWidget {
       child: Padding(
         padding: padding,
         child: child,
+      ),
+    );
+  }
+}
+
+class _PetTypeOption extends StatelessWidget {
+  const _PetTypeOption({
+    required this.label,
+    required this.emoji,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String emoji;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: selected ? ChowColors.orange100 : ChowColors.gray100,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (emoji.isNotEmpty)
+                  Text(
+                    emoji,
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                if (emoji.isNotEmpty) const SizedBox(height: 4),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected ? ChowColors.orange600 : ChowColors.gray600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

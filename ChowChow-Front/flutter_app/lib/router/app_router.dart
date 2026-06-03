@@ -31,11 +31,13 @@ import '../pages/tip_detail_page.dart';
 import '../pages/my_posts_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
 
 GoRouter createAppRouter({String initialLocation = '/login'}) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: initialLocation,
+    observers: [routeObserver],
     routes: [
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
