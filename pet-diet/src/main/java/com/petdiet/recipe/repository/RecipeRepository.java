@@ -23,4 +23,8 @@ public interface RecipeRepository extends JpaRepository<Recipe, Integer> {
 
     @Query("SELECT r FROM Recipe r WHERE r.isPublic = true AND r.recipeStatus = 'ACTIVE' AND (r.imageUrl IS NOT NULL AND r.imageUrl <> '') ORDER BY r.likeCount DESC, r.recipeId DESC")
     List<Recipe> findTrendingRecipes(Pageable pageable);
+
+    List<Recipe> findTop8ByPet_PetIdAndIsAiGeneratedTrueOrderByCreatedAtDesc(Integer petId);
+
+    List<Recipe> findTop8ByIsAiGeneratedTrueOrderByCreatedAtDesc();
 }

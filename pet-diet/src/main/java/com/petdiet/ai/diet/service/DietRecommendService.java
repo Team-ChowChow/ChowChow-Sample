@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.petdiet.ai.diet.dto.DietRecommendResponse;
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
+import com.petdiet.ingredient.service.IngredientTrendService;
 import com.petdiet.master.entity.Allergy;
 import com.petdiet.master.entity.Breed;
 import com.petdiet.master.entity.Disease;
@@ -13,6 +14,8 @@ import com.petdiet.master.repository.BreedRepository;
 import com.petdiet.master.repository.DiseaseRepository;
 import com.petdiet.pet.entity.UserPet;
 import com.petdiet.pet.repository.UserPetRepository;
+import com.petdiet.recipe.entity.Recipe;
+import com.petdiet.recipe.repository.RecipeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static java.util.stream.Collectors.joining;
 
@@ -30,11 +34,18 @@ import static java.util.stream.Collectors.joining;
 @Service
 public class DietRecommendService {
 
+    /** 매번 다른 조리 방향을 시도하도록 유도해 결과가 뻔해지지 않게 함 */
+    private static final List<String> STYLE_HINTS = List.of(
+            "찜/스팀 요리", "구이", "수프/죽", "토핑(사료 위에 얹는 형태)", "볼/완자 형태", "샐러드(생/데침)", "그릴드/에어프라이어 조리"
+    );
+
     private final UserRepository userRepository;
     private final UserPetRepository userPetRepository;
     private final AllergyRepository allergyRepository;
     private final DiseaseRepository diseaseRepository;
     private final BreedRepository breedRepository;
+    private final RecipeRepository recipeRepository;
+    private final IngredientTrendService ingredientTrendService;
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
     private final String model;
@@ -46,6 +57,8 @@ public class DietRecommendService {
             AllergyRepository allergyRepository,
             DiseaseRepository diseaseRepository,
             BreedRepository breedRepository,
+            RecipeRepository recipeRepository,
+            IngredientTrendService ingredientTrendService,
             ObjectMapper objectMapper,
             @Value("${openai.api-key}") String apiKey,
             @Value("${openai.base-url:https://api.openai.com}") String baseUrl,
@@ -56,6 +69,8 @@ public class DietRecommendService {
         this.allergyRepository = allergyRepository;
         this.diseaseRepository = diseaseRepository;
         this.breedRepository = breedRepository;
+        this.recipeRepository = recipeRepository;
+        this.ingredientTrendService = ingredientTrendService;
         this.objectMapper = objectMapper;
         this.model = model;
         this.maxTokens = maxTokens;
@@ -90,7 +105,14 @@ public class DietRecommendService {
             }
         }
 
-        String prompt = buildPrompt(pet, breed, allergies, diseases, userNotes);
+        List<String> recentTitles = (pet != null
+                ? recipeRepository.findTop8ByPet_PetIdAndIsAiGeneratedTrueOrderByCreatedAtDesc(pet.getPetId())
+                : recipeRepository.findTop8ByIsAiGeneratedTrueOrderByCreatedAtDesc())
+                .stream().map(Recipe::getRecipeTitle).filter(t -> t != null && !t.isBlank()).toList();
+
+        List<String> trendingIngredients = ingredientTrendService.getTopTrendingIngredients(5);
+
+        String prompt = buildPrompt(pet, breed, allergies, diseases, userNotes, recentTitles, trendingIngredients);
         DietRecommendResponse response = callOpenAi(prompt);
         return new RecommendContext(user, pet, response);
     }
@@ -102,9 +124,10 @@ public class DietRecommendService {
 
     String buildPrompt(UserPet pet, Breed breed,
                                 List<Allergy> allergies, List<Disease> diseases,
-                                String userNotes) {
+                                String userNotes, List<String> recentTitles, List<String> trendingIngredients) {
         StringBuilder sb = new StringBuilder();
-        sb.append("당신은 반려동물 영양 전문가입니다. 다음 반려동물 정보를 바탕으로 안전한 홈메이드 식단을 추천해주세요.\n\n");
+        sb.append("당신은 반려동물 영양 전문가이자 트렌디한 레시피 크리에이터입니다. ")
+          .append("다음 반려동물 정보를 바탕으로 안전하면서도 사용자의 눈길을 끌 만큼 독특하고 매력적인 홈메이드 레시피를 추천해주세요.\n\n");
 
         if (pet != null) {
             int ageMonths = 0;
@@ -151,6 +174,25 @@ public class DietRecommendService {
             sb.append("- 사용자 요청: ").append(userNotes).append("\n");
         }
 
+        if (!trendingIngredients.isEmpty()) {
+            sb.append("\n## 요즘 뜨는 식재료 (네이버 검색 트렌드 기준 최근 상승세)\n");
+            sb.append("- ").append(String.join(", ", trendingIngredients)).append("\n");
+            sb.append("- 알레르기/질환에 문제가 없다면 이 중 최소 1개를 주재료 또는 부재료로 활용해 트렌디한 느낌을 주세요. ")
+              .append("단, 안전이 우선이므로 맞지 않으면 억지로 넣지 마세요.\n");
+        }
+
+        if (!recentTitles.isEmpty()) {
+            sb.append("\n## 중복 방지 - 이미 생성된 레시피 (아래와 겹치지 않는 새로운 컨셉으로 작성)\n");
+            for (String title : recentTitles) {
+                sb.append("- ").append(title).append("\n");
+            }
+            sb.append("- 위 목록과 주재료 조합, 조리 방식, 이름이 겹치지 않도록 다른 방향으로 만들어주세요.\n");
+        }
+
+        sb.append("\n## 이번 레시피의 조리 스타일 힌트\n");
+        sb.append("- ").append(STYLE_HINTS.get(ThreadLocalRandom.current().nextInt(STYLE_HINTS.size())))
+          .append(" 스타일을 우선 고려해보되, 반려동물 상태에 맞지 않으면 다른 방식을 선택하세요.\n");
+
         sb.append("\n## 응답 형식 (JSON만 반환, 마크다운 코드블록 없이)\n");
         sb.append("""
                 {
@@ -171,6 +213,7 @@ public class DietRecommendService {
         Map<String, Object> body = Map.of(
                 "model", model,
                 "max_tokens", maxTokens,
+                "temperature", 1.1,
                 "messages", List.of(Map.of("role", "user", "content", prompt)),
                 "response_format", Map.of("type", "json_object")
         );

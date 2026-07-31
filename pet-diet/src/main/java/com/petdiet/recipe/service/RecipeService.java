@@ -2,6 +2,8 @@ package com.petdiet.recipe.service;
 
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
+import com.petdiet.ingredient.entity.Ingredient;
+import com.petdiet.ingredient.repository.IngredientRepository;
 import com.petdiet.pet.entity.UserPet;
 import com.petdiet.pet.repository.UserPetRepository;
 import com.petdiet.recipe.dto.*;
@@ -18,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +33,7 @@ public class RecipeService {
     private final UserRepository userRepository;
     private final UserPetRepository userPetRepository;
     private final RecipeNutritionSummaryRepository nutritionRepository;
+    private final IngredientRepository ingredientRepository;
     private final JdbcTemplate jdbc;
 
     @PostConstruct
@@ -104,6 +109,7 @@ public class RecipeService {
                 .likedByMe(likedByMe)
                 .bookmarkedByMe(bookmarkedByMe)
                 .saveCount(saveCount)
+                .ingredients(enrichIngredientNames(recipe.getIngredients()))
                 .build();
         var nutrition = nutritionRepository.findByRecipeRecipeId(recipeId);
         if (nutrition.isEmpty()) return base;
@@ -118,6 +124,26 @@ public class RecipeService {
                         .nutritionComment(n.getNutritionComment())
                         .build())
                 .build();
+    }
+
+    private List<RecipeIngredientDto> enrichIngredientNames(List<RecipeIngredient> ingredients) {
+        List<Integer> ingredientIds = ingredients.stream()
+                .map(RecipeIngredient::getIngredientId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        Map<Integer, Ingredient> byId = ingredientRepository.findAllById(ingredientIds).stream()
+                .collect(Collectors.toMap(Ingredient::getIngredientId, Function.identity()));
+        return ingredients.stream()
+                .map(ri -> {
+                    Ingredient ingredient = byId.get(ri.getIngredientId());
+                    String name = ingredient != null
+                            ? (ingredient.getIngredientNameKo() != null
+                                    ? ingredient.getIngredientNameKo()
+                                    : ingredient.getIngredientName())
+                            : null;
+                    return RecipeIngredientDto.from(ri, name != null ? name : ri.getIngredientNote());
+                })
+                .toList();
     }
 
     @Transactional
