@@ -12,7 +12,7 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  static const _serverUrl = 'http://52.198.125.103:8080';
+  static const _serverUrl = 'http://35.78.87.150:8080';
 
   static String get _baseUrl {
     return _serverUrl;
@@ -112,12 +112,13 @@ class ApiClient {
     return _parse(res);
   }
 
-  static Future<dynamic> post(String path, Map<String, dynamic> body, {bool auth = true}) async {
+  static Future<dynamic> post(String path, Map<String, dynamic> body, {bool auth = true, Duration? timeout}) async {
+    final t = timeout ?? _timeout;
     final uri = Uri.parse('$_baseUrl$path');
-    var res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
+    var res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(t);
     if (res.statusCode == 401 && auth) {
       if (await _tryRefresh()) {
-        res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(_timeout);
+        res = await http.post(uri, headers: await _headers(auth: auth), body: jsonEncode(body)).timeout(t);
       }
     }
     return _parse(res);

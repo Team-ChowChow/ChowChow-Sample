@@ -6,6 +6,7 @@ import com.petdiet.recipe.dto.RecipeRequest;
 import com.petdiet.recipe.dto.RecipeResponse;
 import com.petdiet.recipe.dto.ReviewRequest;
 import com.petdiet.recipe.dto.ReviewResponse;
+import com.petdiet.recipe.repository.RecipeRepository;
 import com.petdiet.recipe.service.RecipeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class RecipeV1Controller {
 
     private final RecipeService recipeService;
+    private final RecipeRepository recipeRepository;
     private final JdbcTemplate jdbc;
     private final AllergyRepository allergyRepository;
 
@@ -107,7 +109,16 @@ public class RecipeV1Controller {
         sql.append(" GROUP BY r.\"recipeId\" ORDER BY r.\"recipeId\" DESC LIMIT 50");
 
         List<Integer> ids = jdbc.queryForList(sql.toString(), Integer.class, params.toArray());
-        List<RecipeResponse> results = ids.stream().map(id -> recipeService.getRecipe(id)).toList();
+        // N+1 방지: 한 번에 조회 후 ID 순서대로 정렬
+        Map<Integer, RecipeResponse> byId = recipeRepository.findAllById(ids).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        r -> r.getRecipeId(),
+                        r -> RecipeResponse.from(r)
+                ));
+        List<RecipeResponse> results = ids.stream()
+                .filter(byId::containsKey)
+                .map(byId::get)
+                .toList();
 
         return ResponseEntity.ok(Map.of(
                 "keyword", keyword == null ? "" : keyword,
@@ -230,5 +241,29 @@ public class RecipeV1Controller {
             }
         }
         return ResponseEntity.ok(similar);
+    }
+
+    @DeleteMapping("/admin/recipes/deduplicate")
+    public ResponseEntity<?> deduplicateRecipes() {
+        // 동일 제목 중 recipeId가 가장 작은 것만 남기고 나머지 삭제
+        List<Integer> toDelete = jdbc.queryForList(
+            "SELECT r.\"recipeId\" FROM \"Recipes\" r " +
+            "WHERE r.\"recipeId\" NOT IN (" +
+            "  SELECT MIN(r2.\"recipeId\") FROM \"Recipes\" r2 GROUP BY r2.\"recipeTitle\"" +
+            ")",
+            Integer.class
+        );
+        if (toDelete.isEmpty()) {
+            return ResponseEntity.ok(Map.of("message", "중복 없음", "deleted", 0));
+        }
+        jdbc.update(
+            "DELETE FROM \"Recipes\" WHERE \"recipeId\" = ANY(?)",
+            (Object) toDelete.stream().mapToInt(Integer::intValue).toArray()
+        );
+        return ResponseEntity.ok(Map.of(
+            "message", "중복 제거 완료",
+            "deleted", toDelete.size(),
+            "deletedIds", toDelete
+        ));
     }
 }

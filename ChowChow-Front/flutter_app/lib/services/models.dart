@@ -49,6 +49,33 @@ class RecipeModel {
       );
 }
 
+class LowestPriceModel {
+  final bool found;
+  final String? productName;
+  final int? price;
+  final String? imageUrl;
+  final String? productUrl;
+  final String? mallName;
+
+  LowestPriceModel({
+    required this.found,
+    this.productName,
+    this.price,
+    this.imageUrl,
+    this.productUrl,
+    this.mallName,
+  });
+
+  factory LowestPriceModel.fromJson(Map<String, dynamic> j) => LowestPriceModel(
+        found: j['found'] as bool? ?? false,
+        productName: j['productName'] as String?,
+        price: (j['price'] as num?)?.toInt(),
+        imageUrl: j['imageUrl'] as String?,
+        productUrl: j['productUrl'] as String?,
+        mallName: j['mallName'] as String?,
+      );
+}
+
 class DietIngredientModel {
   final String name;
   final String? amount;

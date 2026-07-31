@@ -67,6 +67,13 @@ spoonacular:
   api-key: ${SPOONACULAR_API_KEY}
   base-url: https://api.spoonacular.com
 
+# 네이버 검색 오픈API 설정 (재료 최저가 검색용, 키 미발급 시 빈 값으로 동작)
+# 주의: 네이버 소셜 로그인용 NAVER_CLIENT_ID/SECRET과는 별개의 앱/키이므로 변수명을 분리함
+naver-search:
+  client-id: ${NAVER_SEARCH_CLIENT_ID:}
+  client-secret: ${NAVER_SEARCH_CLIENT_SECRET:}
+  base-url: https://openapi.naver.com
+
 logging:
   level:
     root: INFO

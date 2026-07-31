@@ -42,6 +42,7 @@ public class SecurityConfig {
                     "/api/auth/check-pre-verified",
                     "/api/auth/refresh",
                     "/api/admin/**",
+                    "/api/v1/admin/**",
                     "/api/recipes/admin/**",
                     "/api/ai/image/recipe",
                     "/api/v1/recipes",
@@ -54,6 +55,7 @@ public class SecurityConfig {
                     "/api/v1/search/categories",
                     "/api/v1/allergies",
                     "/api/v1/diseases",
+                    "/api/v1/ingredients/lowest-price",
                     "/error"
                 ).permitAll()
                 .anyRequest().authenticated()

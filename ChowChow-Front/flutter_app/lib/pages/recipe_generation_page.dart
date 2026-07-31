@@ -175,6 +175,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
       final res = await ApiClient.post(
         '/api/ai/diet/recommend-and-save?generateImage=true',
         body,
+        timeout: const Duration(seconds: 90),
       ) as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
@@ -682,20 +683,53 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: ChowNetworkImage(url: recipe.imageUrl ?? placeholder),
-                      ),
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: ChowNetworkImage(url: recipe.imageUrl ?? placeholder),
+                          ),
+                        ),
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.auto_awesome, size: 14, color: ChowColors.orange500),
+                                SizedBox(width: 4),
+                                Text(
+                                  'AI 생성 레시피',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: ChowColors.orange600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     Text(
                       recipe.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                         color: ChowColors.gray900,
+                        height: 1.3,
                       ),
                     ),
                     if (recipe.description != null && recipe.description!.isNotEmpty) ...[
@@ -731,66 +765,87 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       ),
                     ],
                     if (recipe.ingredients.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      const Text('재료', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
-                      const SizedBox(height: 10),
-                      ...recipe.ingredients.map(
-                        (ing) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.circle, size: 6, color: ChowColors.orange500),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  ing.name,
-                                  style: const TextStyle(fontSize: 14, color: ChowColors.gray800),
-                                ),
+                      const SizedBox(height: 20),
+                      _ResultCard(
+                        title: '재료',
+                        icon: Icons.shopping_basket_outlined,
+                        trailing: '${recipe.ingredients.length}가지',
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < recipe.ingredients.length; i++) ...[
+                              if (i > 0) const Divider(height: 20, color: ChowColors.gray100),
+                              Row(
+                                children: [
+                                  const Icon(Icons.circle, size: 6, color: ChowColors.orange500),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      recipe.ingredients[i].name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 14, color: ChowColors.gray800),
+                                    ),
+                                  ),
+                                  if (recipe.ingredients[i].amount != null)
+                                    Text(
+                                      recipe.ingredients[i].amount!,
+                                      style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
+                                    ),
+                                ],
                               ),
-                              if (ing.amount != null)
-                                Text(ing.amount!, style: const TextStyle(fontSize: 13, color: ChowColors.gray500)),
                             ],
-                          ),
+                          ],
                         ),
                       ),
                     ],
                     if (recipe.steps.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      const Text('조리 방법', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
-                      const SizedBox(height: 10),
-                      ...recipe.steps.asMap().entries.map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 24,
-                                height: 24,
-                                alignment: Alignment.center,
-                                decoration: const BoxDecoration(
-                                  color: ChowColors.orange500,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  '${e.key + 1}',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  e.value,
-                                  style: const TextStyle(fontSize: 14, color: ChowColors.gray700, height: 1.45),
-                                ),
+                      const SizedBox(height: 16),
+                      _ResultCard(
+                        title: '조리 방법',
+                        icon: Icons.menu_book_outlined,
+                        trailing: '${recipe.steps.length}단계',
+                        child: Column(
+                          children: [
+                            for (final e in recipe.steps.asMap().entries) ...[
+                              if (e.key > 0) const SizedBox(height: 14),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [ChowColors.orange400, ChowColors.orange500],
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      '${e.key + 1}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      e.value,
+                                      style: const TextStyle(fontSize: 14, color: ChowColors.gray700, height: 1.45),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
-                          ),
+                          ],
                         ),
                       ),
                     ],
                     if (recipe.warnings.isNotEmpty) ...[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
@@ -815,11 +870,27 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       ),
                     ],
                     const SizedBox(height: 24),
+                    if (recipe.recipeId != null) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: ChowColors.orange500,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: () => context.push('/recipes/${recipe.recipeId}'),
+                          child: const Text('레시피 상세보기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     SizedBox(
                       width: double.infinity,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: ChowColors.orange500,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ChowColors.gray700,
+                          side: const BorderSide(color: ChowColors.gray300),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -833,6 +904,52 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ResultCard extends StatelessWidget {
+  const _ResultCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.trailing,
+  });
+
+  final String title;
+  final IconData icon;
+  final String? trailing;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ChowColors.gray100),
+        boxShadow: const [BoxShadow(blurRadius: 6, color: Color(0x0A000000), offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: ChowColors.orange500),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ChowColors.gray800)),
+              if (trailing != null) ...[
+                const Spacer(),
+                Text(trailing!, style: const TextStyle(fontSize: 12, color: ChowColors.gray400)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
       ),
     );
   }

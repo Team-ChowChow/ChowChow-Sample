@@ -9,8 +9,10 @@ import com.petdiet.master.entity.Disease;
 import com.petdiet.master.repository.AllergyRepository;
 import com.petdiet.master.repository.BreedRepository;
 import com.petdiet.master.repository.DiseaseRepository;
+import com.petdiet.ingredient.service.IngredientTrendService;
 import com.petdiet.pet.entity.UserPet;
 import com.petdiet.pet.repository.UserPetRepository;
+import com.petdiet.recipe.repository.RecipeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,8 @@ class DietRecommendServiceTest {
     @Mock AllergyRepository allergyRepository;
     @Mock DiseaseRepository diseaseRepository;
     @Mock BreedRepository breedRepository;
+    @Mock RecipeRepository recipeRepository;
+    @Mock IngredientTrendService ingredientTrendService;
 
     DietRecommendService service;
 
@@ -44,6 +48,7 @@ class DietRecommendServiceTest {
         service = new DietRecommendService(
                 userRepository, userPetRepository,
                 allergyRepository, diseaseRepository, breedRepository,
+                recipeRepository, ingredientTrendService,
                 new ObjectMapper(),
                 "test-api-key", "https://api.openai.com", "gpt-4o", 2048);
     }
@@ -84,7 +89,7 @@ class DietRecommendServiceTest {
         Allergy beef = Allergy.builder().allergyId(2).allergyName("소고기 알러지").build();
         List<Allergy> allergies = List.of(chicken, beef);
 
-        String prompt = service.buildPrompt(pet, breed, allergies, List.of(), null);
+        String prompt = service.buildPrompt(pet, breed, allergies, List.of(), null, List.of(), List.of());
 
         assertThat(prompt)
                 .contains("닭고기 알러지")
@@ -104,7 +109,7 @@ class DietRecommendServiceTest {
                 .diseaseDescription("단백질·인·나트륨 섭취 제한 필요")
                 .build();
 
-        String prompt = service.buildPrompt(pet, null, List.of(), List.of(kidney), null);
+        String prompt = service.buildPrompt(pet, null, List.of(), List.of(kidney), null, List.of(), List.of());
 
         assertThat(prompt)
                 .contains("신장 질환")
@@ -117,7 +122,7 @@ class DietRecommendServiceTest {
         UserPet pet = buildPet("초코", "DOG");
         Breed breed = Breed.builder().breedId(1).breedName("말티즈").petType("DOG").build();
 
-        String prompt = service.buildPrompt(pet, breed, List.of(), List.of(), null);
+        String prompt = service.buildPrompt(pet, breed, List.of(), List.of(), null, List.of(), List.of());
 
         assertThat(prompt).contains("말티즈");
     }
@@ -133,7 +138,7 @@ class DietRecommendServiceTest {
                 .petBirthdate(LocalDate.now().minusYears(2))
                 .build();
 
-        String prompt = service.buildPrompt(pet, null, List.of(), List.of(), null);
+        String prompt = service.buildPrompt(pet, null, List.of(), List.of(), null, List.of(), List.of());
 
         assertThat(prompt)
                 .contains("5.20")
@@ -146,7 +151,7 @@ class DietRecommendServiceTest {
         UserPet pet = buildPet("뽀삐", "DOG");
         String notes = "소화가 약해서 부드러운 재료로 부탁드립니다";
 
-        String prompt = service.buildPrompt(pet, null, List.of(), List.of(), notes);
+        String prompt = service.buildPrompt(pet, null, List.of(), List.of(), notes, List.of(), List.of());
 
         assertThat(prompt).contains(notes);
     }
@@ -156,7 +161,7 @@ class DietRecommendServiceTest {
     void buildPrompt_containsJsonFormatInstruction() {
         UserPet pet = buildPet("망고", "CAT");
 
-        String prompt = service.buildPrompt(pet, null, List.of(), List.of(), null);
+        String prompt = service.buildPrompt(pet, null, List.of(), List.of(), null, List.of(), List.of());
 
         assertThat(prompt)
                 .contains("JSON")

@@ -16,8 +16,13 @@ public class RecipeIngredientDto {
     private String note;
 
     public static RecipeIngredientDto from(RecipeIngredient ri) {
+        return from(ri, null);
+    }
+
+    public static RecipeIngredientDto from(RecipeIngredient ri, String resolvedName) {
         return RecipeIngredientDto.builder()
                 .ingredientId(ri.getIngredientId())
+                .ingredientName(resolvedName)
                 .amount(ri.getIngredientAmount())
                 .unit(ri.getIngredientUnit())
                 .note(ri.getIngredientNote())

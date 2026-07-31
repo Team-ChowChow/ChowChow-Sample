@@ -5,6 +5,7 @@ import '../services/api_client.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
+import '../widgets/lowest_price_sheet.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   const RecipeDetailPage({
@@ -22,6 +23,7 @@ class RecipeDetailPage extends StatefulWidget {
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _loading = true;
+  bool _loadError = false;
   bool _isSaved = false;
   bool _isLiked = false;
   int _likeCount = 0;
@@ -211,6 +213,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _isSaved = res['bookmarkedByMe'] as bool? ?? _isSaved;
         _saveCount = (res['saveCount'] as num?)?.toInt() ?? _saveCount;
         _loading = false;
+        _loadError = false;
       });
       _loadSimilarRecipes();
     } catch (_) {
@@ -218,6 +221,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       setState(() {
         _recipe ??= _RecipeDetailData._empty(widget.recipeId);
         _loading = false;
+        _loadError = true;
       });
     }
   }
@@ -274,6 +278,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     onToggleSaved: _toggleSaved,
                   ),
                   if (_loading) const LinearProgressIndicator(minHeight: 2),
+                  if (_loadError)
+                    _LoadErrorBanner(onRetry: () {
+                      setState(() => _loading = true);
+                      _loadRecipe();
+                    }),
                   _TitleSection(recipe: recipe),
                   _StatsSection(recipe: recipe),
                   _InfoSection(recipe: recipe),
@@ -284,10 +293,10 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     onChanged: (tab) => setState(() => _activeTab = tab),
                   ),
                   if (_activeTab == _RecipeDetailTab.recipe) ...[
-                    _IngredientsSection(ingredients: recipe.ingredients),
-                    _InstructionsSection(steps: recipe.steps),
+                    _IngredientsSection(ingredients: recipe.ingredients, loading: _loading),
+                    _InstructionsSection(steps: recipe.steps, loading: _loading),
                     _NutritionSection(items: recipe.nutrition),
-                    _TipsSection(tips: recipe.tips),
+                    if (recipe.tips.isNotEmpty) _TipsSection(tips: recipe.tips),
                     if (_similarRecipes.isNotEmpty)
                       _RelatedSection(recipes: _similarRecipes),
                     _CookingCompleteButton(
@@ -442,6 +451,8 @@ class _TitleSection extends StatelessWidget {
         children: [
           Text(
             recipe.title,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: ChowColors.gray900,
               fontSize: 21,
@@ -629,12 +640,19 @@ class _Tabs extends StatelessWidget {
 }
 
 class _IngredientsSection extends StatelessWidget {
-  const _IngredientsSection({required this.ingredients});
+  const _IngredientsSection({required this.ingredients, this.loading = false});
 
   final List<_Ingredient> ingredients;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
+    if (loading && ingredients.isEmpty) {
+      return const _WhiteSection(
+        topMargin: 0,
+        child: _SectionSkeleton(title: '재료', rows: 4),
+      );
+    }
     return _WhiteSection(
       topMargin: 0,
       child: Column(
@@ -667,6 +685,28 @@ class _IngredientsSection extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => showLowestPriceSheet(context, item.name),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: ChowColors.orange50,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.sell_outlined, size: 12, color: ChowColors.orange600),
+                          SizedBox(width: 3),
+                          Text(
+                            '최저가',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowColors.orange600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -678,12 +718,18 @@ class _IngredientsSection extends StatelessWidget {
 }
 
 class _InstructionsSection extends StatelessWidget {
-  const _InstructionsSection({required this.steps});
+  const _InstructionsSection({required this.steps, this.loading = false});
 
   final List<_RecipeStep> steps;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
+    if (loading && steps.isEmpty) {
+      return const _WhiteSection(
+        child: _SectionSkeleton(title: '조리 방법', rows: 3, rowHeight: 32),
+      );
+    }
     return _WhiteSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -797,6 +843,74 @@ class _NutritionSection extends StatelessWidget {
   }
 }
 
+class _SectionSkeleton extends StatelessWidget {
+  const _SectionSkeleton({required this.title, required this.rows, this.rowHeight = 16});
+
+  final String title;
+  final int rows;
+  final double rowHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionTitle(title),
+        const SizedBox(height: 14),
+        for (var i = 0; i < rows; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                height: rowHeight,
+                width: i.isEven ? double.infinity : 220,
+                color: ChowColors.gray100,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _LoadErrorBanner extends StatelessWidget {
+  const _LoadErrorBanner({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        border: Border.all(color: const Color(0xFFFECACA)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              '레시피 정보를 불러오지 못했어요',
+              style: TextStyle(color: Color(0xFFB91C1C), fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
+            child: const Text('다시 시도', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TipsSection extends StatelessWidget {
   const _TipsSection({required this.tips});
 
@@ -804,51 +918,53 @@ class _TipsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ChowColors.orange50,
-        border: Border.all(color: ChowColors.orange100),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.lightbulb_outline, color: ChowColors.orange500, size: 18),
-              SizedBox(width: 6),
-              _SectionTitle('조리 팁'),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...tips.map(
-            (tip) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '•',
-                    style: TextStyle(color: ChowColors.orange500),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      tip,
-                      style: const TextStyle(
-                        color: ChowColors.gray700,
-                        fontSize: 13,
-                        height: 1.45,
+    return _WhiteSection(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: ChowColors.orange50,
+          border: Border.all(color: ChowColors.orange100),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.lightbulb_outline, color: ChowColors.orange500, size: 18),
+                SizedBox(width: 6),
+                _SectionTitle('조리 팁'),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ...tips.map(
+              (tip) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '•',
+                      style: TextStyle(color: ChowColors.orange500),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        tip,
+                        style: const TextStyle(
+                          color: ChowColors.gray700,
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
