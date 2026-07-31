@@ -30,6 +30,8 @@ dependencies {
 	// .env 파일 로드
 	implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
+	// Jackson
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
 
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
