@@ -30,7 +30,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
   final ImagePicker _picker = ImagePicker();
 
   Uint8List? _selectedImageBytes;
-  String? _selectedImageName;
   String? _selectedImagePath;
   String? _existingImageUrl; // 수정 모드에서 기존 이미지 URL 보관
   String? _selectedCategory;
@@ -109,7 +108,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
     setState(() {
       _selectedImageBytes = bytes;
-      _selectedImageName = image.name;
       _selectedImagePath = image.path;
     });
   }
@@ -117,7 +115,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
   void _removeImage() {
     setState(() {
       _selectedImageBytes = null;
-      _selectedImageName = null;
       _selectedImagePath = null;
       _existingImageUrl = null; // 기존 이미지도 제거
     });

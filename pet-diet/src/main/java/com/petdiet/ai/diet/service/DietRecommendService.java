@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import com.petdiet.ai.diet.dto.DietRecommendResponse;
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
+import com.petdiet.ingredient.repository.IngredientRepository;
 import com.petdiet.ingredient.service.IngredientTrendService;
 import com.petdiet.master.entity.Allergy;
 import com.petdiet.master.entity.Breed;
@@ -39,12 +40,18 @@ public class DietRecommendService {
             "찜/스팀 요리", "구이", "수프/죽", "토핑(사료 위에 얹는 형태)", "볼/완자 형태", "샐러드(생/데침)", "그릴드/에어프라이어 조리"
     );
 
+    /** 검색 화면의 인기 카테고리와 동일한 태그 - 매번 다른 컨셉을 유도 */
+    private static final List<String> CONCEPT_HINTS = List.of(
+            "고단백", "관절건강", "다이어트", "면역력강화", "알러지프리", "저지방", "피부모질개선"
+    );
+
     private final UserRepository userRepository;
     private final UserPetRepository userPetRepository;
     private final AllergyRepository allergyRepository;
     private final DiseaseRepository diseaseRepository;
     private final BreedRepository breedRepository;
     private final RecipeRepository recipeRepository;
+    private final IngredientRepository ingredientRepository;
     private final IngredientTrendService ingredientTrendService;
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
@@ -58,6 +65,7 @@ public class DietRecommendService {
             DiseaseRepository diseaseRepository,
             BreedRepository breedRepository,
             RecipeRepository recipeRepository,
+            IngredientRepository ingredientRepository,
             IngredientTrendService ingredientTrendService,
             ObjectMapper objectMapper,
             @Value("${openai.api-key}") String apiKey,
@@ -70,6 +78,7 @@ public class DietRecommendService {
         this.diseaseRepository = diseaseRepository;
         this.breedRepository = breedRepository;
         this.recipeRepository = recipeRepository;
+        this.ingredientRepository = ingredientRepository;
         this.ingredientTrendService = ingredientTrendService;
         this.objectMapper = objectMapper;
         this.model = model;
@@ -111,8 +120,9 @@ public class DietRecommendService {
                 .stream().map(Recipe::getRecipeTitle).filter(t -> t != null && !t.isBlank()).toList();
 
         List<String> trendingIngredients = ingredientTrendService.getTopTrendingIngredients(5);
+        List<String> toxicIngredients = findToxicIngredientNames(pet);
 
-        String prompt = buildPrompt(pet, breed, allergies, diseases, userNotes, recentTitles, trendingIngredients);
+        String prompt = buildPrompt(pet, breed, allergies, diseases, userNotes, recentTitles, trendingIngredients, toxicIngredients);
         DietRecommendResponse response = callOpenAi(prompt);
         return new RecommendContext(user, pet, response);
     }
@@ -122,9 +132,23 @@ public class DietRecommendService {
         return recommendWithContext(authUuid, petId, userNotes).response();
     }
 
+    List<String> findToxicIngredientNames(UserPet pet) {
+        boolean isDog = pet == null || "DOG".equalsIgnoreCase(pet.getPetType());
+        boolean isCat = pet == null || "CAT".equalsIgnoreCase(pet.getPetType());
+        return ingredientRepository.findByIsToxicToDogTrueOrIsToxicToCatTrue().stream()
+                .filter(i -> (isDog && Boolean.TRUE.equals(i.getIsToxicToDog()))
+                        || (isCat && Boolean.TRUE.equals(i.getIsToxicToCat())))
+                .map(i -> {
+                    String name = i.getIngredientNameKo() != null ? i.getIngredientNameKo() : i.getIngredientName();
+                    return i.getToxicityNote() != null ? name + " (" + i.getToxicityNote() + ")" : name;
+                })
+                .toList();
+    }
+
     String buildPrompt(UserPet pet, Breed breed,
                                 List<Allergy> allergies, List<Disease> diseases,
-                                String userNotes, List<String> recentTitles, List<String> trendingIngredients) {
+                                String userNotes, List<String> recentTitles, List<String> trendingIngredients,
+                                List<String> toxicIngredients) {
         StringBuilder sb = new StringBuilder();
         sb.append("당신은 반려동물 영양 전문가이자 트렌디한 레시피 크리에이터입니다. ")
           .append("다음 반려동물 정보를 바탕으로 안전하면서도 사용자의 눈길을 끌 만큼 독특하고 매력적인 홈메이드 레시피를 추천해주세요.\n\n");
@@ -174,6 +198,13 @@ public class DietRecommendService {
             sb.append("- 사용자 요청: ").append(userNotes).append("\n");
         }
 
+        if (!toxicIngredients.isEmpty()) {
+            sb.append("\n## 절대 금지 재료 (독성 위험 - 어떤 경우에도 사용 금지)\n");
+            for (String t : toxicIngredients) {
+                sb.append("- ").append(t).append("\n");
+            }
+        }
+
         if (!trendingIngredients.isEmpty()) {
             sb.append("\n## 요즘 뜨는 식재료 (네이버 검색 트렌드 기준 최근 상승세)\n");
             sb.append("- ").append(String.join(", ", trendingIngredients)).append("\n");
@@ -192,6 +223,8 @@ public class DietRecommendService {
         sb.append("\n## 이번 레시피의 조리 스타일 힌트\n");
         sb.append("- ").append(STYLE_HINTS.get(ThreadLocalRandom.current().nextInt(STYLE_HINTS.size())))
           .append(" 스타일을 우선 고려해보되, 반려동물 상태에 맞지 않으면 다른 방식을 선택하세요.\n");
+        sb.append("- 컨셉: ").append(CONCEPT_HINTS.get(ThreadLocalRandom.current().nextInt(CONCEPT_HINTS.size())))
+          .append(" 관점을 참고해 재료/설명을 구성해보세요(맞지 않으면 무시).\n");
 
         sb.append("\n## 응답 형식 (JSON만 반환, 마크다운 코드블록 없이)\n");
         sb.append("""

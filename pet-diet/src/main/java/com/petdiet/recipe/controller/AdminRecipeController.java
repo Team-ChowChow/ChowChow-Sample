@@ -1,23 +1,17 @@
 package com.petdiet.recipe.controller;
 
 import com.petdiet.ai.image.service.ImageGenerateService;
-import com.petdiet.config.SupabasePrincipal;
-import com.petdiet.recipe.dto.*;
 import com.petdiet.recipe.entity.Recipe;
 import com.petdiet.recipe.repository.RecipeRepository;
-import com.petdiet.recipe.service.RecipeService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -26,13 +20,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 레시피 데이터 관리자 도구 (일괄 보강/백필). Flutter 앱에서 호출하지 않고 운영자가 직접 호출.
+ */
 @Slf4j
 @RestController
-@RequestMapping("/api/recipes")
+@RequestMapping("/api/admin/recipes")
 @RequiredArgsConstructor
-public class RecipeController {
+public class AdminRecipeController {
 
-    private final RecipeService recipeService;
     private final RecipeRepository recipeRepository;
     private final ImageGenerateService imageGenerateService;
     private final JdbcTemplate jdbc;
@@ -41,93 +37,11 @@ public class RecipeController {
     @Value("${openai.api-key}")
     private String openaiApiKey;
 
-    @GetMapping
-    public ResponseEntity<Page<RecipeResponse>> getPublicRecipes(
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(recipeService.getPublicRecipes(pageable));
-    }
-
-    @GetMapping("/my")
-    public ResponseEntity<Page<RecipeResponse>> getMyRecipes(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(recipeService.getMyRecipes(principal.authUuid(), pageable));
-    }
-
-    @GetMapping("/{recipeId}")
-    public ResponseEntity<RecipeResponse> getRecipe(@PathVariable Integer recipeId) {
-        return ResponseEntity.ok(recipeService.getRecipe(recipeId));
-    }
-
-    @PostMapping
-    public ResponseEntity<RecipeResponse> createRecipe(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @RequestBody @Valid RecipeRequest request) {
-        return ResponseEntity.ok(recipeService.createRecipe(principal.authUuid(), request));
-    }
-
-    @PatchMapping("/{recipeId}")
-    public ResponseEntity<RecipeResponse> updateRecipe(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @PathVariable Integer recipeId,
-            @RequestBody RecipeRequest request) {
-        return ResponseEntity.ok(recipeService.updateRecipe(principal.authUuid(), recipeId, request));
-    }
-
-    @DeleteMapping("/{recipeId}")
-    public ResponseEntity<Void> deleteRecipe(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @PathVariable Integer recipeId) {
-        recipeService.deleteRecipe(principal.authUuid(), recipeId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{recipeId}/bookmark")
-    public ResponseEntity<Void> toggleBookmark(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @PathVariable Integer recipeId) {
-        recipeService.toggleBookmark(principal.authUuid(), recipeId);
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/{recipeId}/reviews")
-    public ResponseEntity<List<ReviewResponse>> getReviews(@PathVariable Integer recipeId) {
-        return ResponseEntity.ok(recipeService.getReviews(recipeId));
-    }
-
-    @PostMapping("/{recipeId}/reviews")
-    public ResponseEntity<ReviewResponse> createReview(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @PathVariable Integer recipeId,
-            @RequestBody @Valid ReviewRequest request) {
-        return ResponseEntity.ok(recipeService.createReview(principal.authUuid(), recipeId, request));
-    }
-
-    @PatchMapping("/{recipeId}/reviews/{reviewId}")
-    public ResponseEntity<ReviewResponse> updateReview(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @PathVariable Integer recipeId,
-            @PathVariable Integer reviewId,
-            @RequestBody @Valid ReviewRequest request) {
-        return ResponseEntity.ok(recipeService.updateReview(principal.authUuid(), recipeId, reviewId, request));
-    }
-
-    @DeleteMapping("/{recipeId}/reviews/{reviewId}")
-    public ResponseEntity<Void> deleteReview(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @PathVariable Integer recipeId,
-            @PathVariable Integer reviewId) {
-        recipeService.deleteReview(principal.authUuid(), recipeId, reviewId);
-        return ResponseEntity.noContent().build();
-    }
-
     /**
-     * OpenAI로 레시피 메타데이터(조리시간, 난이도, 칼로리, 영양정보, 태그) 일괄 보강 (관리자용)
-     * POST /api/recipes/admin/enrich-meta
+     * OpenAI로 레시피 메타데이터(조리시간, 난이도, 칼로리, 영양정보, 태그) 일괄 보강
      */
-    @PostMapping("/admin/enrich-meta")
+    @PostMapping("/enrich-meta")
     public ResponseEntity<Map<String, Object>> enrichMeta() {
-        // JDBC로 대상 레시피 조회 (JPA 트랜잭션 없이)
         List<Map<String, Object>> targets = jdbc.queryForList(
             "SELECT \"recipeId\", \"recipeTitle\", \"recipeDescription\", \"recipePurpose\" " +
             "FROM \"Recipes\" WHERE \"recipeStatus\" = 'ACTIVE' AND (\"cookTime\" IS NULL OR \"difficulty\" IS NULL)"
@@ -142,7 +56,6 @@ public class RecipeController {
                 .defaultHeader("Content-Type", "application/json")
                 .build();
 
-        // 태그 목록 미리 조회
         List<Map<String, Object>> allTags = jdbc.queryForList(
                 "SELECT \"recipeTagId\", \"tagName\" FROM \"RecipeTags\"");
 
@@ -178,13 +91,11 @@ public class RecipeController {
                 String content = root.path("choices").get(0).path("message").path("content").stringValue();
                 if (content == null) continue;
 
-                // JSON 블록 파싱
                 int start = content.indexOf('{');
                 int end = content.lastIndexOf('}');
                 if (start < 0 || end < 0) continue;
                 JsonNode data = objectMapper.readTree(content.substring(start, end + 1));
 
-                // 기본 메타 업데이트 (JDBC)
                 String cookTime = strVal(data.path("cookTime"));
                 String difficulty = strVal(data.path("difficulty"));
                 String calories = strVal(data.path("calories"));
@@ -193,7 +104,6 @@ public class RecipeController {
                     cookTime, difficulty, calories, recipeId
                 );
 
-                // warnings에 팁 저장
                 JsonNode tipsNode = data.path("tips");
                 if (tipsNode.isArray() && !tipsNode.isEmpty()) {
                     StringBuilder tips = new StringBuilder();
@@ -205,7 +115,6 @@ public class RecipeController {
                             tips.toString().trim(), recipeId);
                 }
 
-                // 영양정보 upsert
                 double protein = numVal(data.path("protein"));
                 double fat = numVal(data.path("fat"));
                 double carbohydrate = numVal(data.path("carbohydrate"));
@@ -218,7 +127,6 @@ public class RecipeController {
                     protein, fat, carbohydrate, sodium, nutritionComment
                 );
 
-                // 태그 매핑
                 JsonNode tagNamesNode = data.path("tagNames");
                 if (tagNamesNode.isArray()) {
                     for (JsonNode tn : tagNamesNode) {
@@ -240,7 +148,7 @@ public class RecipeController {
 
                 success.incrementAndGet();
                 log.info("레시피 보강 완료: recipeId={}, cookTime={}, difficulty={}", recipeId, cookTime, difficulty);
-                Thread.sleep(300); // rate limit 방지
+                Thread.sleep(300);
             } catch (Exception e) {
                 log.warn("레시피 보강 실패: recipeId={}, error={}", recipeId, e.getMessage());
                 failed.incrementAndGet();
@@ -265,10 +173,9 @@ public class RecipeController {
     }
 
     /**
-     * 이미지가 없는 레시피에 일괄 이미지 생성 (관리자용)
-     * POST /api/recipes/admin/generate-missing-images
+     * 이미지가 없는 레시피에 일괄 이미지 생성
      */
-    @PostMapping("/admin/generate-missing-images")
+    @PostMapping("/generate-missing-images")
     @Transactional
     public ResponseEntity<Map<String, Object>> generateMissingImages() {
         List<Recipe> targets = recipeRepository.findAllWithoutImage();
