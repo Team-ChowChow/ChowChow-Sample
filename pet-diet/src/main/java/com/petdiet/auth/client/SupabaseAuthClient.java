@@ -5,9 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
 
 import java.util.Map;
 import java.util.Optional;
@@ -27,10 +27,16 @@ public class SupabaseAuthClient {
             @Value("${supabase.anon-key}") String anonKey,
             @Value("${supabase.service-role-key}") String serviceRoleKey,
             ObjectMapper objectMapper) {
+        log.info("=== SupabaseAuthClient 초기화 ===");
+        log.info("Supabase URL: {}", supabaseUrl);
+        log.info("Anon Key 길이: {}", anonKey != null ? anonKey.length() : 0);
+        log.info("Service Role Key 길이: {}", serviceRoleKey != null ? serviceRoleKey.length() : 0);
+
         this.webClient = WebClient.builder()
                 .baseUrl(supabaseUrl)
                 .defaultHeader("apikey", anonKey)
                 .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("Accept", "application/json")
                 .build();
         this.adminWebClient = WebClient.builder()
                 .baseUrl(supabaseUrl)
@@ -39,6 +45,7 @@ public class SupabaseAuthClient {
                 .defaultHeader("Content-Type", "application/json")
                 .build();
         this.objectMapper = objectMapper;
+        log.info("WebClient 설정 완료");
     }
 
     public SupabaseSignupResult signup(String email, String password) {
@@ -93,26 +100,36 @@ public class SupabaseAuthClient {
 
     public SupabaseTokenResult login(String email, String password) {
         try {
+            log.debug("=== Supabase 로그인 요청 시작 ===");
+            log.debug("Email: {}", email);
+            Map<String, String> body = Map.of("email", email, "password", password);
+            log.debug("Body: {}", body);
+
             String response = webClient.post()
                     .uri("/auth/v1/token?grant_type=password")
-                    .bodyValue(Map.of("email", email, "password", password))
+                    .bodyValue(body)
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
 
+            log.debug("=== Supabase 로그인 응답 성공 ===");
             JsonNode root = objectMapper.readTree(response);
-            String accessToken = root.path("access_token").stringValue();
-            String refreshToken = root.path("refresh_token").stringValue();
+            String accessToken = root.path("access_token").asText();
+            String refreshToken = root.path("refresh_token").asText();
             JsonNode user = root.path("user");
-            UUID authUuid = UUID.fromString(user.path("id").stringValue());
-            String userEmail = user.path("email").stringValue();
+            UUID authUuid = UUID.fromString(user.path("id").asText());
+            String userEmail = user.path("email").asText();
 
             return new SupabaseTokenResult(accessToken, refreshToken, authUuid, userEmail);
 
         } catch (WebClientResponseException e) {
             int status = e.getStatusCode().value();
+            String body = e.getResponseBodyAsString();
+            log.error("=== Supabase 로그인 실패 (HTTP {}) ===", status);
+            log.error("Response body: {}", body);
+            log.error("Request headers: {}", e.getHeaders());
+
             if (status == 400) {
-                String body = e.getResponseBodyAsString();
                 if (body != null && body.contains("email_not_confirmed")) {
                     throw new IllegalStateException("이메일 인증이 완료되지 않았습니다. 받은 편지함을 확인해주세요.");
                 }
@@ -124,10 +141,11 @@ public class SupabaseAuthClient {
             if (status == 429) {
                 throw new IllegalStateException("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
             }
-            throw new RuntimeException("Supabase 인증 중 오류가 발생했습니다.", e);
+            throw new RuntimeException("Supabase 인증 중 오류가 발생했습니다: " + body, e);
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw e;
         } catch (Exception e) {
+            log.error("=== Supabase 로그인 예외 ===", e);
             throw new RuntimeException("Supabase 인증 중 오류가 발생했습니다.", e);
         }
     }
@@ -178,11 +196,11 @@ public class SupabaseAuthClient {
                     .block();
 
             JsonNode root = objectMapper.readTree(response);
-            String accessToken = root.path("access_token").stringValue();
-            String newRefreshToken = root.path("refresh_token").stringValue();
+            String accessToken = root.path("access_token").asText();
+            String newRefreshToken = root.path("refresh_token").asText();
             JsonNode user = root.path("user");
-            UUID authUuid = UUID.fromString(user.path("id").stringValue());
-            String userEmail = user.path("email").stringValue();
+            UUID authUuid = UUID.fromString(user.path("id").asText());
+            String userEmail = user.path("email").asText();
 
             return new SupabaseTokenResult(accessToken, newRefreshToken, authUuid, userEmail);
         } catch (WebClientResponseException e) {
@@ -206,7 +224,7 @@ public class SupabaseAuthClient {
     }
 
     private static String str(JsonNode node) {
-        return node.getNodeType() == JsonNodeType.STRING ? node.stringValue() : null;
+        return node.getNodeType() == JsonNodeType.STRING ? node.asText() : null;
     }
 
     public record SupabaseSignupResult(UUID authUuid, String email) {}
