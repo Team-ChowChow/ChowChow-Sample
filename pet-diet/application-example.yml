@@ -67,6 +67,11 @@ spoonacular:
   api-key: ${SPOONACULAR_API_KEY}
   base-url: https://api.spoonacular.com
 
+# USDA FoodData Central 설정 (재료 영양성분 raw data)
+fdc:
+  api-key: ${FDC_API_KEY}
+  base-url: https://api.nal.usda.gov/fdc/v1
+
 # 네이버 검색 오픈API 설정 (재료 최저가 검색용, 키 미발급 시 빈 값으로 동작)
 # 주의: 네이버 소셜 로그인용 NAVER_CLIENT_ID/SECRET과는 별개의 앱/키이므로 변수명을 분리함
 naver-search:

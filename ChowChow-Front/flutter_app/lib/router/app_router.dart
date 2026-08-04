@@ -20,7 +20,6 @@ import '../pages/post_detail_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/recipe_detail_page.dart';
 import '../pages/recipe_generation_page.dart';
-import '../pages/recipe_result_page.dart';
 import '../pages/search_page.dart';
 import '../pages/signup_page.dart';
 import '../data/sample_data.dart';
@@ -138,11 +137,6 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
             initialRecipe: initialRecipe,
           );
         },
-      ),
-      GoRoute(
-        parentNavigatorKey: rootNavigatorKey,
-        path: '/recipe-result',
-        builder: (context, state) => const RecipeResultPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

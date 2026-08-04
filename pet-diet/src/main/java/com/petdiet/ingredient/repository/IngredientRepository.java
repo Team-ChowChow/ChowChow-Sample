@@ -21,7 +21,11 @@ public interface IngredientRepository extends JpaRepository<Ingredient, Integer>
 
     List<Ingredient> findByIngredientNameKoIsNull(Pageable pageable);
 
+    List<Ingredient> findByIsToxicToDogTrueOrIsToxicToCatTrue();
+
     List<Ingredient> findBySpoonacularIdIsNotNullAndCaloriesPer100gIsNull(Pageable pageable);
+
+    List<Ingredient> findByCaloriesPer100gIsNull(Pageable pageable);
 
     @Modifying
     @Query(value = "TRUNCATE TABLE \"Ingredients\" RESTART IDENTITY CASCADE", nativeQuery = true)
