@@ -42,7 +42,7 @@ public class CoinService {
         });
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public int getBalance(UUID authUuid) {
         User user = findUser(authUuid);
         return getOrCreateCoin(user).getBalance();

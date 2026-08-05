@@ -8,6 +8,7 @@ import '../pages/character_list_page.dart';
 import '../pages/character_form_page.dart';
 import '../pages/character_page.dart';
 import '../pages/character_growth_logs_page.dart';
+import '../pages/coin_shop_page.dart';
 import '../pages/community_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
@@ -30,7 +31,8 @@ import '../pages/tip_detail_page.dart';
 import '../pages/my_posts_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
-final RouteObserver<ModalRoute<dynamic>> routeObserver = RouteObserver<ModalRoute<dynamic>>();
+final RouteObserver<ModalRoute<dynamic>> routeObserver =
+    RouteObserver<ModalRoute<dynamic>>();
 
 GoRouter createAppRouter({String initialLocation = '/login'}) {
   return GoRouter(
@@ -87,6 +89,11 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
+        path: '/coin-shop',
+        builder: (context, state) => const CoinShopPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
         path: '/recipe-generation',
         builder: (context, state) {
           final quickStart = state.uri.queryParameters['quickStart'] == 'true';
@@ -117,10 +124,7 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
           final initialPost = state.extra is CommunityPost
               ? state.extra as CommunityPost
               : null;
-          return PostDetailPage(
-            postId: postId,
-            initialPost: initialPost,
-          );
+          return PostDetailPage(postId: postId, initialPost: initialPost);
         },
       ),
       GoRoute(
@@ -156,12 +160,14 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: '/my-posts',
-        builder: (context, state) => const MyPostsPage(mode: MyPostsMode.myPosts),
+        builder: (context, state) =>
+            const MyPostsPage(mode: MyPostsMode.myPosts),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: '/saved-posts',
-        builder: (context, state) => const MyPostsPage(mode: MyPostsMode.savedPosts),
+        builder: (context, state) =>
+            const MyPostsPage(mode: MyPostsMode.savedPosts),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -172,7 +178,8 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/character/:characterId/edit',
         builder: (context, state) {
-          final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
+          final id =
+              int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
           return CharacterFormPage(characterId: id);
         },
       ),
@@ -180,7 +187,8 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/character/:characterId/logs',
         builder: (context, state) {
-          final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
+          final id =
+              int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
           return CharacterGrowthLogsPage(characterId: id);
         },
       ),
@@ -188,7 +196,8 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/character/:characterId',
         builder: (context, state) {
-          final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
+          final id =
+              int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
           return CharacterPage(characterId: id);
         },
       ),
