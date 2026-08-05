@@ -23,8 +23,8 @@ public class FoodDataCentralClient {
     private final ObjectMapper objectMapper;
 
     public FoodDataCentralClient(
-            @Value("${fdc.base-url}") String baseUrl,
-            @Value("${fdc.api-key}") String apiKey,
+            @Value("${fdc.base-url:https://api.nal.usda.gov/fdc/v1}") String baseUrl,
+            @Value("${fdc.api-key:}") String apiKey,
             ObjectMapper objectMapper) {
         this.webClient = WebClient.builder().baseUrl(baseUrl).build();
         this.apiKey = apiKey;

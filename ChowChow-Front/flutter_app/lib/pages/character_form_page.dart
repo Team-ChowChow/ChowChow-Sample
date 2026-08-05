@@ -128,13 +128,13 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
 
     // FCI 그룹명을 번호로 매핑
     final groupMap = {
-      'Sporting': 1,
-      'Hound': 2,
+      'Toy': 1,
+      'Terrier': 2,
       'Working': 3,
-      'Terrier': 4,
-      'Toy': 5,
-      'Non-Sporting': 6,
-      'Herding': 7,
+      'Herding': 4,
+      'Hound': 5,
+      'Sporting': 6,
+      'Non-Sporting': 7,
     };
 
     final groupNum = groupMap[groupName] ?? 1;

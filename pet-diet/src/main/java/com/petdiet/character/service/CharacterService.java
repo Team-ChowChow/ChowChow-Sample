@@ -243,13 +243,13 @@ public class CharacterService {
                     }
 
                     int groupNum = switch (groupName) {
-                        case "Sporting" -> 1;
-                        case "Hound" -> 2;
+                        case "Toy" -> 1;
+                        case "Terrier" -> 2;
                         case "Working" -> 3;
-                        case "Terrier" -> 4;
-                        case "Toy" -> 5;
-                        case "Non-Sporting" -> 6;
-                        case "Herding" -> 7;
+                        case "Herding" -> 4;
+                        case "Hound" -> 5;
+                        case "Sporting" -> 6;
+                        case "Non-Sporting" -> 7;
                         default -> 1;
                     };
                     return "character_group_" + groupNum;
