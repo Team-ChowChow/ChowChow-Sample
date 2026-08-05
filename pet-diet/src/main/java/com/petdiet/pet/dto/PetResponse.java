@@ -18,6 +18,7 @@ public class PetResponse {
     private Integer breedId;
     private String species;
     private String breedName;
+    private String groupName;
     private String petGender;
     private LocalDate petBirthdate;
     private BigDecimal petWeight;

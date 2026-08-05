@@ -59,6 +59,45 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     _claimDailyLogin();
   }
 
+  String _resolveImageUrl(String? url) {
+    if (url == null || url.isEmpty) {
+      return 'assets/images/characters/character_group_1.png';
+    }
+    // 파일명만 있는 경우 (예: "character_group_2")
+    if (!url.contains('/') && url.contains('character_group')) {
+      return 'assets/images/characters/$url.png';
+    }
+    return url;
+  }
+
+  Widget _buildCharacterImage(String url) {
+    final resolvedUrl = _resolveImageUrl(url);
+
+    if (resolvedUrl.startsWith('assets/')) {
+      return Image.asset(
+        resolvedUrl,
+        fit: BoxFit.cover,
+        width: 192,
+        height: 192,
+        errorBuilder: (_, __, ___) => Text(
+          _petType == 'CAT' ? '🐱' : '🐶',
+          style: const TextStyle(fontSize: 72),
+        ),
+      );
+    } else {
+      return Image.network(
+        resolvedUrl,
+        fit: BoxFit.cover,
+        width: 192,
+        height: 192,
+        errorBuilder: (_, __, ___) => Text(
+          _petType == 'CAT' ? '🐱' : '🐶',
+          style: const TextStyle(fontSize: 72),
+        ),
+      );
+    }
+  }
+
   Future<void> _loadCharacter() async {
     try {
       if (widget.characterId != null) {
@@ -394,16 +433,7 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                                   clipBehavior: Clip.hardEdge,
                                   alignment: Alignment.center,
                                   child: _characterImageUrl != null
-                                      ? Image.network(
-                                          _characterImageUrl!,
-                                          fit: BoxFit.cover,
-                                          width: 192,
-                                          height: 192,
-                                          errorBuilder: (_, e, s) => Text(
-                                            _petType == 'CAT' ? '🐱' : '🐶',
-                                            style: const TextStyle(fontSize: 72),
-                                          ),
-                                        )
+                                      ? _buildCharacterImage(_characterImageUrl!)
                                       : Text(
                                           _petType == 'CAT' ? '🐱' : '🐶',
                                           style: const TextStyle(fontSize: 72),

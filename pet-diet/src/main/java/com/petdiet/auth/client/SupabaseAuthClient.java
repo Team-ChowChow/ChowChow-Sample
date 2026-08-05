@@ -19,14 +19,12 @@ public class SupabaseAuthClient {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-
     private final WebClient adminWebClient;
 
     public SupabaseAuthClient(
             @Value("${supabase.url}") String supabaseUrl,
             @Value("${supabase.anon-key}") String anonKey,
-            @Value("${supabase.service-role-key}") String serviceRoleKey,
-            ObjectMapper objectMapper) {
+            @Value("${supabase.service-role-key}") String serviceRoleKey) {
         log.info("=== SupabaseAuthClient 초기화 ===");
         log.info("Supabase URL: {}", supabaseUrl);
         log.info("Anon Key 길이: {}", anonKey != null ? anonKey.length() : 0);
@@ -44,7 +42,7 @@ public class SupabaseAuthClient {
                 .defaultHeader("Authorization", "Bearer " + serviceRoleKey)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
-        this.objectMapper = objectMapper;
+        this.objectMapper = new ObjectMapper();
         log.info("WebClient 설정 완료");
     }
 

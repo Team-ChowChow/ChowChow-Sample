@@ -28,6 +28,9 @@ public class Breed {
     @Column(name = "\"breedNameKo\"", length = 100)
     private String breedNameKo;
 
+    @Column(name = "\"group_name\"", length = 100)
+    private String groupName;
+
     public void updateKoreanName(String breedNameKo) {
         this.breedNameKo = breedNameKo;
     }

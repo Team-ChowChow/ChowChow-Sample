@@ -129,6 +129,7 @@ class PetModel {
   final String petName;
   final String? petType;
   final String? breedName;
+  final String? groupName;
   final String? petGender;
   final String? petBirthdate;
   final double? petWeight;
@@ -140,6 +141,7 @@ class PetModel {
     required this.petName,
     this.petType,
     this.breedName,
+    this.groupName,
     this.petGender,
     this.petBirthdate,
     this.petWeight,
@@ -152,6 +154,7 @@ class PetModel {
         petName: j['petName'] as String,
         petType: j['petType'] as String?,
         breedName: j['breedName'] as String?,
+        groupName: j['groupName'] as String?,
         petGender: j['petGender'] as String?,
         petBirthdate: j['petBirthdate'] as String?,
         petWeight: (j['petWeight'] as num?)?.toDouble(),

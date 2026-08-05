@@ -996,7 +996,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               )
                             else
-                              ..._pets.map((pet) => _PetRow(pet: pet)),
+                              ..._pets.map((pet) => _PetRow(
+                                pet: pet,
+                                onDeleted: _loadProfile,
+                              )),
                           ],
                         ),
                       ),
@@ -1180,15 +1183,14 @@ class _StatTile extends StatelessWidget {
 }
 
 class _PetRow extends StatefulWidget {
-  const _PetRow({required this.pet});
+  const _PetRow({required this.pet, this.onDeleted});
   final PetModel pet;
+  final VoidCallback? onDeleted;
   @override
   State<_PetRow> createState() => _PetRowState();
 }
 
 class _PetRowState extends State<_PetRow> {
-  bool _generating = false;
-
   static const _placeholder =
       'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80';
 
@@ -1196,9 +1198,17 @@ class _PetRowState extends State<_PetRow> {
 
   String get _breedAgeLine {
     final breed = pet.breedName ?? pet.displayType;
+    final group = pet.groupName;
     final age = _ageLabel;
-    if (age == null) return breed;
-    return '$breed • $age';
+
+    String line = breed;
+    if (group != null && group.isNotEmpty) {
+      line = '$line • $group';
+    }
+    if (age != null) {
+      line = '$line • $age';
+    }
+    return line;
   }
 
   String? get _ageLabel {
@@ -1222,43 +1232,41 @@ class _PetRowState extends State<_PetRow> {
     return '체중: ${rounded}kg';
   }
 
-  Future<void> _generateCharacter() async {
-    if (_generating) return;
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null || !mounted) return;
+  Future<void> _deletePet() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('반려동물 삭제'),
+        content: Text('${pet.petName}을(를) 정말 삭제하시겠습니까?\n삭제하면 관련 정보도 함께 삭제됩니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    ) ?? false;
 
-    setState(() => _generating = true);
+    if (!confirmed || !mounted) return;
+
     try {
-      final uploadedUrl = await ApiClient.uploadImage(File(picked.path), type: 'recipe');
-      await ApiClient.patch('/api/pets/${pet.petId}', {
-        'petName': pet.petName,
-        'petType': pet.petType,
-        'petProfileImg': uploadedUrl,
-      });
-      final result = await ApiClient.post('/api/ai/image/character', {
-        'petId': pet.petId,
-        'style': 'cute chibi anime',
-      }) as Map<String, dynamic>;
-      final imageUrl = result['imageUrl'] as String?;
-      if (imageUrl != null && imageUrl.isNotEmpty && mounted) {
-        await ApiClient.patch('/api/pets/${pet.petId}', {
-          'petName': pet.petName,
-          'petType': pet.petType,
-          'petProfileImg': imageUrl,
-        });
-        if (!mounted) return;
+      await ApiClient.delete('/api/pets/${pet.petId}');
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI 캐릭터 변환 완료!')),
+          const SnackBar(content: Text('반려동물이 삭제되었습니다.')),
         );
+        widget.onDeleted?.call();
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('변환 실패: $e'), duration: const Duration(seconds: 5)),
+        SnackBar(content: Text('삭제 실패: $e'), duration: const Duration(seconds: 5)),
       );
-    } finally {
-      if (mounted) setState(() => _generating = false);
     }
   }
 
@@ -1279,7 +1287,7 @@ class _PetRowState extends State<_PetRow> {
               Container(width: 40, height: 4, decoration: BoxDecoration(color: ChowColors.gray300, borderRadius: BorderRadius.circular(99))),
               const SizedBox(height: 20),
               GestureDetector(
-                onTap: () { Navigator.of(ctx).pop(); _generateCharacter(); },
+                onTap: () { Navigator.of(ctx).pop(); },
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
@@ -1311,12 +1319,12 @@ class _PetRowState extends State<_PetRow> {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () { Navigator.of(ctx).pop(); _generateCharacter(); },
-                  icon: const Icon(Icons.auto_fix_high),
-                  label: const Text('사진 선택 후 AI 캐릭터 자동 변환'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ChowColors.orange500,
+                child: OutlinedButton.icon(
+                  onPressed: () { Navigator.of(ctx).pop(); _deletePet(); },
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  label: const Text('삭제하기', style: TextStyle(color: Colors.red)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red, width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -1435,11 +1443,6 @@ class _PetRowState extends State<_PetRow> {
         ),
       ),
       ),
-      if (_generating)
-        const Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: LinearProgressIndicator(color: ChowColors.orange500),
-        ),
     ],
     );
   }

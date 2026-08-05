@@ -78,7 +78,8 @@ public class PetController {
                         "breedId", b.getBreedId(),
                         "breedName", b.getBreedName(),
                         "breedNameKo", b.getBreedNameKo() != null ? b.getBreedNameKo() : b.getBreedName(),
-                        "petType", b.getPetType()
+                        "petType", b.getPetType(),
+                        "groupName", b.getGroupName() != null ? b.getGroupName() : ""
                 ))
                 .toList();
 
