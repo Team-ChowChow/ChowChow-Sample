@@ -646,28 +646,6 @@ class _PopularSearchTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (term.isNew) ...[
-                const SizedBox(width: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: ChowColors.red500,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'NEW',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -729,15 +707,10 @@ class _SuggestionChip extends StatelessWidget {
 }
 
 class _PopularSearchTerm {
-  const _PopularSearchTerm({
-    required this.rank,
-    required this.keyword,
-    this.isNew = false,
-  });
+  const _PopularSearchTerm({required this.rank, required this.keyword});
 
   final int rank;
   final String keyword;
-  final bool isNew;
 }
 
 class _PopularCategoryChip extends StatelessWidget {

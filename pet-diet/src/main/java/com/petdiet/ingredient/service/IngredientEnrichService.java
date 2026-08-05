@@ -2,6 +2,7 @@ package com.petdiet.ingredient.service;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import com.petdiet.ingredient.client.FoodDataCentralClient;
 import com.petdiet.ingredient.client.SpoonacularClient;
 import com.petdiet.ingredient.client.SpoonacularClient.IngredientInfo;
 import com.petdiet.ingredient.entity.Ingredient;
@@ -13,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,8 +23,31 @@ public class IngredientEnrichService {
 
     private static final int TRANSLATE_BATCH = 40;
 
+    private record ToxicityRule(boolean dog, boolean cat, String note) {}
+
+    // ASPCA Animal Poison Control 기준 대표 위험 식재료.
+    // ponytail: 부분 문자열 매칭이라 오탐 가능(예: "chocolate milk"), 정밀 매칭 필요해지면 정규화 필요.
+    private static final Map<String, ToxicityRule> TOXIC_KEYWORDS = Map.ofEntries(
+            Map.entry("chocolate", new ToxicityRule(true, true, "테오브로민 중독 위험 - 구토, 발작, 심장 이상")),
+            Map.entry("cocoa", new ToxicityRule(true, true, "테오브로민 중독 위험 - 구토, 발작, 심장 이상")),
+            Map.entry("grape", new ToxicityRule(true, true, "급성 신부전 위험")),
+            Map.entry("raisin", new ToxicityRule(true, true, "급성 신부전 위험")),
+            Map.entry("onion", new ToxicityRule(true, true, "적혈구 파괴(용혈성 빈혈) 위험")),
+            Map.entry("garlic", new ToxicityRule(true, true, "적혈구 파괴(용혈성 빈혈) 위험")),
+            Map.entry("leek", new ToxicityRule(true, true, "적혈구 파괴(용혈성 빈혈) 위험")),
+            Map.entry("chive", new ToxicityRule(true, true, "적혈구 파괴(용혈성 빈혈) 위험")),
+            Map.entry("xylitol", new ToxicityRule(true, true, "저혈당·간부전 위험, 소량도 치명적")),
+            Map.entry("avocado", new ToxicityRule(true, true, "페르신 성분 - 구토·설사 위험")),
+            Map.entry("macadamia", new ToxicityRule(true, false, "근육 떨림·마비 위험(개)")),
+            Map.entry("caffeine", new ToxicityRule(true, true, "심장·신경계 이상 위험")),
+            Map.entry("coffee", new ToxicityRule(true, true, "카페인 중독 위험")),
+            Map.entry("alcohol", new ToxicityRule(true, true, "중추신경 억제, 치명적일 수 있음")),
+            Map.entry("nutmeg", new ToxicityRule(true, true, "환각·경련 위험"))
+    );
+
     private final IngredientRepository ingredientRepository;
     private final SpoonacularClient spoonacularClient;
+    private final FoodDataCentralClient foodDataCentralClient;
     private final ObjectMapper objectMapper;
     private final WebClient openAiClient;
     private final String openAiModel;
@@ -33,12 +55,14 @@ public class IngredientEnrichService {
     public IngredientEnrichService(
             IngredientRepository ingredientRepository,
             SpoonacularClient spoonacularClient,
+            FoodDataCentralClient foodDataCentralClient,
             ObjectMapper objectMapper,
             @Value("${openai.api-key}") String apiKey,
             @Value("${openai.base-url:https://api.openai.com}") String baseUrl,
             @Value("${openai.model:gpt-4o}") String model) {
         this.ingredientRepository = ingredientRepository;
         this.spoonacularClient = spoonacularClient;
+        this.foodDataCentralClient = foodDataCentralClient;
         this.objectMapper = objectMapper;
         this.openAiModel = model;
         this.openAiClient = WebClient.builder()
@@ -68,6 +92,54 @@ public class IngredientEnrichService {
             try { Thread.sleep(100); } catch (InterruptedException ignored) {}
         }
         log.info("영양소 보강 완료: {}건", count);
+        return count;
+    }
+
+    /**
+     * USDA FoodData Central에서 영양소 데이터를 가져와 저장 (batchSize건씩).
+     * Spoonacular로 못 채운(spoonacularId 없거나 실패한) 재료까지 이름 검색으로 커버.
+     */
+    @Transactional
+    public int enrichNutritionFromFdc(int batchSize) {
+        List<Ingredient> targets = ingredientRepository
+                .findByCaloriesPer100gIsNull(PageRequest.of(0, batchSize));
+        int count = 0;
+        for (Ingredient ingredient : targets) {
+            FoodDataCentralClient.IngredientInfo info = foodDataCentralClient.getNutrition(ingredient.getIngredientName());
+            if (info != null && info.calories() != null) {
+                ingredient.updateNutrition(info.calories(), info.protein(), info.fat(),
+                        info.carbohydrates(), info.fiber());
+                ingredientRepository.save(ingredient);
+                count++;
+            }
+            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+        }
+        log.info("FDC 영양소 보강 완료: {}건", count);
+        return count;
+    }
+
+    /**
+     * ASPCA 기준 대표 위험 식재료 목록으로 isToxicToDog/isToxicToCat/toxicityNote를 채운다.
+     * 정적 참조 데이터라 외부 API 없이 전수 스캔.
+     */
+    @Transactional
+    public int seedToxicity() {
+        int count = 0;
+        for (Ingredient ingredient : ingredientRepository.findAll()) {
+            String haystack = (ingredient.getIngredientName() + " "
+                    + (ingredient.getIngredientNameKo() != null ? ingredient.getIngredientNameKo() : ""))
+                    .toLowerCase();
+            for (var entry : TOXIC_KEYWORDS.entrySet()) {
+                if (haystack.contains(entry.getKey())) {
+                    ToxicityRule rule = entry.getValue();
+                    ingredient.updateToxicity(rule.dog(), rule.cat(), rule.note());
+                    ingredientRepository.save(ingredient);
+                    count++;
+                    break;
+                }
+            }
+        }
+        log.info("독성 재료 시드 완료: {}건", count);
         return count;
     }
 

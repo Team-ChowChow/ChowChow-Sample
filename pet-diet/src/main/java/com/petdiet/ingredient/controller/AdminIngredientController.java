@@ -36,6 +36,19 @@ public class AdminIngredientController {
         return ResponseEntity.ok(Map.of("message", "영양소 보강 완료", "enriched", count));
     }
 
+    @PostMapping("/enrich/nutrition-fdc")
+    public ResponseEntity<Map<String, Object>> nutritionFdc(
+            @RequestParam(defaultValue = "100") int batchSize) {
+        int count = ingredientEnrichService.enrichNutritionFromFdc(batchSize);
+        return ResponseEntity.ok(Map.of("message", "FDC 영양소 보강 완료", "enriched", count));
+    }
+
+    @PostMapping("/seed-toxicity")
+    public ResponseEntity<Map<String, Object>> seedToxicity() {
+        int count = ingredientEnrichService.seedToxicity();
+        return ResponseEntity.ok(Map.of("message", "독성 재료 시드 완료", "updated", count));
+    }
+
     @PostMapping("/enrich/spoonacular-ids")
     public ResponseEntity<Map<String, Object>> backfillIds(
             @RequestParam(defaultValue = "50") int batchSize) {

@@ -122,10 +122,11 @@ public class ImageGenerateService {
         if (description != null && !description.isBlank()) {
             sb.append(". ").append(description);
         }
-        sb.append(". Shot on a worn wooden kitchen table, natural window light from the side, " +
-                  "85mm f/2.0 lens, slight bokeh background, casually arranged on a simple ceramic bowl, " +
-                  "realistic textures, natural color grading, photo taken by home cook, " +
-                  "authentic homemade look, no artificial studio lighting, no text, no watermark.");
+        sb.append(". Professional cookbook photography, styled plating on a clean ceramic dish, " +
+                  "overhead or 45-degree angle flat lay, soft diffused studio lighting, " +
+                  "85mm macro lens, shallow depth of field, garnished and carefully arranged, " +
+                  "vivid natural colors, crisp focus, editorial food magazine quality, " +
+                  "minimal rustic background, no text, no watermark.");
         return sb.toString();
     }
 
