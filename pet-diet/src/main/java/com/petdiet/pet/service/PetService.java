@@ -2,6 +2,8 @@ package com.petdiet.pet.service;
 
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
+import com.petdiet.master.entity.Breed;
+import com.petdiet.master.repository.BreedRepository;
 import com.petdiet.pet.dto.PetRequest;
 import com.petdiet.pet.dto.PetResponse;
 import com.petdiet.pet.entity.PetAllergy;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -21,12 +24,13 @@ public class PetService {
 
     private final UserPetRepository userPetRepository;
     private final UserRepository userRepository;
+    private final BreedRepository breedRepository;
 
     @Transactional(readOnly = true)
     public List<PetResponse> getMyPets(UUID authUuid) {
         User user = findUser(authUuid);
         return userPetRepository.findAllByUser(user).stream()
-                .map(PetResponse::from)
+                .map(this::buildPetResponse)
                 .toList();
     }
 
@@ -34,7 +38,7 @@ public class PetService {
     public PetResponse getPet(UUID authUuid, Integer petId) {
         User user = findUser(authUuid);
         UserPet pet = findPet(petId, user);
-        return PetResponse.from(pet);
+        return buildPetResponse(pet);
     }
 
     @Transactional
@@ -102,5 +106,35 @@ public class PetService {
     private UserPet findPet(Integer petId, User user) {
         return userPetRepository.findByPetIdAndUser(petId, user)
                 .orElseThrow(() -> new IllegalArgumentException("반려동물을 찾을 수 없습니다."));
+    }
+
+    private PetResponse buildPetResponse(UserPet pet) {
+        PetResponse.PetResponseBuilder builder = PetResponse.builder()
+                .petId(pet.getPetId())
+                .userId(pet.getUser().getUserId())
+                .petName(pet.getPetName())
+                .petType(pet.getPetType())
+                .breedId(pet.getBreedId())
+                .petGender(pet.getPetGender())
+                .petBirthdate(pet.getPetBirthdate())
+                .petWeight(pet.getPetWeight())
+                .petBodyConditionScore(null)
+                .petBodyScoreDate(null)
+                .petActivityLevel(null)
+                .isNeutered(pet.getIsNeutered())
+                .petProfileImg(pet.getPetProfileImg())
+                .petProfileImageUrl(pet.getPetProfileImg())
+                .allergyIds(pet.getAllergies().stream().map(a -> a.getAllergyId()).toList())
+                .diseaseIds(pet.getDiseases().stream().map(d -> d.getDiseaseId()).toList());
+
+        if (pet.getBreedId() != null) {
+            Optional<Breed> breed = breedRepository.findById(pet.getBreedId());
+            if (breed.isPresent()) {
+                builder.breedName(breed.get().getBreedName())
+                        .groupName(breed.get().getGroupName());
+            }
+        }
+
+        return builder.build();
     }
 }

@@ -87,9 +87,8 @@ public class CharacterService {
 
         String imageUrl = req.getCharacterImageUrl() != null && !req.getCharacterImageUrl().isBlank()
                 ? req.getCharacterImageUrl()
-                : (pet.getPetProfileImg() != null && !pet.getPetProfileImg().isBlank()
-                        ? pet.getPetProfileImg()
-                        : "https://placehold.co/200x200/png?text=Character");
+                : getImageUrlByBreedGroup(pet.getBreedId());
+
 
         PetCharacter character = characterRepository.save(PetCharacter.builder()
                 .pet(pet)
@@ -229,5 +228,32 @@ public class CharacterService {
         return characterRepository.findByCharacterIdAndPet_User(characterId, user)
                 .filter(c -> "ACTIVE".equals(c.getCharacterStatus()))
                 .orElseThrow(() -> new IllegalArgumentException("캐릭터를 찾을 수 없습니다."));
+    }
+
+    private String getImageUrlByBreedGroup(Integer breedId) {
+        if (breedId == null) {
+            return "character_group_1";
+        }
+
+        return breedRepository.findById(breedId)
+                .map(breed -> {
+                    String groupName = breed.getGroupName();
+                    if (groupName == null || groupName.isEmpty()) {
+                        return "character_group_1";
+                    }
+
+                    int groupNum = switch (groupName) {
+                        case "Toy" -> 1;
+                        case "Terrier" -> 2;
+                        case "Working" -> 3;
+                        case "Herding" -> 4;
+                        case "Hound" -> 5;
+                        case "Sporting" -> 6;
+                        case "Non-Sporting" -> 7;
+                        default -> 1;
+                    };
+                    return "character_group_" + groupNum;
+                })
+                .orElse("character_group_1");
     }
 }

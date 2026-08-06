@@ -1,10 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_client.dart';
+import '../services/shop_service.dart';
 import '../theme/chow_theme.dart';
+import '../theme/shop_visuals.dart';
 
 class CharacterPage extends StatefulWidget {
   const CharacterPage({super.key, this.characterId});
@@ -15,7 +18,8 @@ class CharacterPage extends StatefulWidget {
   State<CharacterPage> createState() => _CharacterPageState();
 }
 
-class _CharacterPageState extends State<CharacterPage> with TickerProviderStateMixin {
+class _CharacterPageState extends State<CharacterPage>
+    with TickerProviderStateMixin {
   int level = 1;
   int exp = 0;
   int _coins = 0;
@@ -24,10 +28,11 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
   int happiness = 80;
   int hunger = 50;
 
-
   String _petName = '';
   String _petType = 'DOG';
   String? _characterImageUrl;
+  String _roomBackgroundKey = 'room_sunrise';
+  Set<String> _equippedDecorKeys = {};
 
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
@@ -50,20 +55,74 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _idleCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 3000))..repeat(reverse: true);
-    _idleScale = Tween<double>(begin: 1, end: 1.05).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
-    _idleRotate = Tween<double>(begin: -0.035, end: 0.035).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
-    _interactCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _idleCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat(reverse: true);
+    _idleScale = Tween<double>(
+      begin: 1,
+      end: 1.05,
+    ).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
+    _idleRotate = Tween<double>(
+      begin: -0.035,
+      end: 0.035,
+    ).animate(CurvedAnimation(parent: _idleCtrl, curve: Curves.easeInOut));
+    _interactCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
     _loadCharacter();
     _loadCoinBalance();
+    _loadShopStyle();
     _claimDailyLogin();
+  }
+
+  String _resolveImageUrl(String? url) {
+    if (url == null || url.isEmpty) {
+      return 'assets/images/characters/character_group_1.png';
+    }
+    // 파일명만 있는 경우 (예: "character_group_2")
+    if (!url.contains('/') && url.contains('character_group')) {
+      return 'assets/images/characters/$url.png';
+    }
+    return url;
+  }
+
+  Widget _buildCharacterImage(String url) {
+    final resolvedUrl = _resolveImageUrl(url);
+
+    if (resolvedUrl.startsWith('assets/')) {
+      return Image.asset(
+        resolvedUrl,
+        fit: BoxFit.cover,
+        width: 192,
+        height: 192,
+        errorBuilder: (_, __, ___) => Text(
+          _petType == 'CAT' ? '🐱' : '🐶',
+          style: const TextStyle(fontSize: 72),
+        ),
+      );
+    } else {
+      return Image.network(
+        resolvedUrl,
+        fit: BoxFit.cover,
+        width: 192,
+        height: 192,
+        errorBuilder: (_, __, ___) => Text(
+          _petType == 'CAT' ? '🐱' : '🐶',
+          style: const TextStyle(fontSize: 72),
+        ),
+      );
+    }
   }
 
   Future<void> _loadCharacter() async {
     try {
       if (widget.characterId != null) {
         // characterId로 캐릭터 직접 로드
-        final c = await ApiClient.get('/api/characters/${widget.characterId}') as Map<String, dynamic>;
+        final c =
+            await ApiClient.get('/api/characters/${widget.characterId}')
+                as Map<String, dynamic>;
         if (!mounted) return;
         setState(() {
           _petName = c['characterName'] as String? ?? '';
@@ -99,10 +158,29 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
 
   Future<void> _loadCoinBalance() async {
     try {
-      final res = await ApiClient.get('/api/coins/balance') as Map<String, dynamic>;
+      final res =
+          await ApiClient.get('/api/coins/balance') as Map<String, dynamic>;
       if (!mounted) return;
       setState(() => _coins = (res['balance'] as num?)?.toInt() ?? 0);
     } catch (_) {}
+  }
+
+  Future<void> _loadShopStyle() async {
+    try {
+      final catalog = await ShopService.fetchCatalog();
+      if (!mounted) return;
+      setState(() {
+        _coins = catalog.balance;
+        _roomBackgroundKey = catalog.equippedBackgroundKey;
+        _equippedDecorKeys = catalog.equippedDecorKeys;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _openCoinShop() async {
+    await context.push('/coin-shop');
+    if (!mounted) return;
+    await _loadShopStyle();
   }
 
   Future<void> _claimDailyLogin() async {
@@ -111,7 +189,9 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     final lastShown = prefs.getString('daily_login_shown');
 
     try {
-      final res = await ApiClient.post('/api/coins/daily-login', {}) as Map<String, dynamic>;
+      final res =
+          await ApiClient.post('/api/coins/daily-login', {})
+              as Map<String, dynamic>;
       if (!mounted) return;
       final newBalance = (res['balance'] as num?)?.toInt() ?? _coins;
       setState(() => _coins = newBalance);
@@ -121,7 +201,10 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
         await prefs.setString('daily_login_shown', todayStr);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🪙 출석 보상 +5 코인!'), duration: Duration(seconds: 2)),
+          const SnackBar(
+            content: Text('🪙 출석 보상 +5 코인!'),
+            duration: Duration(seconds: 2),
+          ),
         );
       }
     } catch (_) {}
@@ -138,16 +221,21 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
       return false;
     }
     try {
-      final res = await ApiClient.post('/api/coins/spend', {'amount': cost, 'reason': reason})
-          as Map<String, dynamic>;
+      final res =
+          await ApiClient.post('/api/coins/spend', {
+                'amount': cost,
+                'reason': reason,
+              })
+              as Map<String, dynamic>;
       if (!mounted) return false;
-      setState(() => _coins = (res['balance'] as num?)?.toInt() ?? (_coins - cost));
+      setState(
+        () => _coins = (res['balance'] as num?)?.toInt() ?? (_coins - cost),
+      );
       return true;
     } catch (_) {
       return false;
     }
   }
-
 
   @override
   void dispose() {
@@ -162,17 +250,29 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     switch (_interactAnim) {
       case _InteractAnim.bounce:
         final y = t < 0.5 ? -40 * sin(t * pi) : -10 * (1 - t);
-        return (dy: y, scale: 1 + 0.1 * sin(t * pi), rotate: 0.17 * sin(t * pi * 2));
+        return (
+          dy: y,
+          scale: 1 + 0.1 * sin(t * pi),
+          rotate: 0.17 * sin(t * pi * 2),
+        );
       case _InteractAnim.shake:
-        return (dy: 0, scale: 1, rotate: 0,);
+        return (dy: 0, scale: 1, rotate: 0);
       case _InteractAnim.scale:
         return (dy: 0, scale: 1 + 0.15 * sin(t * pi), rotate: 0);
       case _InteractAnim.wiggle:
-        return (dy: -8 * sin(t * pi * 4), scale: 1, rotate: 0.12 * sin(t * pi * 4));
+        return (
+          dy: -8 * sin(t * pi * 4),
+          scale: 1,
+          rotate: 0.12 * sin(t * pi * 4),
+        );
     }
   }
 
-  Future<void> _runInteract(_InteractAnim anim, {Duration? duration, VoidCallback? onDone}) async {
+  Future<void> _runInteract(
+    _InteractAnim anim, {
+    Duration? duration,
+    VoidCallback? onDone,
+  }) async {
     if (_isInteracting) return;
     setState(() => _isInteracting = true);
     _idleCtrl.stop();
@@ -186,11 +286,144 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     }
   }
 
+  Widget _buildRoomScene() {
+    final style = roomVisualFor(_roomBackgroundKey);
+    final isNight = _roomBackgroundKey == 'room_night';
+
+    return Container(
+      width: double.infinity,
+      height: 230,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: style.wallColors,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: style.accentColor.withValues(alpha: 0.25)),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 66,
+            child: ColoredBox(color: style.floorColor),
+          ),
+          Positioned(
+            top: 14,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: isNight ? 0.16 : 0.7),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                style.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isNight ? Colors.white : ChowColors.gray700,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 48,
+            left: 22,
+            child: Icon(
+              isNight ? Icons.nightlight_round : Icons.window_rounded,
+              size: 48,
+              color: style.accentColor.withValues(alpha: 0.72),
+            ),
+          ),
+          if (_equippedDecorKeys.contains('decor_lamp'))
+            const Positioned(
+              left: 12,
+              bottom: 44,
+              child: Text('💡', style: TextStyle(fontSize: 43)),
+            ),
+          if (_equippedDecorKeys.contains('decor_plant'))
+            const Positioned(
+              right: 10,
+              bottom: 42,
+              child: Text('🪴', style: TextStyle(fontSize: 50)),
+            ),
+          if (_equippedDecorKeys.contains('decor_cushion'))
+            const Positioned(
+              right: 68,
+              bottom: 18,
+              child: Text('🧸', style: TextStyle(fontSize: 34)),
+            ),
+          Align(
+            alignment: const Alignment(0, 0.68),
+            child: Container(
+              width: 130,
+              height: 54,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: const BorderRadius.all(Radius.elliptical(72, 32)),
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: Listenable.merge([_idleCtrl, _interactCtrl]),
+            builder: (context, child) {
+              final t = _interactCtrl.value;
+              final usingInteract = _isInteracting || t > 0;
+              final tr = usingInteract
+                  ? _interactTransform(t)
+                  : (
+                      dy: 0.0,
+                      scale: _idleScale.value,
+                      rotate: _idleRotate.value,
+                    );
+              var dx = 0.0;
+              if (usingInteract && _interactAnim == _InteractAnim.shake) {
+                dx = 20 * sin(t * pi * 8);
+              }
+              return Transform.translate(
+                offset: Offset(dx, tr.dy + 18),
+                child: Transform.rotate(
+                  angle: tr.rotate,
+                  child: Transform.scale(scale: tr.scale, child: child),
+                ),
+              );
+            },
+            child: GestureDetector(
+              onTap: _handlePetClick,
+              child: SizedBox(
+                width: 156,
+                height: 156,
+                child: _characterImageUrl != null
+                    ? _buildCharacterImage(_characterImageUrl!)
+                    : Center(
+                        child: Text(
+                          _petType == 'CAT' ? '🐱' : '🐶',
+                          style: const TextStyle(fontSize: 72),
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          ..._particles.map(_ParticleWidget.new),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handlePetClick() async {
-    await _runInteract(_InteractAnim.bounce, onDone: () {
-      _spawnParticles(['💕', '❤️', '💖', '✨'], count: 6);
-      happiness = (happiness + 5).clamp(0, 100);
-    });
+    await _runInteract(
+      _InteractAnim.bounce,
+      onDone: () {
+        _spawnParticles(['💕', '❤️', '💖', '✨'], count: 6);
+        happiness = (happiness + 5).clamp(0, 100);
+      },
+    );
     setState(() {});
   }
 
@@ -203,28 +436,44 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
 
     switch (activity.label) {
       case '밥주기':
-        await _runInteract(_InteractAnim.wiggle, duration: const Duration(milliseconds: 500), onDone: () {
-          hunger = (hunger - 20).clamp(0, 100);
-          health = (health + 5).clamp(0, 100);
-          exp = (exp + 5).clamp(0, maxExp);
-        });
+        await _runInteract(
+          _InteractAnim.wiggle,
+          duration: const Duration(milliseconds: 500),
+          onDone: () {
+            hunger = (hunger - 20).clamp(0, 100);
+            health = (health + 5).clamp(0, 100);
+            exp = (exp + 5).clamp(0, maxExp);
+          },
+        );
       case '쓰다듬기':
-        await _runInteract(_InteractAnim.scale, duration: const Duration(milliseconds: 400), onDone: () {
-          happiness = (happiness + 10).clamp(0, 100);
-          exp = (exp + 3).clamp(0, maxExp);
-        });
+        await _runInteract(
+          _InteractAnim.scale,
+          duration: const Duration(milliseconds: 400),
+          onDone: () {
+            happiness = (happiness + 10).clamp(0, 100);
+            exp = (exp + 3).clamp(0, maxExp);
+          },
+        );
       case '운동하기':
-        await _runInteract(_InteractAnim.shake, duration: const Duration(milliseconds: 1000), onDone: () {
-          health = (health + 15).clamp(0, 100);
-          hunger = (hunger + 10).clamp(0, 100);
-          exp = (exp + 15).clamp(0, maxExp);
-        });
+        await _runInteract(
+          _InteractAnim.shake,
+          duration: const Duration(milliseconds: 1000),
+          onDone: () {
+            health = (health + 15).clamp(0, 100);
+            hunger = (hunger + 10).clamp(0, 100);
+            exp = (exp + 15).clamp(0, maxExp);
+          },
+        );
       case '목욕시키기':
-        await _runInteract(_InteractAnim.wiggle, duration: const Duration(milliseconds: 800), onDone: () {
-          happiness = (happiness + 20).clamp(0, 100);
-          health = (health + 5).clamp(0, 100);
-          exp = (exp + 20).clamp(0, maxExp);
-        });
+        await _runInteract(
+          _InteractAnim.wiggle,
+          duration: const Duration(milliseconds: 800),
+          onDone: () {
+            happiness = (happiness + 20).clamp(0, 100);
+            health = (health + 5).clamp(0, 100);
+            exp = (exp + 20).clamp(0, maxExp);
+          },
+        );
     }
 
     // 경험치 만렙 레벨업
@@ -233,7 +482,10 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
       level++;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🎉 레벨 업! Lv.$level'), duration: const Duration(seconds: 2)),
+          SnackBar(
+            content: Text('🎉 레벨 업! Lv.$level'),
+            duration: const Duration(seconds: 2),
+          ),
         );
       }
     }
@@ -254,18 +506,21 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
     setState(() => _particles.addAll(batch));
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
-      setState(() => _particles.removeWhere((p) => batch.any((b) => b.id == p.id)));
+      setState(
+        () => _particles.removeWhere((p) => batch.any((b) => b.id == p.id)),
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final roomStyle = roomVisualFor(_roomBackgroundKey);
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFEDD5), Color(0xFFFFF7ED)],
+          colors: [roomStyle.wallColors.first, const Color(0xFFFFFBF7)],
         ),
       ),
       child: CustomScrollView(
@@ -285,40 +540,80 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                   children: [
                     if (widget.characterId != null)
                       IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: ChowColors.gray700),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          size: 20,
+                          color: ChowColors.gray700,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                         padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
                       ),
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(left: widget.characterId != null ? 0 : 12, top: 8),
+                        padding: EdgeInsets.only(
+                          left: widget.characterId != null ? 0 : 12,
+                          top: 8,
+                        ),
                         child: const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('캐릭터 키우기', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: ChowColors.gray800)),
+                            Text(
+                              '캐릭터 키우기',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: ChowColors.gray800,
+                              ),
+                            ),
                             SizedBox(height: 4),
-                            Text('우리 아이와 함께 성장해요', style: TextStyle(fontSize: 13, color: ChowColors.gray500)),
+                            Text(
+                              '우리 아이와 함께 성장해요',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: ChowColors.gray500,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7ED),
+                    Material(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(20),
+                      child: InkWell(
+                        onTap: _openCoinShop,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: ChowColors.orange100),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('🪙', style: TextStyle(fontSize: 16)),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$_coins',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.orange600),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
                           ),
-                        ],
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: ChowColors.orange100),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🪙', style: TextStyle(fontSize: 16)),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$_coins',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: ChowColors.orange600,
+                                ),
+                              ),
+                              const SizedBox(width: 3),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: ChowColors.orange500,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -334,104 +629,78 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(color: ChowColors.orange50, borderRadius: BorderRadius.circular(999)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ChowColors.orange50,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.auto_awesome, size: 16, color: ChowColors.orange500),
+                            const Icon(
+                              Icons.auto_awesome,
+                              size: 16,
+                              color: ChowColors.orange500,
+                            ),
                             const SizedBox(width: 6),
-                            Text('레벨 $level', style: const TextStyle(fontSize: 13, color: ChowColors.orange600)),
+                            Text(
+                              '레벨 $level',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: ChowColors.orange600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
-                      SizedBox(
-                        width: 192,
-                        height: 192,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          clipBehavior: Clip.none,
-                          children: [
-                            AnimatedBuilder(
-                              animation: Listenable.merge([_idleCtrl, _interactCtrl]),
-                              builder: (context, child) {
-                                final t = _interactCtrl.value;
-                                final usingInteract = _isInteracting || t > 0;
-                                final tr = usingInteract ? _interactTransform(t) : (dy: 0.0, scale: _idleScale.value, rotate: _idleRotate.value);
-                                var dx = 0.0;
-                                if (usingInteract && _interactAnim == _InteractAnim.shake) {
-                                  dx = 20 * sin(t * pi * 8);
-                                }
-                                return Transform.translate(
-                                  offset: Offset(dx, tr.dy),
-                                  child: Transform.rotate(
-                                    angle: tr.rotate,
-                                    child: Transform.scale(scale: tr.scale, child: child),
-                                  ),
-                                );
-                              },
-                              child: GestureDetector(
-                                onTap: _handlePetClick,
-                                child: Container(
-                                  width: 192,
-                                  height: 192,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [Color(0xFFFED7AA), Color(0xFFFDBA74)],
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  clipBehavior: Clip.hardEdge,
-                                  alignment: Alignment.center,
-                                  child: _characterImageUrl != null
-                                      ? Image.network(
-                                          _characterImageUrl!,
-                                          fit: BoxFit.cover,
-                                          width: 192,
-                                          height: 192,
-                                          errorBuilder: (_, e, s) => Text(
-                                            _petType == 'CAT' ? '🐱' : '🐶',
-                                            style: const TextStyle(fontSize: 72),
-                                          ),
-                                        )
-                                      : Text(
-                                          _petType == 'CAT' ? '🐱' : '🐶',
-                                          style: const TextStyle(fontSize: 72),
-                                        ),
-                                ),
-                              ),
-                            ),
-                            ..._particles.map(_ParticleWidget.new),
-                          ],
-                        ),
-                      ),
+                      _buildRoomScene(),
                       const SizedBox(height: 12),
                       Text(
                         _petName.isNotEmpty ? _petName : '나의 반려동물',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: ChowColors.gray800),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: ChowColors.gray800,
+                        ),
                       ),
                       Text(
                         _petType == 'CAT' ? '사랑스러운 고양이' : '건강한 강아지',
-                        style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: ChowColors.gray500,
+                        ),
                       ),
                       const SizedBox(height: 8),
-                      const Text('👆 클릭해서 쓰다듬어 주세요!', style: TextStyle(fontSize: 12, color: ChowColors.orange500)),
+                      const Text(
+                        '👆 클릭해서 쓰다듬어 주세요!',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: ChowColors.orange500,
+                        ),
+                      ),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('경험치', style: TextStyle(fontSize: 13, color: ChowColors.gray600)),
-                          Text('$exp / $maxExp', style: const TextStyle(fontSize: 13, color: ChowColors.gray800, fontWeight: FontWeight.w600)),
+                          const Text(
+                            '경험치',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: ChowColors.gray600,
+                            ),
+                          ),
+                          Text(
+                            '$exp / $maxExp',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: ChowColors.gray800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -446,7 +715,12 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                                 widthFactor: _expFrac.clamp(0.0, 1.0),
                                 child: Container(
                                   decoration: const BoxDecoration(
-                                    gradient: LinearGradient(colors: [ChowColors.orange400, ChowColors.orange500]),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        ChowColors.orange400,
+                                        ChowColors.orange500,
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -455,12 +729,78 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _StatRow(icon: Icons.favorite, iconBg: Color(0xFFFEE2E2), iconColor: ChowColors.red500, label: '건강', value: health, barColor: ChowColors.red500),
+                      _StatRow(
+                        icon: Icons.favorite,
+                        iconBg: Color(0xFFFEE2E2),
+                        iconColor: ChowColors.red500,
+                        label: '건강',
+                        value: health,
+                        barColor: ChowColors.red500,
+                      ),
                       const SizedBox(height: 10),
-                      _StatRow(icon: Icons.auto_awesome, iconBg: Color(0xFFFEF9C3), iconColor: ChowColors.yellow500, label: '행복', value: happiness, barColor: ChowColors.yellow500),
+                      _StatRow(
+                        icon: Icons.auto_awesome,
+                        iconBg: Color(0xFFFEF9C3),
+                        iconColor: ChowColors.yellow500,
+                        label: '행복',
+                        value: happiness,
+                        barColor: ChowColors.yellow500,
+                      ),
                       const SizedBox(height: 10),
-                      _StatRow(icon: Icons.restaurant, iconBg: ChowColors.orange100, iconColor: ChowColors.orange500, label: '배고픔', value: hunger, barColor: ChowColors.orange500),
+                      _StatRow(
+                        icon: Icons.restaurant,
+                        iconBg: ChowColors.orange100,
+                        iconColor: ChowColors.orange500,
+                        label: '배고픔',
+                        value: hunger,
+                        barColor: ChowColors.orange500,
+                      ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Material(
+                  color: ChowColors.orange500,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: _openCoinShop,
+                    borderRadius: BorderRadius.circular(16),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 15,
+                      ),
+                      child: Row(
+                        children: [
+                          Text('🛍️', style: TextStyle(fontSize: 24)),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '코인 상점',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  '배경과 소품으로 우리 아이의 방을 꾸며보세요',
+                                  style: TextStyle(
+                                    color: Color(0xE6FFFFFF),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.white),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -468,7 +808,14 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('활동', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
+                      const Text(
+                        '활동',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: ChowColors.gray800,
+                        ),
+                      ),
                       const SizedBox(height: 14),
                       GridView.count(
                         shrinkWrap: true,
@@ -477,7 +824,14 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
                         childAspectRatio: 1.15,
-                        children: _activities.map((a) => _ActivityTile(activity: a, onTap: () => _handleActivity(a))).toList(),
+                        children: _activities
+                            .map(
+                              (a) => _ActivityTile(
+                                activity: a,
+                                onTap: () => _handleActivity(a),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ],
                   ),
@@ -487,11 +841,30 @@ class _CharacterPageState extends State<CharacterPage> with TickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('최근 업적', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
+                      Text(
+                        '최근 업적',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: ChowColors.gray800,
+                        ),
+                      ),
                       SizedBox(height: 12),
-                      _AchievementRow(emoji: '🏆', title: '첫 식단 완료', date: '2026.03.20', bg: ChowColors.orange50, circle: ChowColors.orange500),
+                      _AchievementRow(
+                        emoji: '🏆',
+                        title: '첫 식단 완료',
+                        date: '2026.03.20',
+                        bg: ChowColors.orange50,
+                        circle: ChowColors.orange500,
+                      ),
                       SizedBox(height: 10),
-                      _AchievementRow(emoji: '⭐', title: '7일 연속 접속', date: '2026.03.18', bg: Color(0xFFEFF6FF), circle: Color(0xFF3B82F6)),
+                      _AchievementRow(
+                        emoji: '⭐',
+                        title: '7일 연속 접속',
+                        date: '2026.03.18',
+                        bg: Color(0xFFEFF6FF),
+                        circle: Color(0xFF3B82F6),
+                      ),
                     ],
                   ),
                 ),
@@ -516,7 +889,12 @@ class _ActivityData {
 }
 
 class _Particle {
-  _Particle({required this.id, required this.emoji, required this.dx, required this.dy});
+  _Particle({
+    required this.id,
+    required this.emoji,
+    required this.dx,
+    required this.dy,
+  });
   final int id;
   final String emoji;
   final double dx;
@@ -531,13 +909,17 @@ class _ParticleWidget extends StatefulWidget {
   State<_ParticleWidget> createState() => _ParticleWidgetState();
 }
 
-class _ParticleWidgetState extends State<_ParticleWidget> with SingleTickerProviderStateMixin {
+class _ParticleWidgetState extends State<_ParticleWidget>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..forward();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..forward();
   }
 
   @override
@@ -579,7 +961,13 @@ class _WhiteCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [BoxShadow(blurRadius: 10, offset: Offset(0, 3), color: Color(0x14000000))],
+        boxShadow: const [
+          BoxShadow(
+            blurRadius: 10,
+            offset: Offset(0, 3),
+            color: Color(0x14000000),
+          ),
+        ],
       ),
       child: child,
     );
@@ -610,11 +998,20 @@ class _StatRow extends StatelessWidget {
         Container(
           width: 32,
           height: 32,
-          decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Icon(icon, size: 18, color: iconColor),
         ),
         const SizedBox(width: 8),
-        SizedBox(width: 40, child: Text(label, style: const TextStyle(fontSize: 13, color: ChowColors.gray700))),
+        SizedBox(
+          width: 40,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: ChowColors.gray700),
+          ),
+        ),
         Expanded(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(999),
@@ -623,7 +1020,10 @@ class _StatRow extends StatelessWidget {
               child: Stack(
                 children: [
                   Container(color: ChowColors.gray200),
-                  FractionallySizedBox(widthFactor: (value / 100).clamp(0.0, 1.0), child: Container(color: barColor)),
+                  FractionallySizedBox(
+                    widthFactor: (value / 100).clamp(0.0, 1.0),
+                    child: Container(color: barColor),
+                  ),
                 ],
               ),
             ),
@@ -632,7 +1032,11 @@ class _StatRow extends StatelessWidget {
         const SizedBox(width: 8),
         SizedBox(
           width: 40,
-          child: Text('$value%', textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, color: ChowColors.gray700)),
+          child: Text(
+            '$value%',
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 13, color: ChowColors.gray700),
+          ),
         ),
       ],
     );
@@ -660,15 +1064,30 @@ class _ActivityTile extends StatelessWidget {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(color: activity.color, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: activity.color,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Icon(activity.icon, color: Colors.white, size: 26),
               ),
               const SizedBox(height: 8),
-              Text(activity.label, style: const TextStyle(fontSize: 13, color: ChowColors.gray800, fontWeight: FontWeight.w500)),
+              Text(
+                activity.label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: ChowColors.gray800,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(
                 activity.cost > 0 ? '🪙 ${activity.cost}' : '무료',
-                style: TextStyle(fontSize: 11, color: activity.cost > 0 ? ChowColors.orange600 : ChowColors.green500),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: activity.cost > 0
+                      ? ChowColors.orange600
+                      : ChowColors.green500,
+                ),
               ),
             ],
           ),
@@ -697,7 +1116,10 @@ class _AchievementRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
           Container(
@@ -712,8 +1134,21 @@ class _AchievementRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, color: ChowColors.gray800, fontWeight: FontWeight.w500)),
-                Text(date, style: const TextStyle(fontSize: 11, color: ChowColors.gray500)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: ChowColors.gray800,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  date,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: ChowColors.gray500,
+                  ),
+                ),
               ],
             ),
           ),

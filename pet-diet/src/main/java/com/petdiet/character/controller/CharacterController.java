@@ -5,6 +5,10 @@ import com.petdiet.character.service.CharacterService;
 import com.petdiet.config.SupabasePrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -128,5 +132,29 @@ public class CharacterController {
                 "isEquipped", body.getOrDefault("isEquipped", true),
                 "message", "에셋 장착 상태가 변경되었습니다."
         ));
+    }
+
+    @GetMapping("/group-image/{groupNum}")
+    public ResponseEntity<Resource> getGroupImage(@PathVariable Integer groupNum) {
+        if (groupNum < 1 || groupNum > 7) {
+            groupNum = 1;
+        }
+
+        try {
+            Resource resource = new ClassPathResource("static/characters/character_group_" + groupNum + ".png");
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
+                    .body(resource);
+        } catch (Exception e) {
+            // 실패하면 기본값 반환
+            try {
+                Resource resource = new ClassPathResource("static/characters/character_group_1.png");
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
+                        .body(resource);
+            } catch (Exception ex) {
+                return ResponseEntity.notFound().build();
+            }
+        }
     }
 }

@@ -56,6 +56,7 @@ public class SecurityConfig {
                     "/api/v1/diseases",
                     "/api/v1/ingredients/lowest-price",
                     "/api/pets/breeds",
+                    "/api/characters/group-image/**",
                     "/error"
                 ).permitAll()
                 .anyRequest().authenticated()

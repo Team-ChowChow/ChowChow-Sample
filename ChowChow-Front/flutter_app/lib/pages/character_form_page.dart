@@ -121,6 +121,26 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
     return !_characterizedPetIds.contains(_selectedPet!.petId);
   }
 
+  String _getCharacterImageByGroup(String? groupName) {
+    if (groupName == null || groupName.isEmpty) {
+      return 'character_group_1';
+    }
+
+    // FCI 그룹명을 번호로 매핑
+    final groupMap = {
+      'Toy': 1,
+      'Terrier': 2,
+      'Working': 3,
+      'Herding': 4,
+      'Hound': 5,
+      'Sporting': 6,
+      'Non-Sporting': 7,
+    };
+
+    final groupNum = groupMap[groupName] ?? 1;
+    return 'character_group_$groupNum';
+  }
+
   Future<void> _save() async {
     if (!_valid) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,34 +161,20 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
         context.pop(true);
       } else {
         final pet = _selectedPet!;
-        // 1. 캐릭터 생성
+
+        // 품종 그룹에 따라 이미지 패턴 미리 결정
+        final groupImagePath = _getCharacterImageByGroup(pet.groupName);
+
+        // 1. 캐릭터 생성 (이미지와 함께)
         final created = await CharacterService.createCharacter(
           characterName: _nameCtrl.text.trim(),
           petType: pet.petType ?? 'DOG',
           petId: pet.petId,
           description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+          characterImageUrl: groupImagePath,
         );
         if (!mounted) return;
-        setState(() { _saving = false; _generatingImage = true; });
-
-        // 2. 반려동물 프로필 이미지가 있으면 AI 캐릭터 이미지 생성
-        if (pet.petProfileImg != null && pet.petProfileImg!.isNotEmpty) {
-          try {
-            final imgRes = await ApiClient.post('/api/ai/image/character', {
-              'petId': pet.petId,
-              'style': 'cute chibi anime',
-            }) as Map<String, dynamic>;
-            final imageUrl = imgRes['imageUrl'] as String?;
-            if (imageUrl != null && imageUrl.isNotEmpty) {
-              await CharacterService.updateCharacter(
-                created.characterId,
-                characterImageUrl: imageUrl,
-              );
-            }
-          } catch (_) {
-            // 이미지 생성 실패해도 캐릭터는 생성됨
-          }
-        }
+        setState(() { _saving = false; _generatingImage = false; });
 
         if (!mounted) return;
         context.pop(true);
