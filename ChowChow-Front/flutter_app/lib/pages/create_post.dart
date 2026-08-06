@@ -150,7 +150,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
             : _selectedPetType == '고양이'
                 ? 'CAT'
                 : null;
-        print('[CreatePost] 전송할 petType: $_selectedPetType -> $petTypeValue');
 
         final created = await CommunityService.createPost(
           content: _contentController.text.trim(),
@@ -160,7 +159,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
           title: _titleController.text.trim(),
           petType: petTypeValue,
         );
-        print('[CreatePost] 응답 post.petType: ${created.petType}');
 
         // 백엔드 응답에 tagNames, petType이 없으면, 프론트엔드에서 직접 설정
         final tagsFormatted = _tags.map((tag) => tag.startsWith('#') ? tag : '#$tag').toList();

@@ -26,6 +26,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   CommunityPost? _post;
   List<_PostComment> _comments = [];
   bool _isLiked = false;
+  bool _loadError = false;
   int? _currentUserId;
 
   int get _commentCount => _comments.length;
@@ -111,12 +112,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
         _post = finalPost;
         _isLiked = post.likedByMe;
         _comments = apiComments.map(_PostComment.fromApiComment).toList();
+        _loadError = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _post ??= widget.initialPost ?? kCommunityPosts.first;
-        _comments = _initialComments();
+        _post ??= widget.initialPost;
+        _loadError = _post == null;
       });
     }
   }
@@ -188,7 +190,29 @@ class _PostDetailPageState extends State<PostDetailPage> {
   Widget build(BuildContext context) {
     final post = _post;
     if (post == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: _loadError
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, color: ChowColors.gray400, size: 32),
+                    const SizedBox(height: 10),
+                    const Text('게시글을 불러오지 못했어요', style: TextStyle(color: ChowColors.gray500)),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _loadError = false);
+                        _loadData();
+                      },
+                      style: TextButton.styleFrom(foregroundColor: ChowColors.orange500),
+                      child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                )
+              : const CircularProgressIndicator(),
+        ),
+      );
     }
     return Scaffold(
       backgroundColor: ChowColors.gray50,
@@ -926,44 +950,5 @@ class _PostComment {
       replies: replies ?? this.replies,
     );
   }
-}
-
-List<_PostComment> _initialComments() {
-  return const [
-    _PostComment(
-      id: 1,
-      author: '나비아빠',
-      avatar: '🐕',
-      timeAgo: '1시간 전',
-      content: '사진만 봐도 정말 맛있어 보여요! 저희 강아지도 시도해볼게요.',
-      likes: 5,
-    ),
-    _PostComment(
-      id: 2,
-      author: '코코엄마',
-      avatar: '🐶',
-      timeAgo: '30분 전',
-      content: '닭가슴살은 어디서 구매하셨나요? 추천 부탁드려요!',
-      likes: 2,
-      replies: [
-        _PostComment(
-          id: 3,
-          author: '멍멍이엄마',
-          avatar: '🐕',
-          timeAgo: '20분 전',
-          content: '동네 마트 무항생제 닭가슴살 사용했어요. 가격도 괜찮더라고요.',
-          likes: 3,
-        ),
-      ],
-    ),
-    _PostComment(
-      id: 4,
-      author: '보리집사',
-      avatar: '🐱',
-      timeAgo: '10분 전',
-      content: '레시피 링크 공유 가능할까요? 저도 만들어보고 싶네요.',
-      likes: 1,
-    ),
-  ];
 }
 
