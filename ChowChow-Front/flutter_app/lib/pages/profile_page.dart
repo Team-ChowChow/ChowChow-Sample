@@ -1197,18 +1197,23 @@ class _PetRowState extends State<_PetRow> {
   PetModel get pet => widget.pet;
 
   String get _breedAgeLine {
-    final breed = pet.breedName ?? pet.displayType;
-    final group = pet.groupName;
+    final breed = pet.breedName?.isNotEmpty == true ? pet.breedName : pet.displayType;
+    final group = pet.groupName?.isNotEmpty == true ? pet.groupName : null;
     final age = _ageLabel;
 
-    String line = breed;
+    List<String> parts = [];
+
+    if (breed != null && breed.isNotEmpty) {
+      parts.add(breed);
+    }
     if (group != null && group.isNotEmpty) {
-      line = '$line • $group';
+      parts.add(group);
     }
-    if (age != null) {
-      line = '$line • $age';
+    if (age != null && age.isNotEmpty) {
+      parts.add(age);
     }
-    return line;
+
+    return parts.isNotEmpty ? parts.join(' • ') : pet.displayType;
   }
 
   String? get _ageLabel {

@@ -8,6 +8,7 @@ import '../pages/character_list_page.dart';
 import '../pages/character_form_page.dart';
 import '../pages/character_page.dart';
 import '../pages/character_growth_logs_page.dart';
+import '../pages/pet_raising_3d_page.dart';
 import '../pages/community_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
@@ -190,6 +191,14 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         builder: (context, state) {
           final id = int.tryParse(state.pathParameters['characterId'] ?? '') ?? 0;
           return CharacterPage(characterId: id);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/pet-raising-3d/:petId',
+        builder: (context, state) {
+          final petId = int.tryParse(state.pathParameters['petId'] ?? '') ?? 0;
+          return PetRaising3DPage(petId: petId);
         },
       ),
       GoRoute(

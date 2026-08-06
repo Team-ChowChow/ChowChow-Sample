@@ -56,9 +56,11 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       context.go('/');
     } on ApiException catch (e) {
+      debugPrint('❌ ApiException: ${e.statusCode} - ${e.message}');
       setState(() => _errorMessage = e.statusCode == 401 ? '아이디 또는 비밀번호가 올바르지 않습니다.' : '로그인에 실패했습니다.');
-    } catch (_) {
-      setState(() => _errorMessage = '서버에 연결할 수 없습니다.');
+    } catch (e) {
+      debugPrint('❌ Exception: $e');
+      setState(() => _errorMessage = '서버에 연결할 수 없습니다: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
