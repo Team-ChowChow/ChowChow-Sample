@@ -5,7 +5,6 @@ import '../services/api_client.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
-import '../widgets/lowest_price_sheet.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   const RecipeDetailPage({
@@ -713,28 +712,6 @@ class _IngredientsSection extends StatelessWidget {
                       color: ChowColors.gray600,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => showLowestPriceSheet(context, item.name),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: ChowColors.orange50,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.sell_outlined, size: 12, color: ChowColors.orange600),
-                          SizedBox(width: 3),
-                          Text(
-                            '최저가',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowColors.orange600),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ],

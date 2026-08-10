@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "\"RecipeNutritionSummaries\"")
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class RecipeNutritionSummary {
