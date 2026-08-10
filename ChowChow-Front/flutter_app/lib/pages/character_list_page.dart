@@ -76,7 +76,8 @@ class _CharacterListPageState extends State<CharacterListPage> {
   }
 
   void _openRaise(CharacterModel c) {
-    context.push('/character/${c.characterId}');
+    debugPrint('🎮 Opening 3D page for petId: ${c.petId}');
+    context.push('/pet-raising-3d/${c.petId}');
   }
 
   @override
