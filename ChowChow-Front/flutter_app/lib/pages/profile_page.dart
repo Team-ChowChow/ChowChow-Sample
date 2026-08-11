@@ -7,7 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import '../services/api_client.dart';
 import '../services/character_service.dart';
 import '../services/models.dart';
+import '../services/shop_service.dart';
 import '../theme/chow_theme.dart';
+import '../theme/shop_visuals.dart';
 import '../widgets/chow_network_image.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -24,6 +26,8 @@ class _ProfilePageState extends State<ProfilePage> {
   int _savedRecipes = 0;
   int _completedCooking = 0;
   int _writtenReviews = 0;
+  int _coinBalance = 0;
+  String _profileFrameKey = 'frame_orange';
 
   String _petType = '';
   int? _breedId;
@@ -47,6 +51,24 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadShopStyle();
+  }
+
+  Future<void> _loadShopStyle() async {
+    try {
+      final catalog = await ShopService.fetchCatalog();
+      if (!mounted) return;
+      setState(() {
+        _coinBalance = catalog.balance;
+        _profileFrameKey = catalog.equippedProfileFrameKey;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _openCoinShop() async {
+    await context.push('/coin-shop');
+    if (!mounted) return;
+    await _loadShopStyle();
   }
 
   Future<void> _loadProfile() async {
@@ -54,7 +76,9 @@ class _ProfilePageState extends State<ProfilePage> {
       final results = await Future.wait([
         ApiClient.get('/api/users/me'),
         ApiClient.get('/api/pets'),
-        ApiClient.get('/api/users/me/stats').catchError((_) => <String, dynamic>{}),
+        ApiClient.get(
+          '/api/users/me/stats',
+        ).catchError((_) => <String, dynamic>{}),
         ApiClient.get('/api/notifications').catchError((_) => <dynamic>[]),
         ApiClient.get('/api/v1/allergies').catchError((_) => <dynamic>[]),
       ]);
@@ -82,8 +106,14 @@ class _ProfilePageState extends State<ProfilePage> {
           final timeStr = createdAt != null ? _formatNotifTime(createdAt) : '';
           return _ProfileNotice(
             type: m['notificationType'] as String? ?? 'notice',
-            title: m['notificationTitle'] as String? ?? m['title'] as String? ?? '알림',
-            message: m['notificationContent'] as String? ?? m['message'] as String? ?? '',
+            title:
+                m['notificationTitle'] as String? ??
+                m['title'] as String? ??
+                '알림',
+            message:
+                m['notificationContent'] as String? ??
+                m['message'] as String? ??
+                '',
             time: timeStr,
             isNew: !(m['isRead'] as bool? ?? false),
           );
@@ -149,7 +179,11 @@ class _ProfilePageState extends State<ProfilePage> {
     if (match == null) return null;
     final years = int.tryParse(match.group(1)!);
     if (years == null) return null;
-    final birth = DateTime(DateTime.now().year - years, DateTime.now().month, DateTime.now().day);
+    final birth = DateTime(
+      DateTime.now().year - years,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
     return '${birth.year}-${birth.month.toString().padLeft(2, '0')}-${birth.day.toString().padLeft(2, '0')}';
   }
 
@@ -160,8 +194,10 @@ class _ProfilePageState extends State<ProfilePage> {
       'petName': _petName.trim(),
       'petType': _petType == 'dog' ? 'DOG' : 'CAT',
       if (_breedId != null) 'breedId': _breedId,
-      if (_parseWeight(_petWeight) != null) 'petWeight': _parseWeight(_petWeight),
-      if (_petAge.trim().isNotEmpty) 'petBirthdate': _ageToBirthdate(_petAge.trim()),
+      if (_parseWeight(_petWeight) != null)
+        'petWeight': _parseWeight(_petWeight),
+      if (_petAge.trim().isNotEmpty)
+        'petBirthdate': _ageToBirthdate(_petAge.trim()),
       if (_selectedAllergyIds.isNotEmpty) 'allergyIds': _selectedAllergyIds,
     };
 
@@ -182,9 +218,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('반려동물 추가에 실패했습니다. 잠시 후 다시 시도해주세요.'),
-        ),
+        const SnackBar(content: Text('반려동물 추가에 실패했습니다. 잠시 후 다시 시도해주세요.')),
       );
     }
   }
@@ -285,8 +319,9 @@ class _ProfilePageState extends State<ProfilePage> {
                               width: double.infinity,
                               height: 52,
                               child: ElevatedButton(
-                                onPressed:
-                                    _isPetFormValid ? _submitPetForm : null,
+                                onPressed: _isPetFormValid
+                                    ? _submitPetForm
+                                    : null,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: ChowColors.orange500,
                                   disabledBackgroundColor: ChowColors.gray300,
@@ -401,18 +436,11 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: ChowColors.gray800,
-                ),
+                style: const TextStyle(fontSize: 14, color: ChowColors.gray800),
               ),
               if (selected) ...[
                 const SizedBox(height: 6),
-                const Icon(
-                  Icons.check,
-                  color: ChowColors.orange500,
-                  size: 20,
-                ),
+                const Icon(Icons.check, color: ChowColors.orange500, size: 20),
               ],
             ],
           ),
@@ -439,20 +467,29 @@ class _ProfilePageState extends State<ProfilePage> {
                       context: context,
                       backgroundColor: Colors.white,
                       shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(24),
+                        ),
                       ),
                       builder: (context) {
                         return SafeArea(
                           child: ListView.separated(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             itemCount: _availableBreeds.length,
-                            separatorBuilder: (_, _) => const Divider(height: 1),
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final breed = _availableBreeds[index];
                               return ListTile(
-                                title: Text(breed.displayName, style: const TextStyle(fontSize: 15)),
+                                title: Text(
+                                  breed.displayName,
+                                  style: const TextStyle(fontSize: 15),
+                                ),
                                 trailing: _breedId == breed.breedId
-                                    ? const Icon(Icons.check, color: ChowColors.orange500)
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: ChowColors.orange500,
+                                      )
                                     : null,
                                 onTap: () {
                                   updateForm(() {
@@ -478,15 +515,32 @@ class _ProfilePageState extends State<ProfilePage> {
               child: _availableBreeds.isEmpty
                   ? const Row(
                       children: [
-                        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: ChowColors.orange500)),
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: ChowColors.orange500,
+                          ),
+                        ),
                         SizedBox(width: 10),
-                        Text('품종 불러오는 중...', style: TextStyle(color: ChowColors.gray500, fontSize: 15)),
+                        Text(
+                          '품종 불러오는 중...',
+                          style: TextStyle(
+                            color: ChowColors.gray500,
+                            fontSize: 15,
+                          ),
+                        ),
                       ],
                     )
                   : Text(
-                      _breedDisplayName.isEmpty ? '품종을 선택하세요 (선택)' : _breedDisplayName,
+                      _breedDisplayName.isEmpty
+                          ? '품종을 선택하세요 (선택)'
+                          : _breedDisplayName,
                       style: TextStyle(
-                        color: _breedDisplayName.isEmpty ? ChowColors.gray500 : const Color(0xFF111827),
+                        color: _breedDisplayName.isEmpty
+                            ? ChowColors.gray500
+                            : const Color(0xFF111827),
                         fontSize: 15,
                       ),
                     ),
@@ -504,7 +558,10 @@ class _ProfilePageState extends State<ProfilePage> {
         _buildPetLabel('알러지', required: false),
         const SizedBox(height: 8),
         if (_allAllergies.isEmpty)
-          const Text('알러지 목록을 불러오는 중...', style: TextStyle(color: ChowColors.gray500, fontSize: 13))
+          const Text(
+            '알러지 목록을 불러오는 중...',
+            style: TextStyle(color: ChowColors.gray500, fontSize: 13),
+          )
         else
           Wrap(
             spacing: 8,
@@ -515,20 +572,29 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: () {
                   updateForm(() {
                     if (selected) {
-                      _selectedAllergyIds = List.from(_selectedAllergyIds)..remove(a.allergyId);
+                      _selectedAllergyIds = List.from(_selectedAllergyIds)
+                        ..remove(a.allergyId);
                     } else {
-                      _selectedAllergyIds = [..._selectedAllergyIds, a.allergyId];
+                      _selectedAllergyIds = [
+                        ..._selectedAllergyIds,
+                        a.allergyId,
+                      ];
                     }
                   });
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 120),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: selected ? ChowColors.orange100 : Colors.white,
                     borderRadius: BorderRadius.circular(99),
                     border: Border.all(
-                      color: selected ? ChowColors.orange500 : ChowColors.gray300,
+                      color: selected
+                          ? ChowColors.orange500
+                          : ChowColors.gray300,
                       width: selected ? 1.5 : 1,
                     ),
                   ),
@@ -536,8 +602,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     a.allergyName,
                     style: TextStyle(
                       fontSize: 13,
-                      color: selected ? ChowColors.orange600 : ChowColors.gray700,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                      color: selected
+                          ? ChowColors.orange600
+                          : ChowColors.gray700,
+                      fontWeight: selected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -566,10 +636,7 @@ class _ProfilePageState extends State<ProfilePage> {
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
-              color: ChowColors.gray500,
-              fontSize: 14,
-            ),
+            hintStyle: const TextStyle(color: ChowColors.gray500, fontSize: 14),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
@@ -593,10 +660,7 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 6),
           Text(
             helperText,
-            style: const TextStyle(
-              fontSize: 12,
-              color: ChowColors.gray500,
-            ),
+            style: const TextStyle(fontSize: 12, color: ChowColors.gray500),
           ),
         ],
       ],
@@ -607,10 +671,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return RichText(
       text: TextSpan(
         text: text,
-        style: const TextStyle(
-          fontSize: 14,
-          color: ChowColors.gray700,
-        ),
+        style: const TextStyle(fontSize: 14, color: ChowColors.gray700),
         children: [
           if (required)
             const TextSpan(
@@ -634,9 +695,7 @@ class _ProfilePageState extends State<ProfilePage> {
               height: MediaQuery.of(context).size.height * 0.6,
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
                 children: [
@@ -681,101 +740,119 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.notifications_none, size: 48, color: ChowColors.gray300),
+                                Icon(
+                                  Icons.notifications_none,
+                                  size: 48,
+                                  color: ChowColors.gray300,
+                                ),
                                 SizedBox(height: 12),
-                                Text('알림이 없어요', style: TextStyle(color: ChowColors.gray500, fontSize: 15)),
+                                Text(
+                                  '알림이 없어요',
+                                  style: TextStyle(
+                                    color: ChowColors.gray500,
+                                    fontSize: 15,
+                                  ),
+                                ),
                               ],
                             ),
                           )
                         : ListView.separated(
-                      itemCount: _notifications.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final item = _notifications[index];
+                            itemCount: _notifications.length,
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final item = _notifications[index];
 
-                        return Material(
-                          color: item.isNew
-                              ? const Color(0xFFFDF7EA)
-                              : Colors.white,
-                          child: InkWell(
-                            onTap: () {
-                              if (!item.isNew) return;
+                              return Material(
+                                color: item.isNew
+                                    ? const Color(0xFFFDF7EA)
+                                    : Colors.white,
+                                child: InkWell(
+                                  onTap: () {
+                                    if (!item.isNew) return;
 
-                              setModalState(() {
-                                _notifications[index] =
-                                    item.copyWith(isNew: false);
-                              });
+                                    setModalState(() {
+                                      _notifications[index] = item.copyWith(
+                                        isNew: false,
+                                      );
+                                    });
 
-                              setState(() {});
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: _noticeBg(item.type),
-                                    child: Icon(
-                                      _noticeIcon(item.type),
-                                      color: _noticeFg(item.type),
-                                      size: 20,
+                                    setState(() {});
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
+                                    child: Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          item.title,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 16,
+                                        CircleAvatar(
+                                          backgroundColor: _noticeBg(item.type),
+                                          child: Icon(
+                                            _noticeIcon(item.type),
+                                            color: _noticeFg(item.type),
+                                            size: 20,
                                           ),
                                         ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          item.message,
-                                          style: const TextStyle(height: 1.35),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.title,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                item.message,
+                                                style: const TextStyle(
+                                                  height: 1.35,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                item.time,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: ChowColors.gray500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          item.time,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: ChowColors.gray500,
+                                        const SizedBox(width: 8),
+                                        SizedBox(
+                                          width: 12,
+                                          child: Center(
+                                            child: item.isNew
+                                                ? Container(
+                                                    width: 8,
+                                                    height: 8,
+                                                    decoration:
+                                                        const BoxDecoration(
+                                                          color: ChowColors
+                                                              .orange500,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                  )
+                                                : null,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                    width: 12,
-                                    child: Center(
-                                      child: item.isNew
-                                          ? Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: const BoxDecoration(
-                                                color: ChowColors.orange500,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -830,6 +907,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final userName = _user?.displayName ?? '사용자';
     final userEmail = _user?.authEmail ?? '';
+    final profileFrame = profileFrameVisualFor(_profileFrameKey);
 
     return ColoredBox(
       color: ChowColors.gray50,
@@ -848,17 +926,29 @@ class _ProfilePageState extends State<ProfilePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              width: 64,
-                              height: 64,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
+                              width: 70,
+                              height: 70,
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: profileFrame.colors,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: profileFrame.shadowColor,
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.person,
-                                size: 34,
-                                color: Colors.deepPurple.shade300,
+                              child: CircleAvatar(
+                                backgroundColor: Colors.white,
+                                child: Icon(
+                                  Icons.person,
+                                  size: 34,
+                                  color: Colors.deepPurple.shade300,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -969,7 +1059,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
                                     '+ 추가하기',
@@ -989,17 +1080,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                 child: Center(
                                   child: Text(
                                     '등록된 반려동물이 없습니다.',
-                                    style: TextStyle(
-                                      color: ChowColors.gray500,
-                                    ),
+                                    style: TextStyle(color: ChowColors.gray500),
                                   ),
                                 ),
                               )
                             else
-                              ..._pets.map((pet) => _PetRow(
-                                pet: pet,
-                                onDeleted: _loadProfile,
-                              )),
+                              ..._pets.map(
+                                (pet) =>
+                                    _PetRow(pet: pet, onDeleted: _loadProfile),
+                              ),
                           ],
                         ),
                       ),
@@ -1039,6 +1128,19 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: '앱 설정',
                         icon: Icons.settings_outlined,
                         onTap: () => context.push('/app-settings'),
+                      ),
+                    ],
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _MenuSection(
+                    title: '꾸미기',
+                    items: [
+                      _MenuItem(
+                        label: '코인 상점',
+                        icon: Icons.storefront_outlined,
+                        badge: '🪙 $_coinBalance',
+                        onTap: _openCoinShop,
                       ),
                     ],
                   ),
@@ -1118,10 +1220,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         side: BorderSide.none,
                         backgroundColor: Colors.transparent,
                       ),
-                      icon: const Icon(
-                        Icons.logout,
-                        color: ChowColors.red500,
-                      ),
+                      icon: const Icon(Icons.logout, color: ChowColors.red500),
                       label: const Text('로그아웃'),
                     ),
                   ),
@@ -1223,7 +1322,8 @@ class _PetRowState extends State<_PetRow> {
     if (birth == null) return null;
     var years = DateTime.now().year - birth.year;
     final now = DateTime.now();
-    if (now.month < birth.month || (now.month == birth.month && now.day < birth.day)) {
+    if (now.month < birth.month ||
+        (now.month == birth.month && now.day < birth.day)) {
       years--;
     }
     if (years < 1) return '1살 미만';
@@ -1233,44 +1333,53 @@ class _PetRowState extends State<_PetRow> {
   String? get _weightLabel {
     final w = pet.petWeight;
     if (w == null) return null;
-    final rounded = w == w.roundToDouble() ? w.toInt().toString() : w.toStringAsFixed(1);
+    final rounded = w == w.roundToDouble()
+        ? w.toInt().toString()
+        : w.toStringAsFixed(1);
     return '체중: ${rounded}kg';
   }
 
   Future<void> _deletePet() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('반려동물 삭제'),
-        content: Text('${pet.petName}을(를) 정말 삭제하시겠습니까?\n삭제하면 관련 정보도 함께 삭제됩니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('취소'),
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('반려동물 삭제'),
+            content: Text(
+              '${pet.petName}을(를) 정말 삭제하시겠습니까?\n삭제하면 관련 정보도 함께 삭제됩니다.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('삭제'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (!confirmed || !mounted) return;
 
     try {
       await ApiClient.delete('/api/pets/${pet.petId}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('반려동물이 삭제되었습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('반려동물이 삭제되었습니다.')));
         widget.onDeleted?.call();
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e'), duration: const Duration(seconds: 5)),
+        SnackBar(
+          content: Text('삭제 실패: $e'),
+          duration: const Duration(seconds: 5),
+        ),
       );
     }
   }
@@ -1285,53 +1394,104 @@ class _PetRowState extends State<_PetRow> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 32,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: ChowColors.gray300, borderRadius: BorderRadius.circular(99))),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: ChowColors.gray300,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
               const SizedBox(height: 20),
               GestureDetector(
-                onTap: () { Navigator.of(ctx).pop(); },
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                },
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: SizedBox(
-                        width: 120, height: 120,
-                        child: ChowNetworkImage(url: pet.petProfileImg ?? _placeholder),
+                        width: 120,
+                        height: 120,
+                        child: ChowNetworkImage(
+                          url: pet.petProfileImg ?? _placeholder,
+                        ),
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(color: ChowColors.orange500, shape: BoxShape.circle),
-                      child: const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 18),
+                      decoration: const BoxDecoration(
+                        color: ChowColors.orange500,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_outlined,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 4),
-              const Text('사진을 탭하면 변경할 수 있어요', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
+              const Text(
+                '사진을 탭하면 변경할 수 있어요',
+                style: TextStyle(fontSize: 12, color: ChowColors.gray500),
+              ),
               const SizedBox(height: 16),
-              Text(pet.petName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ChowColors.gray900)),
+              Text(
+                pet.petName,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: ChowColors.gray900,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(_breedAgeLine, style: const TextStyle(fontSize: 14, color: ChowColors.gray500)),
+              Text(
+                _breedAgeLine,
+                style: const TextStyle(fontSize: 14, color: ChowColors.gray500),
+              ),
               if (_weightLabel != null) ...[
                 const SizedBox(height: 2),
-                Text(_weightLabel!, style: const TextStyle(fontSize: 13, color: ChowColors.gray600)),
+                Text(
+                  _weightLabel!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: ChowColors.gray600,
+                  ),
+                ),
               ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () { Navigator.of(ctx).pop(); _deletePet(); },
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    _deletePet();
+                  },
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  label: const Text('삭제하기', style: TextStyle(color: Colors.red)),
+                  label: const Text(
+                    '삭제하기',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.red, width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -1349,115 +1509,112 @@ class _PetRowState extends State<_PetRow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-      Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Material(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => _openPetDetail(context),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Material(
+            color: const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _openPetDetail(context),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: SizedBox(
-                        width: 76,
-                        height: 76,
-                        child: ChowNetworkImage(
-                          url: pet.petProfileImg ?? _placeholder,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -4,
-                      bottom: -4,
-                      child: Material(
-                        color: ChowColors.orange500,
-                        shape: const CircleBorder(),
-                        elevation: 1,
-                        shadowColor: Colors.black26,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => _openPetDetail(context),
-                          child: const SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: Icon(
-                              Icons.camera_alt_outlined,
-                              color: Colors.white,
-                              size: 16,
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            width: 76,
+                            height: 76,
+                            child: ChowNetworkImage(
+                              url: pet.petProfileImg ?? _placeholder,
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        pet.petName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: ChowColors.gray800,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _breedAgeLine,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: ChowColors.gray500,
-                          height: 1.25,
-                        ),
-                      ),
-                      if (weightLabel != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          weightLabel,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: ChowColors.gray600,
-                            height: 1.3,
+                        Positioned(
+                          right: -4,
+                          bottom: -4,
+                          child: Material(
+                            color: ChowColors.orange500,
+                            shape: const CircleBorder(),
+                            elevation: 1,
+                            shadowColor: Colors.black26,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => _openPetDetail(context),
+                              child: const SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: Icon(
+                                  Icons.camera_alt_outlined,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            pet.petName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: ChowColors.gray800,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _breedAgeLine,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: ChowColors.gray500,
+                              height: 1.25,
+                            ),
+                          ),
+                          if (weightLabel != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              weightLabel,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: ChowColors.gray600,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: ChowColors.gray400,
+                      size: 22,
+                    ),
+                  ],
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: ChowColors.gray400,
-                  size: 22,
-                ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
-      ),
-    ],
+      ],
     );
   }
 }
 
 class _MenuSection extends StatelessWidget {
-  const _MenuSection({
-    required this.title,
-    required this.items,
-  });
+  const _MenuSection({required this.title, required this.items});
 
   final String title;
   final List<Widget> items;
@@ -1473,10 +1630,7 @@ class _MenuSection extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 13,
-              color: ChowColors.gray500,
-            ),
+            style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
           ),
           const SizedBox(height: 6),
           ...items,
@@ -1505,49 +1659,31 @@ class _MenuItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: 12,
-          horizontal: 4,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 22,
-              color: ChowColors.gray600,
-            ),
+            Icon(icon, size: 22, color: ChowColors.gray600),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: ChowColors.gray800,
-                ),
+                style: const TextStyle(color: ChowColors.gray800),
               ),
             ),
             if (badge != null)
               Container(
                 margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 2,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: ChowColors.orange500,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   badge!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 11),
                 ),
               ),
-            const Icon(
-              Icons.chevron_right,
-              color: ChowColors.gray400,
-            ),
+            const Icon(Icons.chevron_right, color: ChowColors.gray400),
           ],
         ),
       ),

@@ -31,8 +31,9 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
   String _sortBy = 'createdAt';
   String _sortOrder = 'desc';
   String _searchKeyword = '';
-  List<CommunityPost> _posts = kCommunityPosts;
+  List<CommunityPost> _posts = [];
   bool _isLoading = true;
+  bool _loadError = false;
   Set<int> _bookmarkedIds = {};
   int? _currentUserId;
 
@@ -47,13 +48,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
     // 2. 강아지/고양이 필터링
     if (_selectedPetType != '전체') {
       final petTypeValue = _selectedPetType == '강아지' ? 'DOG' : 'CAT';
-      print('[Filter] ${_selectedPetType} 필터: 찾는 petType=$petTypeValue');
-      final beforeCount = result.length;
-      result = result.where((post) {
-        print('[Filter] Post ${post.id}: petType=${post.petType}');
-        return post.petType == petTypeValue;
-      }).toList();
-      print('[Filter] 필터 후: $beforeCount -> ${result.length}');
+      result = result.where((post) => post.petType == petTypeValue).toList();
     }
 
     // 3. 검색 필터링 (태그명 또는 제목/내용)
@@ -93,7 +88,6 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
   @override
   void initState() {
     super.initState();
-    print('[CommunityPage] initState - kCommunityPosts count: ${kCommunityPosts.length}');
     _loadPosts();
     _loadBookmarks();
     _loadCurrentUser();
@@ -165,28 +159,16 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
   }
 
   Future<void> _loadPosts() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = false;
+    });
     try {
-      var posts = await CommunityService.getPosts(
+      final posts = await CommunityService.getPosts(
         category: _selectedCategory != '전체' ? _selectedCategory : null,
         sortBy: _sortBy,
         sortOrder: _sortOrder,
       );
-
-      print('[CommunityPage] API returned ${posts.length} posts');
-
-      // API가 데이터를 적게 반환하면, kCommunityPosts에서 추가로 가져오기
-      if (posts.length < 5) {
-        print('[CommunityPage] API data insufficient, adding kCommunityPosts');
-        // 이미 있는 post ID를 제외하고 kCommunityPosts에서 추가
-        final existingIds = posts.map((p) => p.id).toSet();
-        final additional = kCommunityPosts
-            .where((p) => !existingIds.contains(p.id))
-            .take(24 - posts.length)
-            .toList();
-        posts = [...posts, ...additional];
-        print('[CommunityPage] Total posts after adding: ${posts.length}');
-      }
 
       // 백엔드가 tagNames를 응답에 포함하지 않으면,
       // SharedPreferences에서 저장된 tags를 복원
@@ -207,11 +189,9 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
         _isLoading = false;
       });
     } catch (e) {
-      print('[CommunityPage] _loadPosts error: $e');
       if (!mounted) return;
       setState(() {
-        print('[CommunityPage] Using kCommunityPosts: ${kCommunityPosts.length} posts');
-        _posts = kCommunityPosts;
+        _loadError = true;
         _isLoading = false;
       });
     }
@@ -382,6 +362,30 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                     child: Center(
                       child: CircularProgressIndicator(
                         color: ChowColors.orange500,
+                      ),
+                    ),
+                  ),
+                )
+              else if (_loadError)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 48),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          const Icon(Icons.error_outline, color: ChowColors.gray400, size: 32),
+                          const SizedBox(height: 10),
+                          const Text(
+                            '게시글을 불러오지 못했어요',
+                            style: TextStyle(color: ChowColors.gray500),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: _loadPosts,
+                            style: TextButton.styleFrom(foregroundColor: ChowColors.orange500),
+                            child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -942,12 +946,7 @@ class _PostCommentsSheetState extends State<_PostCommentsSheet> {
       widget.onCommentsLoaded(sheetComments);
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        if (_comments.isEmpty) {
-          _comments.addAll(_sampleSheetComments);
-        }
-        _loading = false;
-      });
+      setState(() => _loading = false);
     }
   }
 
@@ -1319,42 +1318,6 @@ class _SheetComment {
     );
   }
 }
-
-const _sampleSheetComments = [
-  _SheetComment(
-    id: 1,
-    author: '나비아빠',
-    avatar: '🐕',
-    timeAgo: '1시간 전',
-    content: '사진만 봐도 정말 맛있어 보여요! 저희 강아지도 시도해볼게요.',
-    likes: 5,
-  ),
-  _SheetComment(
-    id: 2,
-    author: '코코엄마',
-    avatar: '🐶',
-    timeAgo: '30분 전',
-    content: '닭가슴살은 어디서 구매하셨나요? 추천 부탁드려요!',
-    likes: 2,
-  ),
-  _SheetComment(
-    id: 3,
-    parentId: 2,
-    author: '멍멍이엄마',
-    avatar: '🐕',
-    timeAgo: '20분 전',
-    content: '동네 마트 무항생제 닭가슴살 사용했어요. 가격도 괜찮더라고요.',
-    likes: 3,
-  ),
-  _SheetComment(
-    id: 4,
-    author: '보리집사',
-    avatar: '🐱',
-    timeAgo: '10분 전',
-    content: '레시피 링크 공유 가능할까요? 저도 만들어보고 싶네요.',
-    likes: 1,
-  ),
-];
 
 class _SheetCommentThreadData {
   const _SheetCommentThreadData({

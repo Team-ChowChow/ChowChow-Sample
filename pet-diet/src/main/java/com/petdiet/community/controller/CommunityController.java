@@ -23,14 +23,17 @@ public class CommunityController {
 
     @GetMapping("/posts")
     public ResponseEntity<Page<PostResponse>> getPosts(
+            @AuthenticationPrincipal SupabasePrincipal principal,
             @RequestParam(required = false) String category,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(communityService.getPosts(category, pageable));
+        return ResponseEntity.ok(communityService.getPosts(principal.authUuid(), category, pageable));
     }
 
     @GetMapping("/posts/{postId}")
-    public ResponseEntity<PostResponse> getPost(@PathVariable Integer postId) {
-        return ResponseEntity.ok(communityService.getPost(postId));
+    public ResponseEntity<PostResponse> getPost(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PathVariable Integer postId) {
+        return ResponseEntity.ok(communityService.getPost(principal.authUuid(), postId));
     }
 
     @GetMapping("/posts/my")
@@ -88,8 +91,10 @@ public class CommunityController {
     }
 
     @GetMapping("/posts/{postId}/comments")
-    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable Integer postId) {
-        return ResponseEntity.ok(communityService.getComments(postId));
+    public ResponseEntity<List<CommentResponse>> getComments(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PathVariable Integer postId) {
+        return ResponseEntity.ok(communityService.getComments(principal.authUuid(), postId));
     }
 
     @PostMapping("/posts/{postId}/comments")

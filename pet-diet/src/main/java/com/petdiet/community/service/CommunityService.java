@@ -31,27 +31,29 @@ public class CommunityService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public Page<PostResponse> getPosts(String category, Pageable pageable) {
+    public Page<PostResponse> getPosts(UUID authUuid, String category, Pageable pageable) {
+        User user = getUser(authUuid);
         Page<CommunityPost> posts = (category == null || category.isBlank())
                 ? postRepository.findAllByPostStatus("ACTIVE", pageable)
                 : postRepository.findAllByPostCategoryAndPostStatus(category, "ACTIVE", pageable);
 
-        return posts.map(post -> PostResponse.from(post, post.getLikeCount(), false));
+        return posts.map(post -> PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user)));
     }
 
     @Transactional
-    public PostResponse getPost(Integer postId) {
+    public PostResponse getPost(UUID authUuid, Integer postId) {
+        User user = getUser(authUuid);
         CommunityPost post = postRepository.findByPostIdAndPostStatus(postId, "ACTIVE")
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
         post.incrementViewCount();
-        return PostResponse.from(post, post.getLikeCount(), false);
+        return PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user));
     }
 
     @Transactional(readOnly = true)
     public Page<PostResponse> getMyPosts(UUID authUuid, Pageable pageable) {
         User user = getUser(authUuid);
         return postRepository.findAllByUserAndPostStatus(user, "ACTIVE", pageable)
-                .map(post -> PostResponse.from(post, post.getLikeCount(), false));
+                .map(post -> PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user)));
     }
 
     @Transactional
@@ -108,10 +110,11 @@ public class CommunityService {
     }
 
     @Transactional(readOnly = true)
-    public List<CommentResponse> getComments(Integer postId) {
+    public List<CommentResponse> getComments(UUID authUuid, Integer postId) {
+        User user = getUser(authUuid);
         CommunityPost post = getActivePost(postId);
         return commentRepository.findAllByPostAndCommentStatus(post, "ACTIVE").stream()
-                .map(c -> CommentResponse.from(c, false))
+                .map(c -> CommentResponse.from(c, c.getUser().getUserId().equals(user.getUserId())))
                 .toList();
     }
 

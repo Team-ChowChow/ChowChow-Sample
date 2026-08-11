@@ -104,14 +104,12 @@ public class DietRecommendService {
 
         if (petId != null) {
             pet = userPetRepository.findByPetIdAndUser(petId, user)
-                    .orElse(null);
-            if (pet != null) {
-                List<Integer> allergyIds = pet.getAllergies().stream().map(a -> a.getAllergyId()).toList();
-                List<Integer> diseaseIds = pet.getDiseases().stream().map(d -> d.getDiseaseId()).toList();
-                allergies = allergyRepository.findAllById(allergyIds);
-                diseases = diseaseRepository.findAllById(diseaseIds);
-                breed = (pet.getBreedId() != null) ? breedRepository.findById(pet.getBreedId()).orElse(null) : null;
-            }
+                    .orElseThrow(() -> new IllegalArgumentException("반려동물을 찾을 수 없습니다."));
+            List<Integer> allergyIds = pet.getAllergies().stream().map(a -> a.getAllergyId()).toList();
+            List<Integer> diseaseIds = pet.getDiseases().stream().map(d -> d.getDiseaseId()).toList();
+            allergies = allergyRepository.findAllById(allergyIds);
+            diseases = diseaseRepository.findAllById(diseaseIds);
+            breed = (pet.getBreedId() != null) ? breedRepository.findById(pet.getBreedId()).orElse(null) : null;
         }
 
         List<String> recentTitles = (pet != null

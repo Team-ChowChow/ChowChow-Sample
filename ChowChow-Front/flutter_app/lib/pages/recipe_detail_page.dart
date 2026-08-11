@@ -284,7 +284,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       _loadRecipe();
                     }),
                   _TitleSection(recipe: recipe),
-                  _StatsSection(recipe: recipe),
+                  _StatsSection(recipe: recipe, likeCount: _likeCount, saveCount: _saveCount),
                   _InfoSection(recipe: recipe),
                   _DescriptionSection(description: recipe.description),
                   _Tabs(
@@ -295,7 +295,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   if (_activeTab == _RecipeDetailTab.recipe) ...[
                     _IngredientsSection(ingredients: recipe.ingredients, loading: _loading),
                     _InstructionsSection(steps: recipe.steps, loading: _loading),
-                    _NutritionSection(items: recipe.nutrition),
+                    if (recipe.nutrition.isNotEmpty) _NutritionSection(items: recipe.nutrition),
                     if (recipe.tips.isNotEmpty) _TipsSection(tips: recipe.tips),
                     if (_similarRecipes.isNotEmpty)
                       _RelatedSection(recipes: _similarRecipes),
@@ -530,9 +530,11 @@ class _TitleSection extends StatelessWidget {
 }
 
 class _StatsSection extends StatelessWidget {
-  const _StatsSection({required this.recipe});
+  const _StatsSection({required this.recipe, required this.likeCount, required this.saveCount});
 
   final _RecipeDetailData recipe;
+  final int likeCount;
+  final int saveCount;
 
   @override
   Widget build(BuildContext context) {
@@ -547,8 +549,8 @@ class _StatsSection extends StatelessWidget {
             iconColor: ChowColors.yellow500,
           ),
           _StatCell(value: '${recipe.reviewCount}', label: '리뷰'),
-          _StatCell(value: '${recipe.likes}', label: '좋아요'),
-          _StatCell(value: '${recipe.saves}', label: '저장'),
+          _StatCell(value: '$likeCount', label: '좋아요'),
+          _StatCell(value: '$saveCount', label: '저장'),
         ],
       ),
     );
@@ -564,12 +566,40 @@ class _InfoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return _WhiteSection(
       topMargin: 0,
-      child: Row(
+      child: Column(
         children: [
-          _InfoCell(icon: Icons.schedule, label: '조리시간', value: recipe.cookTime),
-          _InfoCell(icon: Icons.group_outlined, label: '분량', value: recipe.servings),
-          _InfoCell(icon: Icons.restaurant, label: '난이도', value: recipe.difficulty),
-          _InfoCell(icon: Icons.local_fire_department, label: '칼로리', value: recipe.calories),
+          Row(
+            children: [
+              _InfoCell(icon: Icons.schedule, label: '조리시간', value: recipe.cookTime),
+              _InfoCell(icon: Icons.restaurant, label: '난이도', value: recipe.difficulty),
+              _InfoCell(icon: Icons.local_fire_department, label: '칼로리', value: recipe.calories),
+            ],
+          ),
+          if (recipe.servings.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ChowColors.orange50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: ChowColors.orange100),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.group_outlined, color: ChowColors.orange500, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      recipe.servings,
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF9A3412), height: 1.45),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1163,6 +1193,8 @@ class _InfoCell extends StatelessWidget {
           Text(
             value,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: ChowColors.gray900, fontSize: 13),
           ),
         ],
