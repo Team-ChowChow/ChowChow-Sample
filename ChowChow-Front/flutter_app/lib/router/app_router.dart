@@ -30,6 +30,7 @@ import '../shell/main_shell.dart';
 import '../pages/create_post.dart';
 import '../pages/tip_detail_page.dart';
 import '../pages/my_posts_page.dart';
+import '../pages/walk_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
@@ -92,6 +93,11 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/coin-shop',
         builder: (context, state) => const CoinShopPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/walk',
+        builder: (context, state) => const WalkPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
