@@ -16,7 +16,7 @@ class PetRaising3DPage extends StatefulWidget {
   });
 
   @override
-  State<PetRaising3DPageState> createState() => _PetRaising3DPageState();
+  State<PetRaising3DPage> createState() => _PetRaising3DPageState();
 }
 
 class _PetRaising3DPageState extends State<PetRaising3DPage> {
@@ -108,13 +108,67 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     if (_pet == null) return;
 
     try {
-      final htmlFile = await DefaultAssetBundle.of(context).loadString('assets/viewer.html');
       final groupNum = _getGroupNumber();
 
-      _webViewController.loadHtmlString(
-        htmlFile,
-        baseUrl: 'file:///android_asset/assets/',
-      );
+      // 간단한 HTML 직접 생성
+      final html = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.1.2/dist/model-viewer.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; }
+        body { width: 100%; height: 100vh; }
+        model-viewer {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #FF7000;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <model-viewer id="viewer" camera-controls interaction-prompt="none" auto-rotate></model-viewer>
+    <div class="controls">
+        <button onclick="toggle()">🚶 정지</button>
+    </div>
+    <script>
+        const viewer = document.getElementById('viewer');
+        let walking = true;
+
+        // 플랫폼별 모델 경로
+        const model = 'character_group_$groupNum.glb';
+
+        // Android/iOS의 경우 file:// 경로 사용
+        viewer.src = 'file:///android_asset/flutter_assets/assets/models/' + model;
+
+        function toggle() {
+            walking = !walking;
+            viewer.setAttribute('auto-rotate', walking);
+            document.querySelector('button').textContent = walking ? '⏸️ 정지' : '🚶 재생';
+        }
+    </script>
+</body>
+</html>
+      ''';
+
+      _webViewController.loadHtmlString(html);
 
       debugPrint('🌐 WebView 로드됨 (그룹: $groupNum)');
     } catch (e) {
