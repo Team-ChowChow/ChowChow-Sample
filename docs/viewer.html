@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Model Viewer</title>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/loaders/GLTFLoader.js"></script>
     <style>
         body {
             margin: 0;
@@ -174,16 +174,27 @@
             window.parent.postMessage({ type: 'animationToggled', walking: isWalking }, '*');
         }
 
-        // Initialize
-        init();
+        // Wait for THREE.js to load
+        function waitForThree() {
+            if (typeof THREE !== 'undefined') {
+                console.log('THREE.js loaded');
+                init();
 
-        // Check for model URL parameter (웹 기반 방식)
-        const urlParams = new URLSearchParams(window.location.search);
-        const modelParam = urlParams.get('model');
-        if (modelParam) {
-            const modelPath = modelParam.startsWith('http') ? modelParam : `models/${modelParam}.glb`;
-            loadModelFromURL(modelPath);
+                // Check for model URL parameter (웹 기반 방식)
+                const urlParams = new URLSearchParams(window.location.search);
+                const modelParam = urlParams.get('model');
+                if (modelParam) {
+                    const modelPath = modelParam.startsWith('http') ? modelParam : `models/${modelParam}.glb`;
+                    loadModelFromURL(modelPath);
+                }
+            } else {
+                console.log('Waiting for THREE.js...');
+                setTimeout(waitForThree, 100);
+            }
         }
+
+        // Start waiting for THREE.js
+        waitForThree();
 
         // Listen for messages from Flutter
         window.addEventListener('message', (event) => {
