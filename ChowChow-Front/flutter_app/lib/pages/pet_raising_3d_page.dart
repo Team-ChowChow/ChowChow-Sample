@@ -23,18 +23,19 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-  late WebViewController _webViewController;
+  WebViewController? _webViewController;
 
   static const String VIEWER_URL = 'http://localhost:8888';
 
   @override
   void initState() {
     super.initState();
-    _initWebView();
     _loadPet();
   }
 
-  void _initWebView() {
+  WebViewController _getWebViewController() {
+    if (_webViewController != null) return _webViewController!;
+
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
@@ -52,6 +53,8 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           },
         ),
       );
+
+    return _webViewController!;
   }
 
   Future<void> _loadPet() async {
@@ -120,7 +123,8 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
 
       debugPrint('🌐 WebView 로드: $viewerUrl');
 
-      _webViewController.loadRequest(Uri.parse(viewerUrl));
+      final controller = _getWebViewController();
+      controller.loadRequest(Uri.parse(viewerUrl));
     } catch (e) {
       debugPrint('❌ WebView 로드 실패: $e');
       if (!mounted) return;
@@ -196,7 +200,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       body: Stack(
         children: [
           // WebView (3D 모델)
-          WebViewWidget(controller: _webViewController),
+          WebViewWidget(controller: _getWebViewController()),
 
           // 상태창 (왼쪽 위)
           Positioned(
