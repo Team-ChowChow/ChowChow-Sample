@@ -199,8 +199,38 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // WebView (3D 모델)
+          // WebView (3D 모델) - Windows에서는 주석 처리하고 임시 UI 표시
+          /*
           WebViewWidget(controller: _getWebViewController()),
+          */
+          // 임시 UI (테스트용)
+          Center(
+            child: Container(
+              width: 300,
+              height: 400,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ChowColors.gray300),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.pets, size: 80, color: ChowColors.orange500),
+                  SizedBox(height: 16),
+                  Text(
+                    '🐕 3D 캐릭터 렌더링',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '(Android에서 실제 3D 표시)',
+                    style: TextStyle(fontSize: 12, color: ChowColors.gray500),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
           // 상태창 (왼쪽 위)
           Positioned(
