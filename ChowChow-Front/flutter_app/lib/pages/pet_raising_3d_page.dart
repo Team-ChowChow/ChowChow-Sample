@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:model_viewer/model_viewer.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -23,12 +23,28 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-  bool _isWalking = false;
+  late WebViewController _webViewController;
 
   @override
   void initState() {
     super.initState();
+    _initWebView();
     _loadPet();
+  }
+
+  void _initWebView() {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            debugPrint('✅ WebView 페이지 로드 완료');
+          },
+          onWebResourceError: (WebResourceError error) {
+            debugPrint('❌ WebView 에러: ${error.description}');
+          },
+        ),
+      );
   }
 
   Future<void> _loadPet() async {
@@ -58,6 +74,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           _pet = pet;
           _loading = false;
         });
+        _loadWebView();
       } else {
         setState(() {
           _error = '펫 정보 로드 실패 (${response.statusCode})';
@@ -74,7 +91,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     }
   }
 
-  String _getModelPath() {
+  String _getGroupNumber() {
     final groupMap = {
       'Toy': 1,
       'Terrier': 2,
@@ -84,16 +101,25 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       'Sporting': 6,
       'Non-Sporting': 7,
     };
-
-    final groupNum = groupMap[_pet?.groupName] ?? 1;
-    return 'assets/models/character_group_$groupNum.glb';
+    return (groupMap[_pet?.groupName] ?? 1).toString();
   }
 
-  void _toggleAnimation() {
-    setState(() {
-      _isWalking = !_isWalking;
-    });
-    debugPrint('🚶 애니메이션: ${_isWalking ? "재생" : "정지"}');
+  Future<void> _loadWebView() async {
+    if (_pet == null) return;
+
+    try {
+      final htmlFile = await DefaultAssetBundle.of(context).loadString('assets/viewer.html');
+      final groupNum = _getGroupNumber();
+
+      _webViewController.loadHtmlString(
+        htmlFile,
+        baseUrl: 'file:///android_asset/assets/',
+      );
+
+      debugPrint('🌐 WebView 로드됨 (그룹: $groupNum)');
+    } catch (e) {
+      debugPrint('❌ WebView 로드 실패: $e');
+    }
   }
 
   @override
@@ -143,70 +169,14 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // 3D 모델 (중앙)
-          Center(
-            child: GestureDetector(
-              onTap: _toggleAnimation,
-              child: Container(
-                width: 300,
-                height: 400,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: ChowColors.gray300),
-                ),
-                child: ModelViewer(
-                  src: _getModelPath(),
-                  alt: '${_pet?.petName} 3D 모델',
-                  autoRotate: _isWalking,
-                  autoRotateDelay: 0,
-                  cameraControls: true,
-                  interactionPrompt: 'none',
-                  backgroundColor: const Color(0xFFF5F5F5),
-                  loading: 'eager',
-                  exposure: 1,
-                ),
-              ),
-            ),
-          ),
+          // WebView (3D 모델)
+          WebViewWidget(controller: _webViewController),
 
           // 상태창 (왼쪽 위)
           Positioned(
             top: 16,
             left: 16,
             child: _buildStatsPanel(),
-          ),
-
-          // 애니메이션 토글 버튼 (우하단)
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: FloatingActionButton(
-              onPressed: _toggleAnimation,
-              backgroundColor: ChowColors.orange500,
-              child: Icon(_isWalking ? Icons.pause : Icons.play_arrow, color: Colors.white),
-            ),
-          ),
-
-          // 애니메이션 상태 표시 (중앙 하단)
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: _isWalking ? ChowColors.orange500 : ChowColors.gray500,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _isWalking ? '🚶 걷는 중...' : '⏸️ 정지',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
           ),
         ],
       ),
