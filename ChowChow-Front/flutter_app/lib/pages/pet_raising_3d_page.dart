@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:model_viewer/model_viewer.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -16,15 +16,14 @@ class PetRaising3DPage extends StatefulWidget {
   });
 
   @override
-  State<PetRaising3DPage> createState() => _PetRaising3DPageState();
+  State<PetRaising3DPageState> createState() => _PetRaising3DPageState();
 }
 
 class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-
-  static const String GITHUB_PAGES_URL = 'https://team-chowchow.github.io/ChowChow-Sample/docs/viewer.html';
+  bool _isWalking = false;
 
   @override
   void initState() {
@@ -75,7 +74,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     }
   }
 
-  String _getGroupNumber() {
+  String _getModelPath() {
     final groupMap = {
       'Toy': 1,
       'Terrier': 2,
@@ -87,31 +86,14 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     };
 
     final groupNum = groupMap[_pet?.groupName] ?? 1;
-    return groupNum.toString();
+    return 'assets/models/character_group_$groupNum.glb';
   }
 
-  Future<void> _openWebViewer() async {
-    try {
-      final groupNum = _getGroupNumber();
-      final modelUrl = '$GITHUB_PAGES_URL?model=character_group_$groupNum';
-
-      debugPrint('🌐 Opening web viewer: $modelUrl');
-
-      if (await canLaunchUrl(Uri.parse(modelUrl))) {
-        await launchUrl(Uri.parse(modelUrl), mode: LaunchMode.externalApplication);
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다')),
-        );
-      }
-    } catch (e) {
-      debugPrint('❌ Error launching URL: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('오류: $e')),
-      );
-    }
+  void _toggleAnimation() {
+    setState(() {
+      _isWalking = !_isWalking;
+    });
+    debugPrint('🚶 애니메이션: ${_isWalking ? "재생" : "정지"}');
   }
 
   @override
@@ -161,10 +143,10 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // 3D 캐릭터 표시 영역 (중앙)
+          // 3D 모델 (중앙)
           Center(
             child: GestureDetector(
-              onTap: _openWebViewer,
+              onTap: _toggleAnimation,
               child: Container(
                 width: 300,
                 height: 400,
@@ -173,28 +155,16 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: ChowColors.gray300),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.pets, size: 64, color: ChowColors.orange500),
-                    const SizedBox(height: 16),
-                    Text(
-                      '웹에서 3D 보기',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: ChowColors.gray800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '탭하여 3D 캐릭터를 봅시다',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: ChowColors.gray500,
-                      ),
-                    ),
-                  ],
+                child: ModelViewer(
+                  src: _getModelPath(),
+                  alt: '${_pet?.petName} 3D 모델',
+                  autoRotate: _isWalking,
+                  autoRotateDelay: 0,
+                  cameraControls: true,
+                  interactionPrompt: 'none',
+                  backgroundColor: const Color(0xFFF5F5F5),
+                  loading: 'eager',
+                  exposure: 1,
                 ),
               ),
             ),
@@ -207,21 +177,33 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             child: _buildStatsPanel(),
           ),
 
-          // 정보 (좌하단)
+          // 애니메이션 토글 버튼 (우하단)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: _toggleAnimation,
+              backgroundColor: ChowColors.orange500,
+              child: Icon(_isWalking ? Icons.pause : Icons.play_arrow, color: Colors.white),
+            ),
+          ),
+
+          // 애니메이션 상태 표시 (중앙 하단)
           Positioned(
             bottom: 16,
             left: 16,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: ChowColors.orange500,
+                color: _isWalking ? ChowColors.orange500 : ChowColors.gray500,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
-                '💻 웹으로 열기',
-                style: TextStyle(
+              child: Text(
+                _isWalking ? '🚶 걷는 중...' : '⏸️ 정지',
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
               ),
             ),
