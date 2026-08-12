@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -20,13 +20,10 @@ class PetRaising3DPage extends StatefulWidget {
 }
 
 class _PetRaising3DPageState extends State<PetRaising3DPage> {
-  late WebViewController _webViewController;
-  bool _isWalking = false;
   PetModel? _pet;
   bool _loading = true;
   String? _error;
 
-  // GitHub Pages URL (사용자가 GitHub Pages 활성화 후 이 URL 사용)
   static const String GITHUB_PAGES_URL = 'https://team-chowchow.github.io/ChowChow-Sample/docs/viewer.html';
 
   @override
@@ -61,7 +58,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
         setState(() {
           _pet = pet;
           _loading = false;
-          _initWebView();
         });
       } else {
         setState(() {
@@ -76,24 +72,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
         _error = e.toString();
         _loading = false;
       });
-    }
-  }
-
-  void _initWebView() {
-    try {
-      final groupNum = _getGroupNumber();
-      final modelUrl = '$GITHUB_PAGES_URL?model=character_group_$groupNum';
-
-      debugPrint('🔧 Loading WebView from: $modelUrl');
-
-      _webViewController = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadRequest(Uri.parse(modelUrl));
-
-      debugPrint('✅ WebViewController initialized');
-    } catch (e) {
-      debugPrint('❌ WebView error: $e');
-      setState(() => _error = 'WebView 로드 실패: $e');
     }
   }
 
@@ -112,12 +90,28 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     return groupNum.toString();
   }
 
-  void _toggleAnimation() {
-    setState(() => _isWalking = !_isWalking);
-    _webViewController.runJavaScript(
-      'toggleAnimation();',
-    );
-    debugPrint(_isWalking ? '🚶 Animation started' : '⏸️ Animation stopped');
+  Future<void> _openWebViewer() async {
+    try {
+      final groupNum = _getGroupNumber();
+      final modelUrl = '$GITHUB_PAGES_URL?model=character_group_$groupNum';
+
+      debugPrint('🌐 Opening web viewer: $modelUrl');
+
+      if (await canLaunchUrl(Uri.parse(modelUrl))) {
+        await launchUrl(Uri.parse(modelUrl), mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다')),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error launching URL: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류: $e')),
+      );
+    }
   }
 
   @override
@@ -167,10 +161,10 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // 3D 캐릭터 표시 영역 (중앙 - WebView)
+          // 3D 캐릭터 표시 영역 (중앙)
           Center(
             child: GestureDetector(
-              onTap: _toggleAnimation,
+              onTap: _openWebViewer,
               child: Container(
                 width: 300,
                 height: 400,
@@ -179,13 +173,28 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: ChowColors.gray300),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: _loading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: ChowColors.orange500),
-                        )
-                      : WebViewWidget(controller: _webViewController),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.pets, size: 64, color: ChowColors.orange500),
+                    const SizedBox(height: 16),
+                    Text(
+                      '웹에서 3D 보기',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: ChowColors.gray800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '탭하여 3D 캐릭터를 봅시다',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: ChowColors.gray500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -198,20 +207,20 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             child: _buildStatsPanel(),
           ),
 
-          // 애니메이션 상태 표시
+          // 정보 (좌하단)
           Positioned(
             bottom: 16,
             left: 16,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: _isWalking ? ChowColors.orange500 : ChowColors.gray300,
+                color: ChowColors.orange500,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                _isWalking ? '🚶 걷는 중...' : '⏸️ 정지 중',
+              child: const Text(
+                '💻 웹으로 열기',
                 style: TextStyle(
-                  color: _isWalking ? Colors.white : ChowColors.gray600,
+                  color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),
