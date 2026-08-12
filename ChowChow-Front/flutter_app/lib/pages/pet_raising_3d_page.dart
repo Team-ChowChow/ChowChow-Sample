@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/services.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -22,36 +20,19 @@ class PetRaising3DPage extends StatefulWidget {
 }
 
 class _PetRaising3DPageState extends State<PetRaising3DPage> {
-  WebViewController? _webViewController;
+  late WebViewController _webViewController;
   bool _isWalking = false;
   PetModel? _pet;
   bool _loading = true;
   String? _error;
 
+  // GitHub Pages URL (사용자가 GitHub Pages 활성화 후 이 URL 사용)
+  static const String GITHUB_PAGES_URL = 'https://team-chowchow.github.io/ChowChow-Sample/docs/viewer.html';
+
   @override
   void initState() {
     super.initState();
     _loadPet();
-    _initWebViewAsync();
-  }
-
-  Future<void> _initWebViewAsync() async {
-    try {
-      debugPrint('🔧 Creating WebViewController...');
-      final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadFlutterAsset('assets/viewer.html');
-
-      _webViewController = controller;
-      debugPrint('✅ WebViewController ready');
-
-      if (_pet != null) {
-        _loadModel();
-      }
-    } catch (e) {
-      debugPrint('❌ WebView error: $e');
-      setState(() => _error = 'WebView 로드 실패: $e');
-    }
   }
 
   Future<void> _loadPet() async {
@@ -80,10 +61,8 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
         setState(() {
           _pet = pet;
           _loading = false;
+          _initWebView();
         });
-        if (_webViewController != null) {
-          _loadModel();
-        }
       } else {
         setState(() {
           _error = '펫 정보 로드 실패 (${response.statusCode})';
@@ -97,6 +76,24 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
         _error = e.toString();
         _loading = false;
       });
+    }
+  }
+
+  void _initWebView() {
+    try {
+      final groupNum = _getGroupNumber();
+      final modelUrl = '$GITHUB_PAGES_URL?model=character_group_$groupNum';
+
+      debugPrint('🔧 Loading WebView from: $modelUrl');
+
+      _webViewController = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..loadRequest(Uri.parse(modelUrl));
+
+      debugPrint('✅ WebViewController initialized');
+    } catch (e) {
+      debugPrint('❌ WebView error: $e');
+      setState(() => _error = 'WebView 로드 실패: $e');
     }
   }
 
@@ -115,43 +112,12 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     return groupNum.toString();
   }
 
-  String get _modelPath {
-    final groupNum = _getGroupNumber();
-    return 'assets/images/characters/character_group_$groupNum.glb';
-  }
-
-  Future<void> _loadModel() async {
-    if (_pet == null || _webViewController == null) return;
-    try {
-      debugPrint('📦 Loading GLB: $_modelPath');
-      final data = await rootBundle.load(_modelPath);
-      final bytes = data.buffer.asUint8List();
-      final base64 = base64Encode(bytes);
-
-      final message = {
-        'type': 'loadModel',
-        'modelData': 'data:model/gltf-binary;base64,$base64',
-      };
-      await _webViewController!.runJavaScript(
-        'window.postMessage(${jsonEncode(message)}, "*")',
-      );
-      debugPrint('✅ GLB loaded');
-    } catch (e) {
-      debugPrint('❌ GLB load error: $e');
-    }
-  }
-
   void _toggleAnimation() {
-    if (_webViewController == null) return;
-
     setState(() => _isWalking = !_isWalking);
-    final message = {
-      'type': 'toggleAnimation',
-      'walking': _isWalking,
-    };
-    _webViewController?.runJavaScript(
-      'window.postMessage(${jsonEncode(message)}, "*")',
+    _webViewController.runJavaScript(
+      'toggleAnimation();',
     );
+    debugPrint(_isWalking ? '🚶 Animation started' : '⏸️ Animation stopped');
   }
 
   @override
@@ -213,14 +179,14 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: ChowColors.gray300),
                 ),
-                child: _webViewController != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: WebViewWidget(controller: _webViewController!),
-                      )
-                    : const Center(
-                        child: CircularProgressIndicator(color: ChowColors.orange500),
-                      ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: ChowColors.orange500),
+                        )
+                      : WebViewWidget(controller: _webViewController),
+                ),
               ),
             ),
           ),
