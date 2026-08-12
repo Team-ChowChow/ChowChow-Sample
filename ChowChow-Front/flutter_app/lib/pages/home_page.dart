@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
+import '../services/walk_service.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
 
@@ -32,6 +33,9 @@ class _HomePageState extends State<HomePage> {
   String _tipText = '';
   String _tipDetail = '';
 
+  WalkSummaryModel? _walkSummary;
+  bool _walkLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +43,20 @@ class _HomePageState extends State<HomePage> {
     _loadRecipes();
     _loadMealRecords();
     _loadTip();
+    _loadWalkSummary();
+  }
+
+  Future<void> _loadWalkSummary() async {
+    try {
+      final summary = await WalkService.fetchToday();
+      if (!mounted) return;
+      setState(() {
+        _walkSummary = summary;
+        _walkLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _walkLoading = false);
+    }
   }
 
   Future<void> _loadTip() async {
@@ -159,6 +177,18 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _TodayWalkCard(
+                        summary: _walkSummary,
+                        loading: _walkLoading,
+                        onTap: () async {
+                          await context.push('/walk');
+                          await _loadWalkSummary();
+                        },
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -803,6 +833,157 @@ class _TrendingCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayWalkCard extends StatelessWidget {
+  const _TodayWalkCard({
+    required this.summary,
+    required this.loading,
+    required this.onTap,
+  });
+
+  final WalkSummaryModel? summary;
+  final bool loading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final distanceMeters = summary?.todayDistanceMeters ?? 0;
+    final next = summary?.nextMilestone;
+    final targetMeters = next?.targetMeters ?? 5000;
+    final progress = (distanceMeters / targetMeters).clamp(0.0, 1.0);
+    final remainingMeters = (targetMeters - distanceMeters).clamp(
+      0,
+      targetMeters,
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
+            ),
+            border: Border.all(color: ChowColors.orange100),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.directions_walk_rounded,
+                      color: ChowColors.orange500,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '오늘의 산책',
+                          style: TextStyle(
+                            color: ChowColors.gray800,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '함께 걷고 코인을 모아보세요',
+                          style: TextStyle(
+                            color: ChowColors.gray500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: ChowColors.gray500,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              if (loading)
+                const LinearProgressIndicator(minHeight: 7)
+              else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      (distanceMeters / 1000).toStringAsFixed(2),
+                      style: const TextStyle(
+                        color: ChowColors.gray900,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4, bottom: 2),
+                      child: Text(
+                        'km',
+                        style: TextStyle(
+                          color: ChowColors.gray600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${summary?.todayRewardCoins ?? 0} 코인 획득',
+                      style: const TextStyle(
+                        color: ChowColors.orange600,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 9,
+                    backgroundColor: Colors.white,
+                    color: ChowColors.orange500,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  next == null
+                      ? '오늘의 모든 보상을 받았어요!'
+                      : '다음 보상까지 ${(remainingMeters / 1000).toStringAsFixed(2)}km · +${next.rewardCoins}코인',
+                  style: const TextStyle(
+                    color: ChowColors.gray600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
