@@ -39,6 +39,7 @@ dependencies:
   image_picker: ^1.2.2
   url_launcher: ^6.3.1
   geolocator: ^14.0.2
+  webview_flutter: ^4.8.0
 
 dev_dependencies:
   flutter_test:

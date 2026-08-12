@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -22,12 +23,35 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-  bool _isWalking = false;
+  late WebViewController _webViewController;
+
+  static const String VIEWER_URL = 'http://localhost:8888';
 
   @override
   void initState() {
     super.initState();
+    _initWebView();
     _loadPet();
+  }
+
+  void _initWebView() {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            debugPrint('✅ WebView 페이지 로드 완료: $url');
+          },
+          onWebResourceError: (WebResourceError error) {
+            debugPrint('❌ WebView 리소스 에러: ${error.description}');
+            debugPrint('❌ URL: ${error.url}');
+          },
+          onNavigationRequest: (NavigationRequest request) {
+            debugPrint('📡 Navigation: ${request.url}');
+            return NavigationDecision.navigate;
+          },
+        ),
+      );
   }
 
   Future<void> _loadPet() async {
@@ -57,6 +81,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           _pet = pet;
           _loading = false;
         });
+        _loadWebView();
       } else {
         setState(() {
           _error = '펫 정보 로드 실패 (${response.statusCode})';
@@ -73,24 +98,36 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     }
   }
 
-  String _getGroupEmoji() {
-    final emojiMap = {
-      'Toy': '🐶',
-      'Terrier': '🐕',
-      'Working': '🦮',
-      'Herding': '🐑',
-      'Hound': '🦗',
-      'Sporting': '🦆',
-      'Non-Sporting': '🐩',
+  String _getGroupNumber() {
+    final groupMap = {
+      'Toy': 1,
+      'Terrier': 2,
+      'Working': 3,
+      'Herding': 4,
+      'Hound': 5,
+      'Sporting': 6,
+      'Non-Sporting': 7,
     };
-    return emojiMap[_pet?.groupName] ?? '🐕';
+    return (groupMap[_pet?.groupName] ?? 1).toString();
   }
 
-  void _toggleAnimation() {
-    setState(() {
-      _isWalking = !_isWalking;
-    });
-    debugPrint('🚶 애니메이션: ${_isWalking ? "재생" : "정지"}');
+  Future<void> _loadWebView() async {
+    if (_pet == null) return;
+
+    try {
+      final groupNum = _getGroupNumber();
+      final viewerUrl = '$VIEWER_URL/?model=character_group_$groupNum';
+
+      debugPrint('🌐 WebView 로드: $viewerUrl');
+
+      _webViewController.loadRequest(Uri.parse(viewerUrl));
+    } catch (e) {
+      debugPrint('❌ WebView 로드 실패: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = 'WebView 로드 실패: $e';
+      });
+    }
   }
 
   @override
@@ -104,7 +141,16 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             onPressed: () => context.pop(),
           ),
         ),
-        body: const Center(child: CircularProgressIndicator(color: ChowColors.orange500)),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: ChowColors.orange500),
+              SizedBox(height: 16),
+              Text('펫 정보 로드 중...'),
+            ],
+          ),
+        ),
       );
     }
 
@@ -121,9 +167,18 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: ChowColors.gray600)),
+              Icon(Icons.error_outline, size: 48, color: ChowColors.red500),
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: _loadPet, child: const Text('다시 시도')),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: ChowColors.gray600),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _loadPet,
+                child: const Text('다시 시도'),
+              ),
             ],
           ),
         ),
@@ -140,52 +195,8 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // 3D 캐릭터 영역 (중앙)
-          Center(
-            child: GestureDetector(
-              onTap: _toggleAnimation,
-              child: Container(
-                width: 300,
-                height: 400,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: ChowColors.gray300),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // 거대한 이모지로 임시 3D 표현
-                    Transform.rotate(
-                      angle: _isWalking ? (_isWalking ? 0.1 : 0) : 0,
-                      child: Text(
-                        _getGroupEmoji(),
-                        style: const TextStyle(fontSize: 120),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      _pet?.groupName ?? 'Unknown',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: ChowColors.gray800,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _isWalking ? '🚶 걷는 중...' : '정지 중',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _isWalking ? ChowColors.orange500 : ChowColors.gray500,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          // WebView (3D 모델)
+          WebViewWidget(controller: _webViewController),
 
           // 상태창 (왼쪽 위)
           Positioned(
@@ -194,16 +205,31 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             child: _buildStatsPanel(),
           ),
 
-          // 컨트롤 버튼 (우하단)
+          // 안내 메시지 (하단)
           Positioned(
             bottom: 16,
+            left: 16,
             right: 16,
-            child: FloatingActionButton(
-              onPressed: _toggleAnimation,
-              backgroundColor: ChowColors.orange500,
-              child: Icon(
-                _isWalking ? Icons.pause : Icons.play_arrow,
-                color: Colors.white,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: ChowColors.orange500,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.touch_app, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    '클릭하면 애니메이션 토글',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
