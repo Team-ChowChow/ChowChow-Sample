@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -22,36 +20,16 @@ class PetRaising3DPage extends StatefulWidget {
 }
 
 class _PetRaising3DPageState extends State<PetRaising3DPage> {
-  WebViewController? _webViewController;
-  bool _isWalking = false;
   PetModel? _pet;
   bool _loading = true;
   String? _error;
+
+  static const String GITHUB_PAGES_URL = 'https://team-chowchow.github.io/ChowChow-Sample/docs/viewer.html';
 
   @override
   void initState() {
     super.initState();
     _loadPet();
-    _initWebViewAsync();
-  }
-
-  Future<void> _initWebViewAsync() async {
-    try {
-      debugPrint('🔧 Creating WebViewController...');
-      final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadFlutterAsset('assets/viewer.html');
-
-      _webViewController = controller;
-      debugPrint('✅ WebViewController ready');
-
-      if (_pet != null) {
-        _loadModel();
-      }
-    } catch (e) {
-      debugPrint('❌ WebView error: $e');
-      setState(() => _error = 'WebView 로드 실패: $e');
-    }
   }
 
   Future<void> _loadPet() async {
@@ -81,9 +59,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           _pet = pet;
           _loading = false;
         });
-        if (_webViewController != null) {
-          _loadModel();
-        }
       } else {
         setState(() {
           _error = '펫 정보 로드 실패 (${response.statusCode})';
@@ -115,43 +90,28 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     return groupNum.toString();
   }
 
-  String get _modelPath {
-    final groupNum = _getGroupNumber();
-    return 'assets/images/characters/character_group_$groupNum.glb';
-  }
-
-  Future<void> _loadModel() async {
-    if (_pet == null || _webViewController == null) return;
+  Future<void> _openWebViewer() async {
     try {
-      debugPrint('📦 Loading GLB: $_modelPath');
-      final data = await rootBundle.load(_modelPath);
-      final bytes = data.buffer.asUint8List();
-      final base64 = base64Encode(bytes);
+      final groupNum = _getGroupNumber();
+      final modelUrl = '$GITHUB_PAGES_URL?model=character_group_$groupNum';
 
-      final message = {
-        'type': 'loadModel',
-        'modelData': 'data:model/gltf-binary;base64,$base64',
-      };
-      await _webViewController!.runJavaScript(
-        'window.postMessage(${jsonEncode(message)}, "*")',
-      );
-      debugPrint('✅ GLB loaded');
+      debugPrint('🌐 Opening web viewer: $modelUrl');
+
+      if (await canLaunchUrl(Uri.parse(modelUrl))) {
+        await launchUrl(Uri.parse(modelUrl), mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다')),
+        );
+      }
     } catch (e) {
-      debugPrint('❌ GLB load error: $e');
+      debugPrint('❌ Error launching URL: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류: $e')),
+      );
     }
-  }
-
-  void _toggleAnimation() {
-    if (_webViewController == null) return;
-
-    setState(() => _isWalking = !_isWalking);
-    final message = {
-      'type': 'toggleAnimation',
-      'walking': _isWalking,
-    };
-    _webViewController?.runJavaScript(
-      'window.postMessage(${jsonEncode(message)}, "*")',
-    );
   }
 
   @override
@@ -201,10 +161,10 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // 3D 캐릭터 표시 영역 (중앙 - WebView)
+          // 3D 캐릭터 표시 영역 (중앙)
           Center(
             child: GestureDetector(
-              onTap: _toggleAnimation,
+              onTap: _openWebViewer,
               child: Container(
                 width: 300,
                 height: 400,
@@ -213,14 +173,29 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: ChowColors.gray300),
                 ),
-                child: _webViewController != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: WebViewWidget(controller: _webViewController!),
-                      )
-                    : const Center(
-                        child: CircularProgressIndicator(color: ChowColors.orange500),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.pets, size: 64, color: ChowColors.orange500),
+                    const SizedBox(height: 16),
+                    Text(
+                      '웹에서 3D 보기',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: ChowColors.gray800,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '탭하여 3D 캐릭터를 봅시다',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: ChowColors.gray500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -232,20 +207,20 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             child: _buildStatsPanel(),
           ),
 
-          // 애니메이션 상태 표시
+          // 정보 (좌하단)
           Positioned(
             bottom: 16,
             left: 16,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: _isWalking ? ChowColors.orange500 : ChowColors.gray300,
+                color: ChowColors.orange500,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                _isWalking ? '🚶 걷는 중...' : '⏸️ 정지 중',
+              child: const Text(
+                '💻 웹으로 열기',
                 style: TextStyle(
-                  color: _isWalking ? Colors.white : ChowColors.gray600,
+                  color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),

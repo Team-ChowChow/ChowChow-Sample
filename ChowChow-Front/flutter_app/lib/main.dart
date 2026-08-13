@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import 'constants/phone_size.dart';
 import 'router/app_router.dart';
@@ -13,12 +12,8 @@ import 'widgets/phone_shell.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Android + Windows만 지원 (iOS는 제외)
-  if (Platform.isAndroid) {
-    debugPrint('🔧 Android WebView 초기화...');
-  } else if (Platform.isWindows) {
-    debugPrint('🔧 Windows WebView 초기화...');
-  }
+  debugPrint('🚀 ChowChow 앱 시작...');
+  debugPrint('📱 플랫폼: ${Platform.isAndroid ? 'Android' : Platform.isWindows ? 'Windows' : 'Unknown'}');
 
   final loggedIn = await ApiClient.isLoggedIn();
   runApp(ChowChowApp(initialLocation: loggedIn ? '/' : '/login'));
