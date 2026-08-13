@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -23,25 +22,13 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-  late WebViewController _webViewController;
+  String _currentAnimation = 'idle';
+  bool _isAnimating = false;
 
   @override
   void initState() {
     super.initState();
-    _initWebView();
     _loadPet();
-  }
-
-  void _initWebView() {
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            debugPrint('✅ 3D 뷰어 로드됨');
-          },
-        ),
-      );
   }
 
   Future<void> _loadPet() async {
@@ -63,7 +50,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           _pet = pet;
           _loading = false;
         });
-        _loadWebView();
       } else {
         setState(() {
           _error = '펫 정보 로드 실패';
@@ -92,20 +78,52 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     return (groupMap[_pet?.groupName] ?? 1).toString();
   }
 
-  Future<void> _loadWebView() async {
-    try {
-      final groupNum = _getGroupNumber();
-      final html = await DefaultAssetBundle.of(context).loadString('assets/viewer.html');
+  String _getGifPath(String animation) {
+    final groupNum = _getGroupNumber();
+    const fallbackGif = 'group1_idle';
 
-      _webViewController.loadHtmlString(
-        html,
-        baseUrl: 'about:blank',
-      );
+    final animationMap = {
+      'eating': 'group${groupNum}_eating',
+      'petting': 'group${groupNum}_petting',
+      'exercise': 'group${groupNum}_exercise',
+      'bath': 'group${groupNum}_bath',
+      'idle': 'group${groupNum}_idle',
+    };
 
-      debugPrint('🌐 3D 뷰어 로드 시도: 그룹 $groupNum');
-    } catch (e) {
-      debugPrint('❌ 뷰어 로드 실패: $e');
-    }
+    final gifName = animationMap[animation] ?? fallbackGif;
+    return 'assets/gifs/$gifName.gif';
+  }
+
+  bool _gifExists(String animation) {
+    final groupNum = _getGroupNumber();
+    final animationMap = {
+      'eating': 'group${groupNum}_eating',
+      'petting': 'group${groupNum}_petting',
+      'exercise': 'group${groupNum}_exercise',
+      'bath': 'group${groupNum}_bath',
+      'idle': 'group${groupNum}_eating',
+    };
+
+    final gifName = animationMap[animation] ?? 'group1_eating';
+    return gifName == 'group1_eating' || gifName.contains('group${_getGroupNumber()}');
+  }
+
+  void _playAnimation(String animation) {
+    if (_isAnimating) return;
+
+    setState(() {
+      _isAnimating = true;
+      _currentAnimation = animation;
+    });
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _currentAnimation = 'idle';
+          _isAnimating = false;
+        });
+      }
+    });
   }
 
   @override
@@ -113,7 +131,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('3D 펫 키우기'),
+          title: const Text('펫 키우기'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -128,7 +146,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('3D 펫 키우기'),
+          title: const Text('펫 키우기'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -149,7 +167,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_pet?.petName ?? '3D 펫 키우기'),
+        title: Text(_pet?.petName ?? '펫 키우기'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
@@ -157,7 +175,17 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _webViewController),
+          Center(
+            child: Image.asset(
+              _getGifPath(_currentAnimation),
+              width: 300,
+              height: 300,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Text('GIF를 로드할 수 없습니다');
+              },
+            ),
+          ),
           Positioned(
             top: 16,
             left: 16,
@@ -182,7 +210,33 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
               ),
             ),
           ),
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _actionButton('🍖', 'eating', _isAnimating ? null : () => _playAnimation('eating')),
+                _actionButton('❤️', 'petting', _isAnimating ? null : () => _playAnimation('petting')),
+                _actionButton('💪', 'exercise', _isAnimating ? null : () => _playAnimation('exercise')),
+                _actionButton('🛁', 'bath', _isAnimating ? null : () => _playAnimation('bath')),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _actionButton(String emoji, String label, VoidCallback? onPressed) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: FloatingActionButton(
+        mini: true,
+        onPressed: onPressed,
+        backgroundColor: onPressed == null ? Colors.grey : ChowColors.orange500,
+        child: Text(emoji, style: const TextStyle(fontSize: 20)),
       ),
     );
   }
