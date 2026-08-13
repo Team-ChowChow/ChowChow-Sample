@@ -208,6 +208,22 @@ public class SupabaseAuthClient {
         }
     }
 
+    /** 관리자 권한으로 비밀번호를 강제 변경한다. 호출 전에 현재 비밀번호 검증(login)을 먼저 해야 한다. */
+    public void changePassword(UUID authUuid, String newPassword) {
+        try {
+            adminWebClient.put()
+                    .uri("/auth/v1/admin/users/" + authUuid)
+                    .bodyValue(Map.of("password", newPassword))
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
+            log.info("Supabase 비밀번호 변경 완료: {}", authUuid);
+        } catch (WebClientResponseException e) {
+            log.error("Supabase 비밀번호 변경 실패 [status={}]: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("비밀번호 변경 중 오류가 발생했습니다.", e);
+        }
+    }
+
     public void logout(String accessToken) {
         try {
             webClient.post()

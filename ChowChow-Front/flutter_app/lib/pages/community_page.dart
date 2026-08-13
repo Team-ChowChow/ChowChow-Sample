@@ -361,7 +361,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                     padding: EdgeInsets.only(top: 48),
                     child: Center(
                       child: CircularProgressIndicator(
-                        color: ChowColors.orange500,
+                        color: ChowCozy.stone500,
                       ),
                     ),
                   ),
@@ -382,7 +382,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: _loadPosts,
-                            style: TextButton.styleFrom(foregroundColor: ChowColors.orange500),
+                            style: TextButton.styleFrom(foregroundColor: ChowCozy.stone500),
                             child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ],
@@ -436,7 +436,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
           bottom: 100,
           child: Material(
             elevation: 6,
-            color: ChowColors.orange500,
+            color: ChowCozy.stone500,
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
@@ -484,7 +484,7 @@ class _TabChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Material(
-        color: selected ? ChowColors.orange500 : ChowColors.gray100,
+        color: selected ? ChowCozy.stone500 : ChowColors.gray100,
         borderRadius: BorderRadius.circular(999),
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
@@ -686,7 +686,7 @@ class _PostCardState extends State<_PostCard> {
                 children: [
                   CircleAvatar(
                     radius: 22,
-                    backgroundColor: ChowColors.orange100,
+                    backgroundColor: ChowCozy.stone300,
                     child: Text(post.avatar, style: const TextStyle(fontSize: 20)),
                   ),
                   const SizedBox(width: 10),
@@ -776,10 +776,10 @@ class _PostCardState extends State<_PostCard> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: ChowColors.orange50,
+                                    color: ChowCozy.stone100,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: ChowColors.orange100,
+                                      color: ChowCozy.stone300,
                                       width: 1,
                                     ),
                                   ),
@@ -787,7 +787,7 @@ class _PostCardState extends State<_PostCard> {
                                     tag,
                                     style: const TextStyle(
                                       fontSize: 12,
-                                      color: ChowColors.orange600,
+                                      color: ChowCozy.stone700,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -1013,7 +1013,7 @@ class _PostCommentsSheetState extends State<_PostCommentsSheet> {
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(
-                        color: ChowColors.orange500,
+                        color: ChowCozy.stone500,
                       ),
                     )
                   : threads.isEmpty
@@ -1116,7 +1116,7 @@ class _SheetCommentTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: compact ? 16 : 18,
-            backgroundColor: compact ? ChowColors.gray200 : ChowColors.orange50,
+            backgroundColor: compact ? ChowColors.gray200 : ChowCozy.stone100,
             child: Text(comment.avatar),
           ),
           const SizedBox(width: 12),
@@ -1262,14 +1262,14 @@ class _SheetCommentInputState extends State<_SheetCommentInput> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: const BorderSide(color: ChowColors.orange400),
+                  borderSide: const BorderSide(color: ChowCozy.stone300),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 8),
           Material(
-            color: enabled ? ChowColors.orange500 : ChowColors.gray300,
+            color: enabled ? ChowCozy.stone500 : ChowColors.gray300,
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
@@ -1360,7 +1360,7 @@ class _PostMenuButton extends StatelessWidget {
           child: _PostMenuItem(
             icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
             label: isBookmarked ? '저장 취소' : '저장하기',
-            color: isBookmarked ? ChowColors.orange500 : ChowColors.gray800,
+            color: isBookmarked ? ChowCozy.stone500 : ChowColors.gray800,
           ),
         ),
         const PopupMenuItem(
@@ -1438,13 +1438,13 @@ class _CategoryBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: ChowColors.orange50,
+        color: ChowCozy.stone100,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         category,
         style: const TextStyle(
-          color: ChowColors.orange600,
+          color: ChowCozy.stone700,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),

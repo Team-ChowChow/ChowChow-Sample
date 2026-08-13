@@ -134,7 +134,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _load,
-                        style: ElevatedButton.styleFrom(backgroundColor: ChowColors.orange500),
+                        style: ElevatedButton.styleFrom(backgroundColor: ChowCozy.stone500),
                         child: const Text('다시 시도'),
                       ),
                     ],
@@ -164,7 +164,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
                     )
                   : RefreshIndicator(
                       onRefresh: _load,
-                      color: ChowColors.orange500,
+                      color: ChowCozy.stone500,
                       child: ListView(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         children: [
@@ -234,7 +234,7 @@ class _PostListItem extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: ChowColors.orange100,
+                      color: ChowCozy.stone300,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -242,7 +242,7 @@ class _PostListItem extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: ChowColors.orange500,
+                        color: ChowCozy.stone500,
                       ),
                     ),
                   ),
@@ -354,10 +354,10 @@ class _RecipeListItem extends StatelessWidget {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: ChowColors.orange50,
+                    color: ChowCozy.stone100,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.restaurant, color: ChowColors.orange400, size: 32),
+                  child: const Icon(Icons.restaurant, color: ChowCozy.stone300, size: 32),
                 ),
               const SizedBox(width: 12),
               Expanded(
@@ -367,7 +367,7 @@ class _RecipeListItem extends StatelessWidget {
                     if (recipe.menuName != null)
                       Text(
                         recipe.menuName!,
-                        style: const TextStyle(fontSize: 11, color: ChowColors.orange500, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 11, color: ChowCozy.stone500, fontWeight: FontWeight.w600),
                       ),
                     const SizedBox(height: 2),
                     Text(
@@ -379,7 +379,7 @@ class _RecipeListItem extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.bookmark_rounded, size: 13, color: ChowColors.orange500),
+                        const Icon(Icons.bookmark_rounded, size: 13, color: ChowCozy.stone500),
                         const SizedBox(width: 3),
                         const Text('저장됨', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
                         const SizedBox(width: 10),

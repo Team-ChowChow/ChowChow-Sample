@@ -25,7 +25,7 @@ class AuthAccountScaffold extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [ChowColors.orange50, Colors.white],
+            colors: [ChowCozy.stone50, Colors.white],
           ),
         ),
         child: SafeArea(
@@ -112,11 +112,11 @@ class AuthBrandIcon extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [ChowColors.orange400, ChowColors.orange500],
+              colors: [ChowCozy.stone300, ChowCozy.stone400],
             ),
             boxShadow: [
               BoxShadow(
-                color: ChowColors.orange500.withValues(alpha: 0.35),
+                color: ChowCozy.stone400.withValues(alpha: 0.35),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -173,7 +173,7 @@ class AuthFieldLabel extends StatelessWidget {
             if (required)
               const TextSpan(
                 text: ' *',
-                style: TextStyle(color: ChowColors.orange500),
+                style: TextStyle(color: ChowCozy.destructive),
               ),
           ],
         ),
@@ -231,7 +231,7 @@ class AuthTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: ChowColors.orange500, width: 2),
+          borderSide: const BorderSide(color: ChowCozy.stone500, width: 2),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -285,7 +285,7 @@ class AuthDropdownField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: ChowColors.orange500, width: 2),
+          borderSide: const BorderSide(color: ChowCozy.stone500, width: 2),
         ),
       ),
       isExpanded: true,
@@ -315,14 +315,11 @@ class AuthPrimaryButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        gradient: enabled
-            ? const LinearGradient(colors: [ChowColors.orange400, ChowColors.orange500])
-            : null,
-        color: enabled ? null : ChowColors.gray300,
+        color: enabled ? ChowCozy.stone500 : ChowColors.gray300,
         boxShadow: enabled
             ? [
                 BoxShadow(
-                  color: ChowColors.orange500.withValues(alpha: 0.25),
+                  color: ChowCozy.stone500.withValues(alpha: 0.18),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -369,7 +366,7 @@ class AuthSideButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = color ?? (enabled ? ChowColors.orange500 : ChowColors.gray300);
+    final bg = color ?? (enabled ? ChowCozy.stone500 : ChowColors.gray300);
     return Material(
       color: bg,
       borderRadius: BorderRadius.circular(12),

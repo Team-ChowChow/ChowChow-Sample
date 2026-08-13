@@ -76,8 +76,8 @@ class _CharacterListPageState extends State<CharacterListPage> {
   }
 
   void _openRaise(CharacterModel c) {
-    debugPrint('🎮 Opening 3D page for petId: ${c.petId}');
-    context.push('/pet-raising-3d/${c.petId}');
+    debugPrint('🎮 Opening 캐릭터 키우기 page for characterId: ${c.characterId}');
+    context.push('/character/${c.characterId}');
   }
 
   @override
@@ -128,7 +128,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('새 캐릭터 생성'),
                         style: FilledButton.styleFrom(
-                          backgroundColor: ChowColors.orange500,
+                          backgroundColor: ChowCozy.stone500,
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
                       ),
@@ -139,7 +139,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: ChowColors.orange500))
+                  ? const Center(child: CircularProgressIndicator(color: ChowCozy.stone500))
                   : _error != null
                       ? Center(
                           child: Column(
@@ -160,7 +160,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
                             )
                           : RefreshIndicator(
                               onRefresh: _load,
-                              color: ChowColors.orange500,
+                              color: ChowCozy.stone500,
                               child: ListView.builder(
                                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                                 itemCount: _characters.length,
@@ -211,7 +211,7 @@ class _EmptyState extends StatelessWidget {
               onPressed: onCreate,
               icon: const Icon(Icons.add),
               label: const Text('새 캐릭터 생성'),
-              style: FilledButton.styleFrom(backgroundColor: ChowColors.orange500),
+              style: FilledButton.styleFrom(backgroundColor: ChowCozy.stone500),
             ),
           ],
         ),
@@ -262,8 +262,8 @@ class _CharacterCard extends StatelessWidget {
                         ? ClipOval(child: ChowNetworkImage(url: img, fit: BoxFit.cover))
                         : const CircleAvatar(
                             radius: 32,
-                            backgroundColor: ChowColors.orange100,
-                            child: Icon(Icons.pets, color: ChowColors.orange500, size: 32),
+                            backgroundColor: ChowCozy.stone300,
+                            child: Icon(Icons.pets, color: ChowCozy.stone500, size: 32),
                           ),
                   ),
                   const SizedBox(width: 12),
@@ -284,12 +284,12 @@ class _CharacterCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: ChowColors.orange100,
+                            color: ChowCozy.stone300,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '레벨 ${character.level}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ChowColors.orange600),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ChowCozy.stone700),
                           ),
                         ),
                       ],
@@ -313,7 +313,7 @@ class _CharacterCard extends StatelessWidget {
                   value: character.expFraction,
                   minHeight: 6,
                   backgroundColor: ChowColors.gray200,
-                  color: ChowColors.orange500,
+                  color: ChowCozy.stone500,
                 ),
               ),
               const SizedBox(height: 12),
@@ -322,7 +322,7 @@ class _CharacterCard extends StatelessWidget {
                 children: [
                   _StatChip(icon: Icons.favorite, label: '건강', value: character.health, color: ChowColors.red500),
                   _StatChip(icon: Icons.auto_awesome, label: '행복', value: character.happiness, color: ChowColors.yellow500),
-                  _StatChip(icon: Icons.restaurant, label: '배고픔', value: character.hunger, color: ChowColors.orange500),
+                  _StatChip(icon: Icons.restaurant, label: '배고픔', value: character.hunger, color: ChowCozy.stone500),
                 ],
               ),
               const SizedBox(height: 14),
@@ -331,7 +331,7 @@ class _CharacterCard extends StatelessWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: onRaise,
-                      style: FilledButton.styleFrom(backgroundColor: ChowColors.orange500),
+                      style: FilledButton.styleFrom(backgroundColor: ChowCozy.stone500),
                       child: const Text('키우기'),
                     ),
                   ),

@@ -282,7 +282,7 @@ class _SearchPageState extends State<SearchPage> {
                             ),
                             borderSide: BorderSide(
                               color: _searchFocused
-                                  ? ChowColors.orange500
+                                  ? ChowCozy.stone500
                                   : Colors.transparent,
                               width: 1.5,
                             ),
@@ -290,7 +290,7 @@ class _SearchPageState extends State<SearchPage> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(15),
                             borderSide: const BorderSide(
-                              color: ChowColors.orange500,
+                              color: ChowCozy.stone500,
                               width: 1.5,
                             ),
                           ),
@@ -481,7 +481,7 @@ class _SearchSuggestionPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ChowColors.orange100),
+        border: Border.all(color: ChowCozy.stone300),
         boxShadow: const [
           BoxShadow(
             blurRadius: 12,
@@ -498,7 +498,7 @@ class _SearchSuggestionPanel extends StatelessWidget {
               Icon(
                 hasQuery ? Icons.manage_search : Icons.local_fire_department,
                 size: 17,
-                color: ChowColors.orange500,
+                color: ChowCozy.stone500,
               ),
               const SizedBox(width: 6),
               Text(
@@ -627,7 +627,7 @@ class _PopularSearchTile extends StatelessWidget {
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: term.rank <= 3
-                        ? ChowColors.orange500
+                        ? ChowCozy.stone500
                         : ChowColors.gray400,
                   ),
                 ),
@@ -668,11 +668,11 @@ class _SuggestionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: hasQuery ? ChowColors.orange50 : ChowColors.gray50,
+      color: hasQuery ? ChowCozy.stone100 : ChowColors.gray50,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(999),
         side: BorderSide(
-          color: hasQuery ? ChowColors.orange100 : ChowColors.gray200,
+          color: hasQuery ? ChowCozy.stone300 : ChowColors.gray200,
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -686,13 +686,13 @@ class _SuggestionChip extends StatelessWidget {
               Icon(
                 hasQuery ? Icons.north_west : Icons.tag,
                 size: 13,
-                color: hasQuery ? ChowColors.orange600 : ChowColors.gray500,
+                color: hasQuery ? ChowCozy.stone700 : ChowColors.gray500,
               ),
               const SizedBox(width: 5),
               Text(
                 keyword,
                 style: TextStyle(
-                  color: hasQuery ? ChowColors.orange600 : ChowColors.gray700,
+                  color: hasQuery ? ChowCozy.stone700 : ChowColors.gray700,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   height: 1.2,
@@ -727,10 +727,10 @@ class _PopularCategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isSelected ? ChowColors.orange500 : Colors.white,
+      color: isSelected ? ChowCozy.stone500 : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(999),
-        side: BorderSide(color: isSelected ? ChowColors.orange500 : ChowColors.gray200),
+        side: BorderSide(color: isSelected ? ChowCozy.stone500 : ChowColors.gray200),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -845,7 +845,7 @@ class _SortTextButton extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? ChowColors.orange500 : ChowColors.gray500,
+            color: selected ? ChowCozy.stone500 : ChowColors.gray500,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
@@ -944,14 +944,14 @@ class _RecipeRow extends StatelessWidget {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: ChowColors.orange50,
+                                      color: ChowCozy.stone100,
                                       borderRadius: BorderRadius.circular(5),
                                     ),
                                     child: Text(
                                       tag,
                                       style: const TextStyle(
                                         fontSize: 10,
-                                        color: ChowColors.orange600,
+                                        color: ChowCozy.stone700,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -1314,10 +1314,10 @@ class _FilterChoiceButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          backgroundColor: selected ? ChowColors.orange50 : Colors.white,
-          foregroundColor: selected ? ChowColors.orange600 : ChowColors.gray700,
+          backgroundColor: selected ? ChowCozy.stone100 : Colors.white,
+          foregroundColor: selected ? ChowCozy.stone700 : ChowColors.gray700,
           side: BorderSide(
-            color: selected ? ChowColors.orange500 : ChowColors.gray300,
+            color: selected ? ChowCozy.stone500 : ChowColors.gray300,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(7),
@@ -1354,10 +1354,10 @@ class _FilterPill extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          backgroundColor: selected ? ChowColors.orange50 : Colors.white,
-          foregroundColor: selected ? ChowColors.orange600 : ChowColors.gray700,
+          backgroundColor: selected ? ChowCozy.stone100 : Colors.white,
+          foregroundColor: selected ? ChowCozy.stone700 : ChowColors.gray700,
           side: BorderSide(
-            color: selected ? ChowColors.orange500 : ChowColors.gray300,
+            color: selected ? ChowCozy.stone500 : ChowColors.gray300,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(999),

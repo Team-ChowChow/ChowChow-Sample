@@ -108,7 +108,7 @@ class _LowestPriceSheetState extends State<_LowestPriceSheet> {
       case _SheetStatus.loading:
         return const Padding(
           padding: EdgeInsets.symmetric(vertical: 32),
-          child: Center(child: CircularProgressIndicator(color: ChowColors.orange500)),
+          child: Center(child: CircularProgressIndicator(color: ChowCozy.stone500)),
         );
       case _SheetStatus.result:
         return _buildResult();
@@ -188,7 +188,7 @@ class _LowestPriceSheetState extends State<_LowestPriceSheet> {
             width: double.infinity,
             child: FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: ChowColors.orange500,
+                backgroundColor: ChowCozy.stone500,
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -214,7 +214,7 @@ class _LowestPriceSheetState extends State<_LowestPriceSheet> {
               const SizedBox(height: 12),
               TextButton(
                 onPressed: _load,
-                style: TextButton.styleFrom(foregroundColor: ChowColors.orange500),
+                style: TextButton.styleFrom(foregroundColor: ChowCozy.stone500),
                 child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ],

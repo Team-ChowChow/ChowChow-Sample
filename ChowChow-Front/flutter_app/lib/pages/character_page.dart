@@ -6,9 +6,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_client.dart';
 import '../services/shop_service.dart';
+import '../services/walk_service.dart';
 import '../theme/chow_theme.dart';
 import '../theme/shop_visuals.dart';
+import 'character_sheets.dart';
 
+/// Figma "Character.tsx" 구조 그대로 이식:
+/// 상단바(뒤로가기+코인) → 가로 숏컷(출석체크/성장미션/산책/꾸미기/제작소)
+/// → 캐릭터 무대(플로팅 데코+탭 인터랙션) → 하단 고정 패널(레벨/경험치+액션 버튼).
+/// 데이터/로직(코인, 스탯, 상점, 출석 보상 등)은 기존 백엔드 연동 그대로 사용.
 class CharacterPage extends StatefulWidget {
   const CharacterPage({super.key, this.characterId});
 
@@ -33,6 +39,15 @@ class _CharacterPageState extends State<CharacterPage>
   String? _characterImageUrl;
   String _roomBackgroundKey = 'room_sunrise';
   Set<String> _equippedDecorKeys = {};
+  bool _attendanceClaimedToday = false;
+
+  // 성장미션 진행도(세션 동안의 활동 횟수) + 꾸미기 모자 장착 상태
+  int _feedCount = 0;
+  int _petCount = 0;
+  int _playCount = 0;
+  String? _equippedHatName;
+  double _todayWalkKm = 0;
+  bool _walkLoading = true;
 
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
@@ -40,13 +55,14 @@ class _CharacterPageState extends State<CharacterPage>
 
   late final AnimationController _idleCtrl;
   late final AnimationController _interactCtrl;
+  late final AnimationController _decorCtrl;
   late final Animation<double> _idleScale;
   late final Animation<double> _idleRotate;
 
   _InteractAnim _interactAnim = _InteractAnim.bounce;
 
   static const _activities = [
-    _ActivityData(Icons.restaurant, '밥주기', 0, ChowColors.orange500, '🍖'),
+    _ActivityData(Icons.restaurant, '밥주기', 0, ChowCozy.stone500, '🍖'),
     _ActivityData(Icons.favorite, '쓰다듬기', 0, ChowColors.pink500, '💕'),
     _ActivityData(Icons.fitness_center, '운동하기', 50, Color(0xFF3B82F6), '💪'),
     _ActivityData(Icons.auto_awesome, '목욕시키기', 100, ChowColors.purple500, '✨'),
@@ -71,10 +87,28 @@ class _CharacterPageState extends State<CharacterPage>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
+    _decorCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
     _loadCharacter();
     _loadCoinBalance();
     _loadShopStyle();
     _claimDailyLogin();
+    _loadTodayWalk();
+  }
+
+  Future<void> _loadTodayWalk() async {
+    try {
+      final summary = await WalkService.fetchToday();
+      if (!mounted) return;
+      setState(() {
+        _todayWalkKm = summary.todayDistanceKm;
+        _walkLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _walkLoading = false);
+    }
   }
 
   String _resolveImageUrl(String? url) {
@@ -90,28 +124,26 @@ class _CharacterPageState extends State<CharacterPage>
 
   Widget _buildCharacterImage(String url) {
     final resolvedUrl = _resolveImageUrl(url);
+    final fallback = Text(
+      _petType == 'CAT' ? '🐱' : '🐶',
+      style: const TextStyle(fontSize: 96),
+    );
 
     if (resolvedUrl.startsWith('assets/')) {
       return Image.asset(
         resolvedUrl,
-        fit: BoxFit.cover,
-        width: 192,
-        height: 192,
-        errorBuilder: (_, __, ___) => Text(
-          _petType == 'CAT' ? '🐱' : '🐶',
-          style: const TextStyle(fontSize: 72),
-        ),
+        fit: BoxFit.contain,
+        width: 220,
+        height: 220,
+        errorBuilder: (_, _, _) => fallback,
       );
     } else {
       return Image.network(
         resolvedUrl,
-        fit: BoxFit.cover,
-        width: 192,
-        height: 192,
-        errorBuilder: (_, __, ___) => Text(
-          _petType == 'CAT' ? '🐱' : '🐶',
-          style: const TextStyle(fontSize: 72),
-        ),
+        fit: BoxFit.contain,
+        width: 220,
+        height: 220,
+        errorBuilder: (_, _, _) => fallback,
       );
     }
   }
@@ -183,6 +215,63 @@ class _CharacterPageState extends State<CharacterPage>
     await _loadShopStyle();
   }
 
+  /// "꾸미기" 숏컷 — 모자/얼굴/옷/배경 탭이 있는 미리보기 상점 팝업.
+  /// (백엔드 코인 상점은 방 배경/소품/프로필 프레임 전용이라 이 카테고리 체계와는 별개로,
+  /// 로컬 미리보기로 동작 — 실제 코인 차감 없이 장착 상태만 바꾼다.)
+  void _openDecorateSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => DecorateSheet(
+        coins: _coins,
+        equippedHat: _equippedHatName,
+        onHatChanged: (name) => setState(() => _equippedHatName = name),
+      ),
+    );
+  }
+
+  void _openMissionSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => MissionSheet(
+        feedCount: _feedCount,
+        petCount: _petCount,
+        playCount: _playCount,
+        walkKm: _todayWalkKm,
+        walkLoading: _walkLoading,
+      ),
+    );
+  }
+
+  void _openCraftSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => const CraftSheet(),
+    );
+  }
+
+  void _openAttendanceSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => AttendanceSheet(claimedToday: _attendanceClaimedToday),
+    );
+  }
+
   Future<void> _claimDailyLogin() async {
     final prefs = await SharedPreferences.getInstance();
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
@@ -194,7 +283,10 @@ class _CharacterPageState extends State<CharacterPage>
               as Map<String, dynamic>;
       if (!mounted) return;
       final newBalance = (res['balance'] as num?)?.toInt() ?? _coins;
-      setState(() => _coins = newBalance);
+      setState(() {
+        _coins = newBalance;
+        _attendanceClaimedToday = true;
+      });
 
       // 오늘 이미 스낵바를 띄운 경우 다시 띄우지 않음
       if (lastShown != todayStr) {
@@ -207,7 +299,9 @@ class _CharacterPageState extends State<CharacterPage>
           ),
         );
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _attendanceClaimedToday = lastShown == todayStr);
+    }
   }
 
   Future<bool> _trySpendCoins(int cost, String reason) async {
@@ -241,6 +335,7 @@ class _CharacterPageState extends State<CharacterPage>
   void dispose() {
     _idleCtrl.dispose();
     _interactCtrl.dispose();
+    _decorCtrl.dispose();
     super.dispose();
   }
 
@@ -286,136 +381,6 @@ class _CharacterPageState extends State<CharacterPage>
     }
   }
 
-  Widget _buildRoomScene() {
-    final style = roomVisualFor(_roomBackgroundKey);
-    final isNight = _roomBackgroundKey == 'room_night';
-
-    return Container(
-      width: double.infinity,
-      height: 230,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: style.wallColors,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: style.accentColor.withValues(alpha: 0.25)),
-      ),
-      clipBehavior: Clip.hardEdge,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 66,
-            child: ColoredBox(color: style.floorColor),
-          ),
-          Positioned(
-            top: 14,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: isNight ? 0.16 : 0.7),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                style.label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isNight ? Colors.white : ChowColors.gray700,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 48,
-            left: 22,
-            child: Icon(
-              isNight ? Icons.nightlight_round : Icons.window_rounded,
-              size: 48,
-              color: style.accentColor.withValues(alpha: 0.72),
-            ),
-          ),
-          if (_equippedDecorKeys.contains('decor_lamp'))
-            const Positioned(
-              left: 12,
-              bottom: 44,
-              child: Text('💡', style: TextStyle(fontSize: 43)),
-            ),
-          if (_equippedDecorKeys.contains('decor_plant'))
-            const Positioned(
-              right: 10,
-              bottom: 42,
-              child: Text('🪴', style: TextStyle(fontSize: 50)),
-            ),
-          if (_equippedDecorKeys.contains('decor_cushion'))
-            const Positioned(
-              right: 68,
-              bottom: 18,
-              child: Text('🧸', style: TextStyle(fontSize: 34)),
-            ),
-          Align(
-            alignment: const Alignment(0, 0.68),
-            child: Container(
-              width: 130,
-              height: 54,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.7),
-                borderRadius: const BorderRadius.all(Radius.elliptical(72, 32)),
-              ),
-            ),
-          ),
-          AnimatedBuilder(
-            animation: Listenable.merge([_idleCtrl, _interactCtrl]),
-            builder: (context, child) {
-              final t = _interactCtrl.value;
-              final usingInteract = _isInteracting || t > 0;
-              final tr = usingInteract
-                  ? _interactTransform(t)
-                  : (
-                      dy: 0.0,
-                      scale: _idleScale.value,
-                      rotate: _idleRotate.value,
-                    );
-              var dx = 0.0;
-              if (usingInteract && _interactAnim == _InteractAnim.shake) {
-                dx = 20 * sin(t * pi * 8);
-              }
-              return Transform.translate(
-                offset: Offset(dx, tr.dy + 18),
-                child: Transform.rotate(
-                  angle: tr.rotate,
-                  child: Transform.scale(scale: tr.scale, child: child),
-                ),
-              );
-            },
-            child: GestureDetector(
-              onTap: _handlePetClick,
-              child: SizedBox(
-                width: 156,
-                height: 156,
-                child: _characterImageUrl != null
-                    ? _buildCharacterImage(_characterImageUrl!)
-                    : Center(
-                        child: Text(
-                          _petType == 'CAT' ? '🐱' : '🐶',
-                          style: const TextStyle(fontSize: 72),
-                        ),
-                      ),
-              ),
-            ),
-          ),
-          ..._particles.map(_ParticleWidget.new),
-        ],
-      ),
-    );
-  }
-
   Future<void> _handlePetClick() async {
     await _runInteract(
       _InteractAnim.bounce,
@@ -443,6 +408,7 @@ class _CharacterPageState extends State<CharacterPage>
             hunger = (hunger - 20).clamp(0, 100);
             health = (health + 5).clamp(0, 100);
             exp = (exp + 5).clamp(0, maxExp);
+            _feedCount++;
           },
         );
       case '쓰다듬기':
@@ -452,6 +418,7 @@ class _CharacterPageState extends State<CharacterPage>
           onDone: () {
             happiness = (happiness + 10).clamp(0, 100);
             exp = (exp + 3).clamp(0, maxExp);
+            _petCount++;
           },
         );
       case '운동하기':
@@ -462,6 +429,7 @@ class _CharacterPageState extends State<CharacterPage>
             health = (health + 15).clamp(0, 100);
             hunger = (hunger + 10).clamp(0, 100);
             exp = (exp + 15).clamp(0, maxExp);
+            _playCount++;
           },
         );
       case '목욕시키기':
@@ -515,367 +483,416 @@ class _CharacterPageState extends State<CharacterPage>
   @override
   Widget build(BuildContext context) {
     final roomStyle = roomVisualFor(_roomBackgroundKey);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [roomStyle.wallColors.first, const Color(0xFFFFFBF7)],
+
+    return Scaffold(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              roomStyle.wallColors.first,
+              roomStyle.wallColors.last,
+              roomStyle.floorColor,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(),
+              _buildShortcuts(),
+              Expanded(child: _buildCharacterStage(roomStyle)),
+              _buildBottomPanel(),
+            ],
+          ),
         ),
       ),
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: SafeArea(
-              bottom: false,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(bottom: BorderSide(color: ChowColors.gray200)),
-                ),
-                padding: const EdgeInsets.fromLTRB(8, 8, 20, 14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (widget.characterId != null)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new,
-                          size: 20,
-                          color: ChowColors.gray700,
-                        ),
-                        onPressed: () => Navigator.of(context).pop(),
-                        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                      ),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: widget.characterId != null ? 0 : 12,
-                          top: 8,
-                        ),
-                        child: const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '캐릭터 키우기',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: ChowColors.gray800,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '우리 아이와 함께 성장해요',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: ChowColors.gray500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Material(
-                      color: const Color(0xFFFFF7ED),
-                      borderRadius: BorderRadius.circular(20),
-                      child: InkWell(
-                        onTap: _openCoinShop,
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: ChowColors.orange100),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('🪙', style: TextStyle(fontSize: 16)),
-                              const SizedBox(width: 4),
-                              Text(
-                                '$_coins',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: ChowColors.orange600,
-                                ),
-                              ),
-                              const SizedBox(width: 3),
-                              const Icon(
-                                Icons.chevron_right,
-                                size: 16,
-                                color: ChowColors.orange500,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Material(
+            color: Colors.white.withValues(alpha: 0.35),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => Navigator.of(context).pop(),
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(Icons.arrow_back, size: 20, color: ChowCozy.stone900),
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _WhiteCard(
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: ChowColors.orange50,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.auto_awesome,
-                              size: 16,
-                              color: ChowColors.orange500,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '레벨 $level',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: ChowColors.orange600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildRoomScene(),
-                      const SizedBox(height: 12),
-                      Text(
-                        _petName.isNotEmpty ? _petName : '나의 반려동물',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: ChowColors.gray800,
-                        ),
-                      ),
-                      Text(
-                        _petType == 'CAT' ? '사랑스러운 고양이' : '건강한 강아지',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: ChowColors.gray500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        '👆 클릭해서 쓰다듬어 주세요!',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: ChowColors.orange500,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            '경험치',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: ChowColors.gray600,
-                            ),
-                          ),
-                          Text(
-                            '$exp / $maxExp',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: ChowColors.gray800,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: SizedBox(
-                          height: 12,
-                          child: Stack(
-                            children: [
-                              Container(color: ChowColors.gray200),
-                              FractionallySizedBox(
-                                widthFactor: _expFrac.clamp(0.0, 1.0),
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        ChowColors.orange400,
-                                        ChowColors.orange500,
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _StatRow(
-                        icon: Icons.favorite,
-                        iconBg: Color(0xFFFEE2E2),
-                        iconColor: ChowColors.red500,
-                        label: '건강',
-                        value: health,
-                        barColor: ChowColors.red500,
-                      ),
-                      const SizedBox(height: 10),
-                      _StatRow(
-                        icon: Icons.auto_awesome,
-                        iconBg: Color(0xFFFEF9C3),
-                        iconColor: ChowColors.yellow500,
-                        label: '행복',
-                        value: happiness,
-                        barColor: ChowColors.yellow500,
-                      ),
-                      const SizedBox(height: 10),
-                      _StatRow(
-                        icon: Icons.restaurant,
-                        iconBg: ChowColors.orange100,
-                        iconColor: ChowColors.orange500,
-                        label: '배고픔',
-                        value: hunger,
-                        barColor: ChowColors.orange500,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Material(
-                  color: ChowColors.orange500,
-                  borderRadius: BorderRadius.circular(16),
-                  child: InkWell(
-                    onTap: _openCoinShop,
-                    borderRadius: BorderRadius.circular(16),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 15,
-                      ),
-                      child: Row(
-                        children: [
-                          Text('🛍️', style: TextStyle(fontSize: 24)),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '코인 상점',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  '배경과 소품으로 우리 아이의 방을 꾸며보세요',
-                                  style: TextStyle(
-                                    color: Color(0xE6FFFFFF),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_right, color: Colors.white),
-                        ],
+          Material(
+            color: Colors.white.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(999),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: _openCoinShop,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🪙', style: TextStyle(fontSize: 15)),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$_coins',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: ChowCozy.stone800,
                       ),
                     ),
-                  ),
+                    const Icon(Icons.chevron_right, size: 15, color: ChowCozy.stone600),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                _WhiteCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '활동',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: ChowColors.gray800,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 1.15,
-                        children: _activities
-                            .map(
-                              (a) => _ActivityTile(
-                                activity: a,
-                                onTap: () => _handleActivity(a),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const _WhiteCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '최근 업적',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: ChowColors.gray800,
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      _AchievementRow(
-                        emoji: '🏆',
-                        title: '첫 식단 완료',
-                        date: '2026.03.20',
-                        bg: ChowColors.orange50,
-                        circle: ChowColors.orange500,
-                      ),
-                      SizedBox(height: 10),
-                      _AchievementRow(
-                        emoji: '⭐',
-                        title: '7일 연속 접속',
-                        date: '2026.03.18',
-                        bg: Color(0xFFEFF6FF),
-                        circle: Color(0xFF3B82F6),
-                      ),
-                    ],
-                  ),
-                ),
-              ]),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildShortcuts() {
+    final shortcuts = [
+      _ShortcutData('📅', '출석체크', true, _openAttendanceSheet),
+      _ShortcutData('🎯', '성장미션', true, _openMissionSheet),
+      _ShortcutData('🚶', '산책', false, () => context.push('/walk')),
+      _ShortcutData('✨', '꾸미기', false, _openDecorateSheet),
+      _ShortcutData('🪄', '제작소', false, _openCraftSheet),
+    ];
+    return SizedBox(
+      height: 64,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        itemCount: shortcuts.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => _ShortcutChip(data: shortcuts[i]),
+      ),
+    );
+  }
+
+  Widget _buildCharacterStage(RoomVisualStyle roomStyle) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        // 꾸미기에서 모자를 장착했으면 착용 뱃지, 아니면 방 이름 뱃지
+        Positioned(
+          top: 4,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: _equippedHatName != null
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🎩', style: TextStyle(fontSize: 13)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_equippedHatName 착용중',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.person_pin_circle_outlined, size: 14, color: ChowCozy.stone700),
+                      const SizedBox(width: 4),
+                      Text(
+                        roomStyle.label,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+
+        // 플로팅 데코
+        AnimatedBuilder(
+          animation: _decorCtrl,
+          builder: (context, _) {
+            final t = _decorCtrl.value * 2 * pi;
+            return Stack(
+              children: [
+                _FloatingDeco('🌸', top: 0.10, left: 0.08, dy: sin(t) * 10, angle: sin(t) * 0.09),
+                _FloatingDeco('🍖', top: 0.12, right: 0.10, dy: sin(t + 1.4) * 12),
+                _FloatingDeco('📚', bottom: 0.20, left: 0.06, dy: sin(t + 2.3) * 8),
+                _FloatingDeco('🎾', bottom: 0.22, right: 0.08, dy: sin(t + 0.7) * 10, angle: sin(t + 0.7) * 0.06),
+              ],
+            );
+          },
+        ),
+
+        // 코인 상점에서 구매/장착한 방 소품
+        if (_equippedDecorKeys.contains('decor_lamp'))
+          const _FloatingDeco('💡', bottom: 0.06, left: 0.10, dy: 0),
+        if (_equippedDecorKeys.contains('decor_plant'))
+          const _FloatingDeco('🪴', bottom: 0.04, right: 0.08, dy: 0),
+        if (_equippedDecorKeys.contains('decor_cushion'))
+          const _FloatingDeco('🧸', bottom: 0.02, right: 0.32, dy: 0),
+
+        // 캐릭터
+        AnimatedBuilder(
+          animation: Listenable.merge([_idleCtrl, _interactCtrl]),
+          builder: (context, child) {
+            final t = _interactCtrl.value;
+            final usingInteract = _isInteracting || t > 0;
+            final tr = usingInteract
+                ? _interactTransform(t)
+                : (dy: 0.0, scale: _idleScale.value, rotate: _idleRotate.value);
+            var dx = 0.0;
+            if (usingInteract && _interactAnim == _InteractAnim.shake) {
+              dx = 20 * sin(t * pi * 8);
+            }
+            return Transform.translate(
+              offset: Offset(dx, tr.dy),
+              child: Transform.rotate(
+                angle: tr.rotate,
+                child: Transform.scale(scale: tr.scale, child: child),
+              ),
+            );
+          },
+          child: GestureDetector(
+            onTap: _handlePetClick,
+            child: SizedBox(
+              width: 220,
+              height: 220,
+              child: _characterImageUrl != null
+                  ? _buildCharacterImage(_characterImageUrl!)
+                  : Center(
+                      child: Text(
+                        _petType == 'CAT' ? '🐱' : '🐶',
+                        style: const TextStyle(fontSize: 96),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+
+        ..._particles.map(_ParticleWidget.new),
+
+        Positioned(
+          bottom: 0,
+          child: Text(
+            '탭하면 행복도가 올라가요',
+            style: TextStyle(fontSize: 12, color: ChowCozy.stone700.withValues(alpha: 0.7)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomPanel() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [BoxShadow(blurRadius: 24, offset: Offset(0, -8), color: Color(0x1F000000))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(color: ChowCozy.stone200, borderRadius: BorderRadius.circular(999)),
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(color: ChowCozy.stone600, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$level',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _petName.isNotEmpty ? _petName : '나의 반려동물',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ChowCozy.stone900),
+                          ),
+                          Text(
+                            '경험치 $exp / $maxExp',
+                            style: const TextStyle(fontSize: 12, color: ChowCozy.mutedForeground),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: SizedBox(
+                          height: 10,
+                          child: Stack(
+                            children: [
+                              Container(color: ChowCozy.stone100),
+                              FractionallySizedBox(
+                                widthFactor: _expFrac.clamp(0.0, 1.0),
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(colors: [ChowCozy.stone400, ChowCozy.stone700]),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _StatRow(icon: Icons.favorite, iconColor: ChowColors.red500, label: '건강', value: health, barColor: ChowColors.red500)),
+                const SizedBox(width: 14),
+                Expanded(child: _StatRow(icon: Icons.auto_awesome, iconColor: ChowColors.yellow500, label: '행복', value: happiness, barColor: ChowColors.yellow500)),
+                const SizedBox(width: 14),
+                Expanded(child: _StatRow(icon: Icons.restaurant, iconColor: ChowCozy.stone600, label: '배고픔', value: hunger, barColor: ChowCozy.stone600)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: _activities
+                  .map((a) => Expanded(child: _ActionButton(activity: a, onTap: () => _handleActivity(a))))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
+class _ShortcutData {
+  const _ShortcutData(this.emoji, this.label, this.badge, this.onTap);
+  final String emoji;
+  final String label;
+  final bool badge;
+  final VoidCallback onTap;
+}
+
+class _ShortcutChip extends StatelessWidget {
+  const _ShortcutChip({required this.data});
+  final _ShortcutData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.55),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: data.onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(data.emoji, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(height: 2),
+                  Text(
+                    data.label,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone800),
+                  ),
+                ],
+              ),
+              if (data.badge)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: const BoxDecoration(color: ChowColors.red500, shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: const Text('!', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingDeco extends StatelessWidget {
+  const _FloatingDeco(
+    this.emoji, {
+    this.top,
+    this.bottom,
+    this.left,
+    this.right,
+    required this.dy,
+    this.angle = 0,
+  });
+
+  final String emoji;
+  final double? top;
+  final double? bottom;
+  final double? left;
+  final double? right;
+  final double dy;
+  final double angle;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Positioned(
+          top: top == null ? null : constraints.maxHeight * top!,
+          bottom: bottom == null ? null : constraints.maxHeight * bottom!,
+          left: left == null ? null : constraints.maxWidth * left!,
+          right: right == null ? null : constraints.maxWidth * right!,
+          child: IgnorePointer(
+            child: Transform.translate(
+              offset: Offset(0, dy),
+              child: Transform.rotate(
+                angle: angle,
+                child: Text(emoji, style: const TextStyle(fontSize: 26)),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 
 enum _InteractAnim { bounce, shake, scale, wiggle }
 
@@ -935,9 +952,8 @@ class _ParticleWidgetState extends State<_ParticleWidget>
       builder: (context, child) {
         final t = Curves.easeOut.transform(_ctrl.value);
         final scale = t < 0.5 ? t * 3 : (1 - t) * 3;
-        return Positioned(
-          left: 96 + widget.particle.dx * t,
-          top: 96 + widget.particle.dy * t,
+        return Transform.translate(
+          offset: Offset(widget.particle.dx * t, widget.particle.dy * t),
           child: Opacity(
             opacity: (1 - t).clamp(0.0, 1.0),
             child: Transform.scale(scale: scale.clamp(0.0, 1.5), child: child),
@@ -949,35 +965,9 @@ class _ParticleWidgetState extends State<_ParticleWidget>
   }
 }
 
-class _WhiteCard extends StatelessWidget {
-  const _WhiteCard({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            blurRadius: 10,
-            offset: Offset(0, 3),
-            color: Color(0x14000000),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
-
 class _StatRow extends StatelessWidget {
   const _StatRow({
     required this.icon,
-    required this.iconBg,
     required this.iconColor,
     required this.label,
     required this.value,
@@ -985,7 +975,6 @@ class _StatRow extends StatelessWidget {
   });
 
   final IconData icon;
-  final Color iconBg;
   final Color iconColor;
   final String label;
   final int value;
@@ -993,49 +982,32 @@ class _StatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 18, color: iconColor),
+        Row(
+          children: [
+            Icon(icon, size: 13, color: iconColor),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
+            const Spacer(),
+            Text('$value%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ChowCozy.stone800)),
+          ],
         ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 40,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: ChowColors.gray700),
-          ),
-        ),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: SizedBox(
-              height: 6,
-              child: Stack(
-                children: [
-                  Container(color: ChowColors.gray200),
-                  FractionallySizedBox(
-                    widthFactor: (value / 100).clamp(0.0, 1.0),
-                    child: Container(color: barColor),
-                  ),
-                ],
-              ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: SizedBox(
+            height: 5,
+            child: Stack(
+              children: [
+                Container(color: ChowCozy.stone100),
+                FractionallySizedBox(
+                  widthFactor: (value / 100).clamp(0.0, 1.0),
+                  child: Container(color: barColor),
+                ),
+              ],
             ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 40,
-          child: Text(
-            '$value%',
-            textAlign: TextAlign.right,
-            style: const TextStyle(fontSize: 13, color: ChowColors.gray700),
           ),
         ),
       ],
@@ -1043,116 +1015,45 @@ class _StatRow extends StatelessWidget {
   }
 }
 
-class _ActivityTile extends StatelessWidget {
-  const _ActivityTile({required this.activity, required this.onTap});
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({required this.activity, required this.onTap});
   final _ActivityData activity;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: ChowColors.gray50,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Material(
+        color: ChowCozy.stone50,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: activity.color,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(activity.icon, color: Colors.white, size: 26),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                activity.label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: ChowColors.gray800,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                activity.cost > 0 ? '🪙 ${activity.cost}' : '무료',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: activity.cost > 0
-                      ? ChowColors.orange600
-                      : ChowColors.green500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AchievementRow extends StatelessWidget {
-  const _AchievementRow({
-    required this.emoji,
-    required this.title,
-    required this.date,
-    required this.bg,
-    required this.circle,
-  });
-
-  final String emoji;
-  final String title;
-  final String date;
-  final Color bg;
-  final Color circle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: circle, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Text(emoji, style: const TextStyle(fontSize: 22)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Text(activity.emoji, style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 4),
                 Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: ChowColors.gray800,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  activity.label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone800),
                 ),
+                const SizedBox(height: 1),
                 Text(
-                  date,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: ChowColors.gray500,
+                  activity.cost > 0 ? '🪙-${activity.cost}' : '무료',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: activity.cost > 0 ? ChowCozy.mutedForeground : ChowColors.green500,
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

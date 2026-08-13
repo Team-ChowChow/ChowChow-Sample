@@ -76,8 +76,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                           ? [
                               _buildNotificationRow(
                                 icon: Icons.menu_book_outlined,
-                                iconColor: ChowColors.orange500,
-                                iconBgColor: ChowColors.orange50,
+                                iconColor: ChowCozy.stone500,
+                                iconBgColor: ChowCozy.stone100,
                                 title: '새로운 레시피 추천',
                                 subtitle: '맞춤 레시피가 추가되면 알려드려요',
                                 value: newRecipe,
@@ -89,8 +89,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               ),
                               _buildNotificationRow(
                                 icon: Icons.chat_bubble_outline,
-                                iconColor: ChowColors.orange500,
-                                iconBgColor: ChowColors.orange50,
+                                iconColor: ChowCozy.stone500,
+                                iconBgColor: ChowCozy.stone100,
                                 title: '댓글 알림',
                                 subtitle: '내 게시물에 댓글이 달렸을 때',
                                 value: communityReply,
@@ -102,8 +102,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               ),
                               _buildNotificationRow(
                                 icon: Icons.favorite_border,
-                                iconColor: ChowColors.orange500,
-                                iconBgColor: ChowColors.orange50,
+                                iconColor: ChowCozy.stone500,
+                                iconBgColor: ChowCozy.stone100,
                                 title: '좋아요 알림',
                                 subtitle: '내 게시물을 누군가 좋아할 때',
                                 value: communityLike,
@@ -115,8 +115,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                               ),
                               _buildNotificationRow(
                                 icon: Icons.notifications_none,
-                                iconColor: ChowColors.orange500,
-                                iconBgColor: ChowColors.orange50,
+                                iconColor: ChowCozy.stone500,
+                                iconBgColor: ChowCozy.stone100,
                                 title: 'AI 응답 알림',
                                 subtitle: 'AI가 답변을 완료했을 때',
                                 value: aiChatResponse,

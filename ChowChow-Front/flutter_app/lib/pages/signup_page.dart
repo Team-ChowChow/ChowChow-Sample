@@ -169,7 +169,7 @@ class _SignupPageState extends State<SignupPage> {
                   style: FilledButton.styleFrom(
                     backgroundColor: _emailVerified
                         ? const Color(0xFF22C55E)
-                        : const Color(0xFFF97316),
+                        : ChowCozy.stone500,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
@@ -186,23 +186,23 @@ class _SignupPageState extends State<SignupPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF7ED),
+                color: ChowCozy.stone100,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFDBA74)),
+                border: Border.all(color: ChowCozy.stone300),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
                     '📧 인증 메일을 발송했습니다.\n메일함의 링크를 클릭한 후 아래 버튼을 눌러주세요.',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF92400E)),
+                    style: TextStyle(fontSize: 13, color: ChowCozy.stone800),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton(
                     onPressed: _checkingVerify ? null : _checkVerified,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFF97316)),
-                      foregroundColor: const Color(0xFFF97316),
+                      side: const BorderSide(color: ChowCozy.stone500),
+                      foregroundColor: ChowCozy.stone700,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                     child: _checkingVerify
@@ -244,13 +244,13 @@ class _SignupPageState extends State<SignupPage> {
             const SizedBox(height: 12),
             Text(
               _errorMessage!,
-              style: const TextStyle(fontSize: 13, color: Color(0xFFEF4444)),
+              style: const TextStyle(fontSize: 13, color: ChowCozy.destructive),
               textAlign: TextAlign.center,
             ),
           ],
           const SizedBox(height: 24),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: ChowColors.orange500),
+            style: FilledButton.styleFrom(backgroundColor: ChowCozy.stone500),
             onPressed: _isLoading ? null : _handleSignup,
             child: _isLoading
                 ? const SizedBox(
