@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -23,7 +23,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-  WebViewController? _webViewController;
 
   static const String VIEWER_URL = 'http://localhost:8888';
 
@@ -31,30 +30,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   void initState() {
     super.initState();
     _loadPet();
-  }
-
-  WebViewController _getWebViewController() {
-    if (_webViewController != null) return _webViewController!;
-
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            debugPrint('✅ WebView 페이지 로드 완료: $url');
-          },
-          onWebResourceError: (WebResourceError error) {
-            debugPrint('❌ WebView 리소스 에러: ${error.description}');
-            debugPrint('❌ URL: ${error.url}');
-          },
-          onNavigationRequest: (NavigationRequest request) {
-            debugPrint('📡 Navigation: ${request.url}');
-            return NavigationDecision.navigate;
-          },
-        ),
-      );
-
-    return _webViewController!;
   }
 
   Future<void> _loadPet() async {
@@ -84,7 +59,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           _pet = pet;
           _loading = false;
         });
-        _loadWebView();
       } else {
         setState(() {
           _error = '펫 정보 로드 실패 (${response.statusCode})';
@@ -114,23 +88,27 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     return (groupMap[_pet?.groupName] ?? 1).toString();
   }
 
-  Future<void> _loadWebView() async {
-    if (_pet == null) return;
-
+  Future<void> _openWebViewer() async {
     try {
       final groupNum = _getGroupNumber();
       final viewerUrl = '$VIEWER_URL/?model=character_group_$groupNum';
 
-      debugPrint('🌐 WebView 로드: $viewerUrl');
+      debugPrint('🌐 Opening web viewer: $viewerUrl');
 
-      final controller = _getWebViewController();
-      controller.loadRequest(Uri.parse(viewerUrl));
+      if (await canLaunchUrl(Uri.parse(viewerUrl))) {
+        await launchUrl(Uri.parse(viewerUrl), mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다. 로컬 서버를 실행했는지 확인하세요.')),
+        );
+      }
     } catch (e) {
-      debugPrint('❌ WebView 로드 실패: $e');
+      debugPrint('❌ Error launching URL: $e');
       if (!mounted) return;
-      setState(() {
-        _error = 'WebView 로드 실패: $e';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오류: $e')),
+      );
     }
   }
 
@@ -199,35 +177,41 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // WebView (3D 모델) - Windows에서는 주석 처리하고 임시 UI 표시
-          /*
-          WebViewWidget(controller: _getWebViewController()),
-          */
-          // 임시 UI (테스트용)
+          // 3D 캐릭터 표시 영역 (중앙)
           Center(
-            child: Container(
-              width: 300,
-              height: 400,
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: ChowColors.gray300),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.pets, size: 80, color: ChowColors.orange500),
-                  SizedBox(height: 16),
-                  Text(
-                    '🐕 3D 캐릭터 렌더링',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '(Android에서 실제 3D 표시)',
-                    style: TextStyle(fontSize: 12, color: ChowColors.gray500),
-                  ),
-                ],
+            child: GestureDetector(
+              onTap: _openWebViewer,
+              child: Container(
+                width: 300,
+                height: 400,
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: ChowColors.gray300),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.pets, size: 64, color: ChowColors.orange500),
+                    const SizedBox(height: 16),
+                    Text(
+                      '웹에서 3D 보기',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: ChowColors.gray800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '탭하여 3D 캐릭터를 봅시다',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: ChowColors.gray500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -239,31 +223,22 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             child: _buildStatsPanel(),
           ),
 
-          // 안내 메시지 (하단)
+          // 정보 (좌하단)
           Positioned(
             bottom: 16,
             left: 16,
-            right: 16,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: ChowColors.orange500,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.touch_app, color: Colors.white, size: 16),
-                  SizedBox(width: 8),
-                  Text(
-                    '클릭하면 애니메이션 토글',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              child: const Text(
+                '💻 웹으로 열기',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
