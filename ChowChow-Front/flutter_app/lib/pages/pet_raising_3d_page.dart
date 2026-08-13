@@ -210,7 +210,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                   const SizedBox(height: 4),
                   // 품종
                   Text(
-                    '${_pet?.groupName} • ${_pet?.breed ?? 'Unknown'}',
+                    '${_pet?.groupName} • ${_pet?.breedName ?? 'Unknown'}',
                     style: const TextStyle(
                       fontSize: 14,
                       color: ChowColors.gray600,
