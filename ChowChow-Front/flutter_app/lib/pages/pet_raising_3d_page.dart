@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -24,9 +23,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   bool _loading = true;
   String? _error;
 
-  // 3D 웹사이트 URL (나중에 배포할 주소)
-  static const String VIEWER_BASE_URL = 'http://localhost:8888';
-
   @override
   void initState() {
     super.initState();
@@ -39,35 +35,28 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
 
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('access_token');
-      debugPrint('🔑 Token exists: ${token != null}');
 
       final url = 'http://35.78.87.150:8080/api/pets/${widget.petId}';
-      debugPrint('📡 Calling: $url');
-
       final response = await http.get(
         Uri.parse(url),
         headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 10));
 
-      debugPrint('📊 Response status: ${response.statusCode}');
-
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final pet = PetModel.fromJson(jsonDecode(response.body));
-        debugPrint('✅ Pet loaded: ${pet.petName}, group: ${pet.groupName}');
         setState(() {
           _pet = pet;
           _loading = false;
         });
       } else {
         setState(() {
-          _error = '펫 정보 로드 실패 (${response.statusCode})';
+          _error = '펫 정보 로드 실패';
           _loading = false;
         });
       }
     } catch (e) {
-      debugPrint('❌ Exception: $e');
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -76,41 +65,17 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     }
   }
 
-  String _getGroupNumber() {
-    final groupMap = {
-      'Toy': 1,
-      'Terrier': 2,
-      'Working': 3,
-      'Herding': 4,
-      'Hound': 5,
-      'Sporting': 6,
-      'Non-Sporting': 7,
+  String _getGroupEmoji() {
+    final emojiMap = {
+      'Toy': '🐶',
+      'Terrier': '🐕',
+      'Working': '🦮',
+      'Herding': '🐑',
+      'Hound': '🐩',
+      'Sporting': '🦆',
+      'Non-Sporting': '🦴',
     };
-    return (groupMap[_pet?.groupName] ?? 1).toString();
-  }
-
-  Future<void> _open3DViewer() async {
-    try {
-      final groupNum = _getGroupNumber();
-      final viewerUrl = '$VIEWER_BASE_URL/character_group_$groupNum.html';
-
-      debugPrint('🌐 Opening 3D viewer: $viewerUrl');
-
-      if (await canLaunchUrl(Uri.parse(viewerUrl))) {
-        await launchUrl(Uri.parse(viewerUrl), mode: LaunchMode.externalApplication);
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다')),
-        );
-      }
-    } catch (e) {
-      debugPrint('❌ Error launching URL: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('오류: $e')),
-      );
-    }
+    return emojiMap[_pet?.groupName] ?? '🐕';
   }
 
   @override
@@ -143,7 +108,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: ChowColors.gray600)),
+              Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 12),
               OutlinedButton(onPressed: _loadPet, child: const Text('다시 시도')),
             ],
@@ -168,7 +133,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             // 캐릭터 카드
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -181,10 +146,10 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
               ),
               child: Column(
                 children: [
-                  // 프로필 사진 (이모지 임시)
+                  // 프로필 이모지
                   Container(
-                    width: 120,
-                    height: 120,
+                    width: 100,
+                    height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: ChowColors.gray100,
@@ -193,7 +158,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                     child: Center(
                       child: Text(
                         _getGroupEmoji(),
-                        style: const TextStyle(fontSize: 60),
+                        style: const TextStyle(fontSize: 50),
                       ),
                     ),
                   ),
@@ -208,7 +173,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // 품종
+                  // 정보
                   Text(
                     '${_pet?.groupName} • ${_pet?.breedName ?? 'Unknown'}',
                     style: const TextStyle(
@@ -216,13 +181,24 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                       color: ChowColors.gray600,
                     ),
                   ),
+                  if (_pet?.petGender != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        _pet!.petGender!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: ChowColors.gray500,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
 
             const SizedBox(height: 24),
 
-            // 통계 섹션
+            // 상태 섹션
             const Text(
               '상태',
               style: TextStyle(
@@ -241,59 +217,42 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
 
             const SizedBox(height: 32),
 
-            // 3D 보기 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: _open3DViewer,
-                icon: const Icon(Icons.pets),
-                label: const Text('3D 캐릭터로 키우기'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ChowColors.orange500,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // 설명
+            // 안내 메시지
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ChowColors.orange50,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ChowColors.orange200),
               ),
-              child: const Text(
-                '💡 "3D 캐릭터로 키우기"를 누르면 웹에서 3D 캐릭터를 볼 수 있습니다.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: ChowColors.gray700,
-                ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '🎮 펫 키우기',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: ChowColors.orange500,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '3D 펫 키우기 기능은 준비 중입니다.\n곧 더 좋은 경험으로 찾아뵙겠습니다!',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: ChowColors.gray700,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _getGroupEmoji() {
-    final emojiMap = {
-      'Toy': '🐶',
-      'Terrier': '🐕',
-      'Working': '🦮',
-      'Herding': '🐑',
-      'Hound': '🐩',
-      'Sporting': '🦆',
-      'Non-Sporting': '🦴',
-    };
-    return emojiMap[_pet?.groupName] ?? '🐕';
   }
 
   Widget _statCard(String label, int value) {
