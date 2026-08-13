@@ -24,7 +24,8 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   bool _loading = true;
   String? _error;
 
-  static const String VIEWER_URL = 'http://localhost:8888';
+  // 3D 웹사이트 URL (나중에 배포할 주소)
+  static const String VIEWER_BASE_URL = 'http://localhost:8888';
 
   @override
   void initState() {
@@ -88,19 +89,19 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     return (groupMap[_pet?.groupName] ?? 1).toString();
   }
 
-  Future<void> _openWebViewer() async {
+  Future<void> _open3DViewer() async {
     try {
       final groupNum = _getGroupNumber();
-      final viewerUrl = '$VIEWER_URL/?model=character_group_$groupNum';
+      final viewerUrl = '$VIEWER_BASE_URL/character_group_$groupNum.html';
 
-      debugPrint('🌐 Opening web viewer: $viewerUrl');
+      debugPrint('🌐 Opening 3D viewer: $viewerUrl');
 
       if (await canLaunchUrl(Uri.parse(viewerUrl))) {
         await launchUrl(Uri.parse(viewerUrl), mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다. 로컬 서버를 실행했는지 확인하세요.')),
+          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다')),
         );
       }
     } catch (e) {
@@ -117,21 +118,14 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('3D 펫 키우기'),
+          title: const Text('펫 키우기'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
           ),
         ),
         body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: ChowColors.orange500),
-              SizedBox(height: 16),
-              Text('펫 정보 로드 중...'),
-            ],
-          ),
+          child: CircularProgressIndicator(color: ChowColors.orange500),
         ),
       );
     }
@@ -139,7 +133,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('3D 펫 키우기'),
+          title: const Text('펫 키우기'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -149,18 +143,9 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, size: 48, color: ChowColors.red500),
+              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: ChowColors.gray600)),
               const SizedBox(height: 12),
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: ChowColors.gray600),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _loadPet,
-                child: const Text('다시 시도'),
-              ),
+              OutlinedButton(onPressed: _loadPet, child: const Text('다시 시도')),
             ],
           ),
         ),
@@ -169,131 +154,193 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_pet?.petName ?? '3D 펫 키우기'),
+        title: const Text('펫 키우기'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
       ),
-      body: Stack(
-        children: [
-          // 3D 캐릭터 표시 영역 (중앙)
-          Center(
-            child: GestureDetector(
-              onTap: _openWebViewer,
-              child: Container(
-                width: 300,
-                height: 400,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: ChowColors.gray300),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.pets, size: 64, color: ChowColors.orange500),
-                    const SizedBox(height: 16),
-                    Text(
-                      '웹에서 3D 보기',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: ChowColors.gray800,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 캐릭터 카드
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // 프로필 사진 (이모지 임시)
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: ChowColors.gray100,
+                      border: Border.all(color: ChowColors.gray300, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getGroupEmoji(),
+                        style: const TextStyle(fontSize: 60),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '탭하여 3D 캐릭터를 봅시다',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: ChowColors.gray500,
-                      ),
+                  ),
+                  const SizedBox(height: 16),
+                  // 이름
+                  Text(
+                    _pet?.petName ?? 'Unknown',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: ChowColors.gray900,
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 4),
+                  // 품종
+                  Text(
+                    '${_pet?.groupName} • ${_pet?.breed ?? 'Unknown'}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: ChowColors.gray600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // 통계 섹션
+            const Text(
+              '상태',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: ChowColors.gray900,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            _statCard('🍖 배고픔', 50),
+            const SizedBox(height: 12),
+            _statCard('😊 행복도', 80),
+            const SizedBox(height: 12),
+            _statCard('❤️ 건강도', 75),
+
+            const SizedBox(height: 32),
+
+            // 3D 보기 버튼
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _open3DViewer,
+                icon: const Icon(Icons.pets),
+                label: const Text('3D 캐릭터로 키우기'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ChowColors.orange500,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // 상태창 (왼쪽 위)
-          Positioned(
-            top: 16,
-            left: 16,
-            child: _buildStatsPanel(),
-          ),
+            const SizedBox(height: 12),
 
-          // 정보 (좌하단)
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            // 설명
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ChowColors.orange500,
-                borderRadius: BorderRadius.circular(20),
+                color: ChowColors.orange50,
+                borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(
-                '💻 웹으로 열기',
+                '💡 "3D 캐릭터로 키우기"를 누르면 웹에서 3D 캐릭터를 볼 수 있습니다.',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: ChowColors.gray700,
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatsPanel() {
+  String _getGroupEmoji() {
+    final emojiMap = {
+      'Toy': '🐶',
+      'Terrier': '🐕',
+      'Working': '🦮',
+      'Herding': '🐑',
+      'Hound': '🐩',
+      'Sporting': '🦆',
+      'Non-Sporting': '🦴',
+    };
+    return emojiMap[_pet?.groupName] ?? '🐕';
+  }
+
+  Widget _statCard(String label, int value) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-          ),
-        ],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: ChowColors.gray200),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _statRow('🍖 배고픔', 50),
-          const SizedBox(height: 8),
-          _statRow('😊 행복도', 80),
-          const SizedBox(height: 8),
-          _statRow('❤️ 건강도', 75),
-        ],
-      ),
-    );
-  }
-
-  Widget _statRow(String label, int value) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 80,
-          height: 6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: value / 100,
-              backgroundColor: ChowColors.gray200,
-              valueColor: AlwaysStoppedAnimation(
-                value > 70 ? ChowColors.orange500 : ChowColors.red500,
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: ChowColors.gray800,
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: value / 100,
+                  minHeight: 8,
+                  backgroundColor: ChowColors.gray200,
+                  valueColor: AlwaysStoppedAnimation(
+                    value > 70 ? ChowColors.orange500 : ChowColors.red500,
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+          Text(
+            '$value%',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: ChowColors.gray700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
