@@ -18,78 +18,37 @@ if MODEL_DIR.exists():
         print(f"  ✅ {f.name}")
 
 def get_viewer_html(group_num: int) -> str:
-    return f'''
-<!DOCTYPE html>
+    return f'''<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 펫 캐릭터</title>
+    <title>3D 펫 캐릭터 - 그룹 {group_num}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.min.js"></script>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            width: 100%;
-            height: 100vh;
-            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
-            overflow: hidden;
-        }}
-        canvas {{ display: block; }}
-        #info {{
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: white;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }}
-        #controls {{
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 10px;
-        }}
-        button {{
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            background: #FF7000;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 2px 10px rgba(255, 112, 0, 0.3);
-            transition: all 0.2s;
-        }}
+        * {{ margin: 0; padding: 0; }}
+        body {{ width: 100%; height: 100vh; background: #f5f5f5; font-family: sans-serif; }}
+        canvas {{ display: block; width: 100%; height: 100%; }}
+        #ui {{ position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }}
+        #info {{ position: fixed; top: 20px; left: 20px; background: white; padding: 12px 16px; border-radius: 8px; font-size: 14px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); pointer-events: auto; }}
+        #controls {{ position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; pointer-events: auto; }}
+        button {{ padding: 12px 20px; border: none; border-radius: 8px; background: #FF7000; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 2px 10px rgba(255,112,0,0.3); }}
         button:hover {{ background: #E85A00; }}
-        button:active {{ transform: scale(0.95); }}
     </style>
 </head>
 <body>
-    <div id="info">로딩 중...</div>
-    <div id="controls">
-        <button onclick="toggleRotation()">🚶 정지</button>
-        <button onclick="history.back()">← 돌아가기</button>
+    <div id="ui">
+        <div id="info">🐕 로딩 중...</div>
+        <div id="controls">
+            <button onclick="toggle()">🚶 정지</button>
+            <button onclick="history.back()">← 돌아가기</button>
+        </div>
     </div>
-
-    <script async src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
-    <script async src="https://cdn.jsdelivr.net/npm/three@r128/examples/jsm/loaders/GLTFLoader.js"></script>
 
     <script>
         let scene, camera, renderer, model, rotating = true;
         const groupNum = {group_num};
-
-        // Three.js 로드 대기
-        const checkThree = setInterval(() => {{
-            if (typeof THREE !== 'undefined' && THREE.GLTFLoader) {{
-                clearInterval(checkThree);
-                init();
-            }}
-        }}, 100);
 
         function init() {{
             scene = new THREE.Scene();
@@ -103,7 +62,6 @@ def get_viewer_html(group_num: int) -> str:
             renderer.pixelRatio = window.devicePixelRatio;
             document.body.appendChild(renderer.domElement);
 
-            // 조명
             const light1 = new THREE.DirectionalLight(0xffffff, 1);
             light1.position.set(5, 10, 7);
             scene.add(light1);
@@ -111,8 +69,11 @@ def get_viewer_html(group_num: int) -> str:
             const light2 = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(light2);
 
-            // 윈도우 리사이즈
-            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('resize', () => {{
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }});
 
             loadModel();
             animate();
@@ -120,66 +81,41 @@ def get_viewer_html(group_num: int) -> str:
 
         function loadModel() {{
             const loader = new THREE.GLTFLoader();
-            const modelPath = `/models/character_group_${{groupNum}}.glb`;
+            const path = `/models/character_group_${{groupNum}}.glb`;
 
-            console.log('📡 모델 로드:', modelPath);
-            document.getElementById('info').textContent = '로딩 중...';
+            console.log('📡', path);
+            document.getElementById('info').textContent = '⏳ 로딩 중...';
 
-            loader.load(
-                modelPath,
-                (gltf) => {{
-                    if (model) scene.remove(model);
+            loader.load(path, (gltf) => {{
+                model = gltf.scene;
+                scene.add(model);
 
-                    model = gltf.scene;
-                    scene.add(model);
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const scale = 2 / Math.max(size.x, size.y, size.z);
 
-                    // 중심 정렬 및 스케일
-                    const box = new THREE.Box3().setFromObject(model);
-                    const center = box.getCenter(new THREE.Vector3());
-                    const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    const scale = 2 / maxDim;
+                model.position.sub(center.multiplyScalar(scale));
+                model.scale.multiplyScalar(scale);
 
-                    model.position.sub(center.multiplyScalar(scale));
-                    model.scale.multiplyScalar(scale);
-
-                    console.log('✅ 완료');
-                    document.getElementById('info').textContent = '✅ 완료 - 클릭하면 회전 멈춤';
-                }},
-                (progress) => {{
-                    const percent = Math.round((progress.loaded / progress.total) * 100);
-                    document.getElementById('info').textContent = `로딩 중... ${{percent}}%`;
-                }},
-                (error) => {{
-                    console.error('❌ 에러:', error);
-                    document.getElementById('info').textContent = '❌ 로드 실패: ' + error.message;
-                }}
-            );
+                document.getElementById('info').textContent = '✅ 완료';
+            }}, undefined, (err) => {{
+                document.getElementById('info').textContent = '❌ ' + err.message;
+            }});
         }}
 
-        function toggleRotation() {{
+        function toggle() {{
             rotating = !rotating;
             document.querySelectorAll('button')[0].textContent = rotating ? '🚶 정지' : '⏸️ 재생';
         }}
 
         function animate() {{
             requestAnimationFrame(animate);
-            if (model && rotating) {{
-                model.rotation.y += 0.005;
-            }}
-            if (renderer) renderer.render(scene, camera);
+            if (model && rotating) model.rotation.y += 0.005;
+            renderer.render(scene, camera);
         }}
 
-        function onWindowResize() {{
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }}
-
-        // 클릭으로 회전 토글
-        document.addEventListener('click', (e) => {{
-            if (e.target.tagName !== 'BUTTON') toggleRotation();
-        }});
+        init();
     </script>
 </body>
 </html>
