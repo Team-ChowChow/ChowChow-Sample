@@ -61,3 +61,12 @@ ALTER TABLE "Recipes" ALTER COLUMN "petId" DROP NOT NULL;
 -- 식단 기록에 실제 급여량/레시피 연결 (조리 완료 여부만이 아닌 급여 기록으로 확장)
 ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "feedingAmountG" NUMERIC(6,2);
 ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "recipeId" INTEGER REFERENCES "Recipes"("recipeId") ON DELETE SET NULL;
+
+-- BCS(체형 점수)/운동량 — DTO에는 있었지만 컬럼이 없어 항상 null로 응답되던 것을 실제 저장하도록 보강
+-- (엔티티 필드가 Integer라 컬럼도 INTEGER로 맞춰야 Hibernate 스키마 검증을 통과함)
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petBodyConditionScore" INTEGER CHECK ("petBodyConditionScore" BETWEEN 1 AND 9);
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petBodyScoreDate" DATE;
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petActivityLevel" INTEGER;
+
+-- 관심 건강 부위 (최대 3개, 콤마 구분 문자열로 저장)
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petHealthFocusAreas" TEXT;

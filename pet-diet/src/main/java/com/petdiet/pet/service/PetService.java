@@ -54,6 +54,10 @@ public class PetService {
                 .petWeight(req.getPetWeight())
                 .isNeutered(req.getIsNeutered())
                 .petProfileImg(req.getPetProfileImg())
+                .petBodyConditionScore(req.getPetBodyConditionScore())
+                .petBodyScoreDate(req.getPetBodyConditionScore() != null ? java.time.LocalDate.now() : null)
+                .petActivityLevel(req.getPetActivityLevel())
+                .healthFocusAreas(joinHealthFocusAreas(req.getHealthFocusAreas()))
                 .build());
 
         addAllergies(pet, req.getAllergyIds());
@@ -66,7 +70,9 @@ public class PetService {
         User user = findUser(authUuid);
         UserPet pet = findPet(petId, user);
         pet.update(req.getPetName(), req.getPetGender(), req.getPetBirthdate(),
-                req.getPetWeight(), req.getIsNeutered(), req.getPetProfileImg(), req.getBreedId());
+                req.getPetWeight(), req.getIsNeutered(), req.getPetProfileImg(), req.getBreedId(),
+                req.getPetBodyConditionScore(), req.getPetActivityLevel(),
+                joinHealthFocusAreas(req.getHealthFocusAreas()));
 
         if (req.getAllergyIds() != null) {
             pet.getAllergies().clear();
@@ -84,6 +90,12 @@ public class PetService {
         User user = findUser(authUuid);
         UserPet pet = findPet(petId, user);
         userPetRepository.delete(pet);
+    }
+
+    private String joinHealthFocusAreas(List<String> areas) {
+        if (areas == null) return null;
+        if (areas.size() > 3) throw new IllegalArgumentException("관심 건강 부위는 최대 3개까지 선택할 수 있습니다.");
+        return String.join(",", areas);
     }
 
     private void addAllergies(UserPet pet, List<Integer> allergyIds) {
@@ -118,14 +130,17 @@ public class PetService {
                 .petGender(pet.getPetGender())
                 .petBirthdate(pet.getPetBirthdate())
                 .petWeight(pet.getPetWeight())
-                .petBodyConditionScore(null)
-                .petBodyScoreDate(null)
-                .petActivityLevel(null)
+                .petBodyConditionScore(pet.getPetBodyConditionScore())
+                .petBodyScoreDate(pet.getPetBodyScoreDate())
+                .petActivityLevel(pet.getPetActivityLevel())
                 .isNeutered(pet.getIsNeutered())
                 .petProfileImg(pet.getPetProfileImg())
                 .petProfileImageUrl(pet.getPetProfileImg())
                 .allergyIds(pet.getAllergies().stream().map(a -> a.getAllergyId()).toList())
-                .diseaseIds(pet.getDiseases().stream().map(d -> d.getDiseaseId()).toList());
+                .diseaseIds(pet.getDiseases().stream().map(d -> d.getDiseaseId()).toList())
+                .healthFocusAreas(pet.getHealthFocusAreas() == null || pet.getHealthFocusAreas().isBlank()
+                        ? List.of()
+                        : java.util.Arrays.stream(pet.getHealthFocusAreas().split(",")).map(String::trim).toList());
 
         if (pet.getBreedId() != null) {
             Optional<Breed> breed = breedRepository.findById(pet.getBreedId());
