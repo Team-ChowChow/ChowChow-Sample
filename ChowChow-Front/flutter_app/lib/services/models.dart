@@ -293,6 +293,39 @@ class GrowthLogModel {
       );
 }
 
+class FeedingGuidelineModel {
+  final double petWeightKg;
+  final String ageCategory;
+  final double activityFactor;
+  final double restingEnergyKcal;
+  final double dailyEnergyKcal;
+  final double? recommendedGrams;
+  final String? status;
+  final String? message;
+
+  FeedingGuidelineModel({
+    required this.petWeightKg,
+    required this.ageCategory,
+    required this.activityFactor,
+    required this.restingEnergyKcal,
+    required this.dailyEnergyKcal,
+    this.recommendedGrams,
+    this.status,
+    this.message,
+  });
+
+  factory FeedingGuidelineModel.fromJson(Map<String, dynamic> j) => FeedingGuidelineModel(
+        petWeightKg: (j['petWeightKg'] as num).toDouble(),
+        ageCategory: j['ageCategory'] as String,
+        activityFactor: (j['activityFactor'] as num).toDouble(),
+        restingEnergyKcal: (j['restingEnergyKcal'] as num).toDouble(),
+        dailyEnergyKcal: (j['dailyEnergyKcal'] as num).toDouble(),
+        recommendedGrams: (j['recommendedGrams'] as num?)?.toDouble(),
+        status: j['status'] as String?,
+        message: j['message'] as String?,
+      );
+}
+
 class AllergyModel {
   final int allergyId;
   final String allergyName;

@@ -57,3 +57,7 @@ CREATE INDEX IF NOT EXISTS "idx_walk_records_user_started"
 -- 어드민 시드 레시피는 특정 유저/펫 없이 삽입 가능하도록 nullable 허용
 ALTER TABLE "Recipes" ALTER COLUMN "userId" DROP NOT NULL;
 ALTER TABLE "Recipes" ALTER COLUMN "petId" DROP NOT NULL;
+
+-- 식단 기록에 실제 급여량/레시피 연결 (조리 완료 여부만이 아닌 급여 기록으로 확장)
+ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "feedingAmountG" NUMERIC(6,2);
+ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "recipeId" INTEGER REFERENCES "Recipes"("recipeId") ON DELETE SET NULL;

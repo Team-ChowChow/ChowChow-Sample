@@ -1114,6 +1114,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SliverToBoxAdapter(
                   child: _MenuSection(
+                    title: '건강 관리',
+                    items: [
+                      _MenuItem(
+                        label: '급여량 계산기',
+                        icon: Icons.monitor_weight_outlined,
+                        onTap: () => context.push('/feeding-guideline'),
+                      ),
+                    ],
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _MenuSection(
                     title: '계정',
                     items: [
                       _MenuItem(

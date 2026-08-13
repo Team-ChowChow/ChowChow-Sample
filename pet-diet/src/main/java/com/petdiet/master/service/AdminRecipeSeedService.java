@@ -1,6 +1,7 @@
 package com.petdiet.master.service;
 
 import com.petdiet.ai.image.service.ImageGenerateService;
+import com.petdiet.ingredient.service.IngredientResolutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,6 +20,7 @@ public class AdminRecipeSeedService {
 
     private final JdbcTemplate jdbc;
     private final ImageGenerateService imageGenerateService;
+    private final IngredientResolutionService ingredientResolutionService;
 
     // ─── 재료 데이터 ───────────────────────────────────────────────────────────
     record Ing(String name, double amount, String unit, String note) {
@@ -438,13 +440,7 @@ public class AdminRecipeSeedService {
 
                 // Insert Ingredients
                 for (Ing ing : r.ingredients()) {
-                    Integer ingredientId = null;
-                    try {
-                        ingredientId = jdbc.queryForObject(
-                            "SELECT \"ingredientId\" FROM \"Ingredients\" WHERE \"ingredientName\" = ?",
-                            Integer.class, ing.name()
-                        );
-                    } catch (Exception ignored) {}
+                    Integer ingredientId = ingredientResolutionService.resolveIngredientId(ing.name()).orElse(null);
 
                     jdbc.update(
                         "INSERT INTO \"RecipeIngredients\" (\"recipeId\", \"ingredientId\", " +

@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -40,6 +41,12 @@ public class MealRecord {
 
     @Column(name = "\"mealDate\"")
     private String mealDate;
+
+    @Column(name = "\"feedingAmountG\"", precision = 6, scale = 2)
+    private BigDecimal feedingAmountG;
+
+    @Column(name = "\"recipeId\"")
+    private Integer recipeId;
 
     @CreationTimestamp
     @Column(name = "\"createdAt\"", updatable = false)
