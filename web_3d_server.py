@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-"""
-3D 펫 캐릭터 뷰어 웹사이트
-Three.js 기반
-"""
+"""3D 펫 캐릭터 뷰어 - Three.js + 로컬 GLB"""
 from flask import Flask
 from pathlib import Path
 
 app = Flask(__name__)
-
-# 모델 파일 경로
 MODEL_DIR = Path(__file__).parent / "ChowChow-Front" / "flutter_app" / "assets" / "models"
 
-# Three.js 기반 HTML
 def get_viewer_html(group_num: int) -> str:
     return f'''
 <!DOCTYPE html>
@@ -23,17 +17,13 @@ def get_viewer_html(group_num: int) -> str:
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             width: 100%;
             height: 100vh;
-            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
             overflow: hidden;
         }}
-        canvas {{
-            display: block;
-            width: 100%;
-            height: 100%;
-        }}
+        canvas {{ display: block; }}
         #info {{
             position: fixed;
             top: 20px;
@@ -41,10 +31,9 @@ def get_viewer_html(group_num: int) -> str:
             background: white;
             padding: 12px 16px;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            color: #333;
         }}
         #controls {{
             position: fixed;
@@ -52,58 +41,58 @@ def get_viewer_html(group_num: int) -> str:
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 12px;
+            gap: 10px;
         }}
         button {{
-            padding: 12px 24px;
+            padding: 12px 20px;
             border: none;
             border-radius: 8px;
             background: #FF7000;
             color: white;
             font-weight: bold;
-            font-size: 14px;
             cursor: pointer;
-            box-shadow: 0 2px 12px rgba(255, 112, 0, 0.3);
+            box-shadow: 0 2px 10px rgba(255, 112, 0, 0.3);
             transition: all 0.2s;
         }}
-        button:hover {{
-            background: #E85A00;
-        }}
-        button:active {{
-            transform: scale(0.95);
-        }}
+        button:hover {{ background: #E85A00; }}
+        button:active {{ transform: scale(0.95); }}
     </style>
 </head>
 <body>
-    <div id="info">✅ 로드 완료</div>
+    <div id="info">로딩 중...</div>
     <div id="controls">
         <button onclick="toggleRotation()">🚶 정지</button>
-        <button onclick="window.history.back()">← 돌아가기</button>
+        <button onclick="history.back()">← 돌아가기</button>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.min.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/three@r128/examples/jsm/loaders/GLTFLoader.js"></script>
 
     <script>
         let scene, camera, renderer, model, rotating = true;
         const groupNum = {group_num};
 
+        // Three.js 로드 대기
+        const checkThree = setInterval(() => {{
+            if (typeof THREE !== 'undefined' && THREE.GLTFLoader) {{
+                clearInterval(checkThree);
+                init();
+            }}
+        }}, 100);
+
         function init() {{
-            // Scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf5f5f5);
 
-            // Camera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.z = 3;
 
-            // Renderer
             renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: true }});
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.pixelRatio = window.devicePixelRatio;
             document.body.appendChild(renderer.domElement);
 
-            // Lighting
+            // 조명
             const light1 = new THREE.DirectionalLight(0xffffff, 1);
             light1.position.set(5, 10, 7);
             scene.add(light1);
@@ -111,13 +100,10 @@ def get_viewer_html(group_num: int) -> str:
             const light2 = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(light2);
 
-            // Load model
-            loadModel();
-
-            // Resize handler
+            // 윈도우 리사이즈
             window.addEventListener('resize', onWindowResize);
 
-            // Animation loop
+            loadModel();
             animate();
         }}
 
@@ -125,7 +111,8 @@ def get_viewer_html(group_num: int) -> str:
             const loader = new THREE.GLTFLoader();
             const modelPath = `/models/character_group_${{groupNum}}.glb`;
 
-            console.log('📡 로딩:', modelPath);
+            console.log('📡 모델 로드:', modelPath);
+            document.getElementById('info').textContent = '로딩 중...';
 
             loader.load(
                 modelPath,
@@ -135,7 +122,7 @@ def get_viewer_html(group_num: int) -> str:
                     model = gltf.scene;
                     scene.add(model);
 
-                    // Center and scale
+                    // 중심 정렬 및 스케일
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
@@ -146,29 +133,30 @@ def get_viewer_html(group_num: int) -> str:
                     model.scale.multiplyScalar(scale);
 
                     console.log('✅ 완료');
-                    document.getElementById('info').textContent = '✅ 완료';
+                    document.getElementById('info').textContent = '✅ 완료 - 클릭하면 회전 멈춤';
                 }},
-                undefined,
+                (progress) => {{
+                    const percent = Math.round((progress.loaded / progress.total) * 100);
+                    document.getElementById('info').textContent = `로딩 중... ${{percent}}%`;
+                }},
                 (error) => {{
                     console.error('❌ 에러:', error);
-                    document.getElementById('info').textContent = '❌ 로드 실패';
+                    document.getElementById('info').textContent = '❌ 로드 실패: ' + error.message;
                 }}
             );
         }}
 
         function toggleRotation() {{
             rotating = !rotating;
-            document.querySelector('#controls button').textContent = rotating ? '🚶 정지' : '⏸️ 재생';
+            document.querySelectorAll('button')[0].textContent = rotating ? '🚶 정지' : '⏸️ 재생';
         }}
 
         function animate() {{
             requestAnimationFrame(animate);
-
             if (model && rotating) {{
                 model.rotation.y += 0.005;
             }}
-
-            renderer.render(scene, camera);
+            if (renderer) renderer.render(scene, camera);
         }}
 
         function onWindowResize() {{
@@ -177,27 +165,18 @@ def get_viewer_html(group_num: int) -> str:
             renderer.setSize(window.innerWidth, window.innerHeight);
         }}
 
-        // Start
-        init();
+        // 클릭으로 회전 토글
+        document.addEventListener('click', (e) => {{
+            if (e.target.tagName !== 'BUTTON') toggleRotation();
+        }});
     </script>
 </body>
 </html>
     '''
 
-@app.route('/', methods=['GET'])
+@app.route('/')
 def index():
-    """그룹 선택 페이지"""
-    groups = [
-        ('Toy', 1, '🐶'),
-        ('Terrier', 2, '🐕'),
-        ('Working', 3, '🦮'),
-        ('Herding', 4, '🐑'),
-        ('Hound', 5, '🐩'),
-        ('Sporting', 6, '🦆'),
-        ('Non-Sporting', 7, '🦴'),
-    ]
-
-    html = '''<!DOCTYPE html>
+    return '''<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -206,8 +185,8 @@ def index():
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -221,23 +200,9 @@ def index():
             box-shadow: 0 8px 32px rgba(0,0,0,0.15);
             max-width: 600px;
         }
-        h1 {
-            text-align: center;
-            font-size: 32px;
-            margin-bottom: 12px;
-            color: #333;
-        }
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 32px;
-            font-size: 14px;
-        }
-        .groups {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 16px;
-        }
+        h1 { text-align: center; font-size: 32px; margin-bottom: 12px; color: #333; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 32px; font-size: 14px; }
+        .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
         .group-btn {
             padding: 24px;
             border: 2px solid #e0e0e0;
@@ -245,7 +210,6 @@ def index():
             background: white;
             cursor: pointer;
             text-align: center;
-            transition: all 0.2s;
             text-decoration: none;
             display: flex;
             flex-direction: column;
@@ -254,6 +218,7 @@ def index():
             font-size: 24px;
             font-weight: 600;
             color: #FF7000;
+            transition: all 0.2s;
         }
         .group-btn:hover {
             border-color: #FF7000;
@@ -261,58 +226,45 @@ def index():
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(255, 112, 0, 0.2);
         }
-        .group-emoji {
-            font-size: 40px;
-        }
+        .group-emoji { font-size: 40px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🐕 3D 펫 캐릭터</h1>
-        <p class="subtitle">보고 싶은 그룹을 선택하세요</p>
+        <p class="subtitle">그룹을 선택하세요</p>
         <div class="groups">
-    '''
-
-    for group_name, group_num, emoji in groups:
-        html += f'''
-            <a href="/character_group_{group_num}.html" class="group-btn">
-                <div class="group-emoji">{emoji}</div>
-                {group_name}
-            </a>
-        '''
-
-    html += '''
+            <a href="/character_group_1.html" class="group-btn"><div class="group-emoji">🐶</div>Toy</a>
+            <a href="/character_group_2.html" class="group-btn"><div class="group-emoji">🐕</div>Terrier</a>
+            <a href="/character_group_3.html" class="group-btn"><div class="group-emoji">🦮</div>Working</a>
+            <a href="/character_group_4.html" class="group-btn"><div class="group-emoji">🐑</div>Herding</a>
+            <a href="/character_group_5.html" class="group-btn"><div class="group-emoji">🐩</div>Hound</a>
+            <a href="/character_group_6.html" class="group-btn"><div class="group-emoji">🦆</div>Sporting</a>
+            <a href="/character_group_7.html" class="group-btn"><div class="group-emoji">🦴</div>Non-Sporting</a>
         </div>
     </div>
 </body>
 </html>
     '''
-    return html
 
-@app.route('/character_group_<int:group_num>.html', methods=['GET'])
+@app.route('/character_group_<int:group_num>.html')
 def viewer(group_num: int):
-    """3D 뷰어"""
     if group_num < 1 or group_num > 7:
-        return {'error': 'Invalid group'}, 404
+        return 'Invalid', 404
     return get_viewer_html(group_num), 200, {'Content-Type': 'text/html; charset=utf-8'}
 
-@app.route('/models/<path:filename>', methods=['GET'])
+@app.route('/models/<path:filename>')
 def serve_model(filename):
-    """GLB 파일 제공"""
     from flask import send_file
     try:
         file_path = MODEL_DIR / filename
         if not file_path.exists():
-            return {'error': 'Not found'}, 404
+            return 'Not found', 404
         return send_file(file_path, mimetype='model/gltf-binary')
     except Exception as e:
-        return {'error': str(e)}, 500
+        return str(e), 500
 
 if __name__ == '__main__':
-    print('=' * 60)
     print('🚀 3D 펫 캐릭터 웹사이트')
-    print('=' * 60)
     print('📍 http://localhost:8888')
-    print('🛑 종료: Ctrl+C')
-    print('=' * 60)
     app.run(host='localhost', port=8888, debug=True, use_reloader=True)
