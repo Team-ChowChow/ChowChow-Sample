@@ -413,6 +413,19 @@ class _PostContentSection extends StatelessWidget {
               ),
             ),
           ),
+          if (post.recipeId != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/recipes/${post.recipeId}'),
+                icon: const Icon(Icons.restaurant_menu_outlined, size: 18),
+                label: const Text('공유된 레시피 보기'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ChowColors.orange600,
+                  side: const BorderSide(color: ChowColors.orange100),
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
             child: Wrap(

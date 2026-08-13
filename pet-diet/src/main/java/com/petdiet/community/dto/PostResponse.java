@@ -15,6 +15,7 @@ public class PostResponse {
     private String userNickname;
     private Integer petId;
     private Integer recipeId;
+    private String petType;
     private String postTitle;
     private String postContentPreview;
     private String postContent;
@@ -36,6 +37,7 @@ public class PostResponse {
                 .userNickname(post.getUser().getUserNickname())
                 .petId(post.getPetId())
                 .recipeId(post.getRecipeId())
+                .petType(post.getPetType())
                 .postTitle(post.getPostTitle())
                 .postContentPreview(post.getPostContent() == null ? null :
                         (post.getPostContent().length() > 50 ? post.getPostContent().substring(0, 50) + "..." : post.getPostContent()))

@@ -1,6 +1,7 @@
 package com.petdiet.community.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 
 import java.util.List;
@@ -9,6 +10,9 @@ import java.util.List;
 public class PostRequest {
     private Integer petId;
     private Integer recipeId;
+
+    @Pattern(regexp = "DOG|CAT", message = "petType must be DOG or CAT")
+    private String petType;
 
     @NotBlank
     private String postTitle;

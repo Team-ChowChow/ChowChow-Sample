@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/sample_data.dart';
 import '../router/app_router.dart';
 import '../services/api_client.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
+import 'create_post.dart';
 
 const _kGenSteps = [
   '반려동물 정보 분석 중...',
@@ -75,6 +77,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
   int _progress = 0;
   int _currentStep = 0;
   bool _apiDone = false;
+  bool _isSharing = false;
   String? _errorMsg;
 
   @override
@@ -188,6 +191,50 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
       if (!mounted) return;
       navigateHomeAndShowRecipeGenerationFailed(context);
     }
+  }
+
+  Future<void> _shareRecipeToCommunity(DietGenerateModel recipe) async {
+    if (_isSharing) return;
+    if (recipe.recipeId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장된 레시피만 커뮤니티에 공유할 수 있어요.')),
+      );
+      return;
+    }
+
+    final ingredients = recipe.ingredients
+        .map((ingredient) => ingredient.amount == null || ingredient.amount!.isEmpty
+            ? '- ${ingredient.name}'
+            : '- ${ingredient.name} (${ingredient.amount})')
+        .join('\n');
+    final steps = recipe.steps
+        .asMap()
+        .entries
+        .map((entry) => '${entry.key + 1}. ${entry.value}')
+        .join('\n');
+    final content = [
+      recipe.description ?? 'AI가 반려동물을 위해 만든 맞춤 레시피를 공유합니다.',
+      if (ingredients.isNotEmpty) '재료\n$ingredients',
+      if (steps.isNotEmpty) '조리 방법\n$steps',
+      if (recipe.feedingAmount != null && recipe.feedingAmount!.isNotEmpty)
+        '급여량 안내\n${recipe.feedingAmount}',
+    ].join('\n\n');
+
+    setState(() => _isSharing = true);
+    final created = await context.push<CommunityPost>(
+      '/create-post',
+      extra: CommunityPostDraft(
+        title: recipe.title,
+        content: content,
+        imageUrl: recipe.imageUrl,
+        recipeId: recipe.recipeId,
+        petId: _selectedPet?.petId,
+        tags: const ['AI레시피'],
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _isSharing = false);
+    if (created != null) context.go('/community');
   }
 
   @override
@@ -870,12 +917,35 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       ),
                     ],
                     const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: ChowColors.orange500,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: _isSharing ? null : () => _shareRecipeToCommunity(recipe),
+                        icon: _isSharing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.ios_share),
+                        label: Text(
+                          _isSharing ? '글쓰기 화면 여는 중...' : '커뮤니티에 레시피 공유하기',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     if (recipe.recipeId != null) ...[
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: ChowColors.orange500,
+                            backgroundColor: ChowColors.gray700,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),

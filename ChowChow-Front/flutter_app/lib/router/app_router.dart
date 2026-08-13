@@ -167,7 +167,13 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
           final initialPost = state.extra is CommunityPost
               ? state.extra as CommunityPost
               : null;
-          return CreatePostPage(initialPost: initialPost);
+          final initialDraft = state.extra is CommunityPostDraft
+              ? state.extra as CommunityPostDraft
+              : null;
+          return CreatePostPage(
+            initialPost: initialPost,
+            initialDraft: initialDraft,
+          );
         },
       ),
       GoRoute(

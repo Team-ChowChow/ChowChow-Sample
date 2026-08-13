@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
@@ -23,50 +23,54 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-
-  static const String GITHUB_PAGES_URL = 'https://team-chowchow.github.io/ChowChow-Sample/docs/viewer.html';
+  late WebViewController _webViewController;
 
   @override
   void initState() {
     super.initState();
+    _initWebView();
     _loadPet();
+  }
+
+  void _initWebView() {
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            debugPrint('✅ 3D 뷰어 로드됨');
+          },
+        ),
+      );
   }
 
   Future<void> _loadPet() async {
     try {
-      debugPrint('🐕 Loading pet with ID: ${widget.petId}');
-
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('access_token');
-      debugPrint('🔑 Token exists: ${token != null}');
 
       final url = 'http://35.78.87.150:8080/api/pets/${widget.petId}';
-      debugPrint('📡 Calling: $url');
-
       final response = await http.get(
         Uri.parse(url),
         headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 10));
 
-      debugPrint('📊 Response status: ${response.statusCode}');
-
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final pet = PetModel.fromJson(jsonDecode(response.body));
-        debugPrint('✅ Pet loaded: ${pet.petName}, group: ${pet.groupName}');
         setState(() {
           _pet = pet;
           _loading = false;
         });
+        _loadWebView();
       } else {
         setState(() {
-          _error = '펫 정보 로드 실패 (${response.statusCode})';
+          _error = '펫 정보 로드 실패';
           _loading = false;
         });
       }
     } catch (e) {
-      debugPrint('❌ Exception: $e');
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -85,32 +89,22 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       'Sporting': 6,
       'Non-Sporting': 7,
     };
-
-    final groupNum = groupMap[_pet?.groupName] ?? 1;
-    return groupNum.toString();
+    return (groupMap[_pet?.groupName] ?? 1).toString();
   }
 
-  Future<void> _openWebViewer() async {
+  Future<void> _loadWebView() async {
     try {
       final groupNum = _getGroupNumber();
-      final modelUrl = '$GITHUB_PAGES_URL?model=character_group_$groupNum';
+      final html = await DefaultAssetBundle.of(context).loadString('assets/viewer.html');
 
-      debugPrint('🌐 Opening web viewer: $modelUrl');
-
-      if (await canLaunchUrl(Uri.parse(modelUrl))) {
-        await launchUrl(Uri.parse(modelUrl), mode: LaunchMode.externalApplication);
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('웹 브라우저를 열 수 없습니다')),
-        );
-      }
-    } catch (e) {
-      debugPrint('❌ Error launching URL: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('오류: $e')),
+      _webViewController.loadHtmlString(
+        html,
+        baseUrl: 'about:blank',
       );
+
+      debugPrint('🌐 3D 뷰어 로드 시도: 그룹 $groupNum');
+    } catch (e) {
+      debugPrint('❌ 뷰어 로드 실패: $e');
     }
   }
 
@@ -125,7 +119,9 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
             onPressed: () => context.pop(),
           ),
         ),
-        body: const Center(child: CircularProgressIndicator(color: ChowColors.orange500)),
+        body: const Center(
+          child: CircularProgressIndicator(color: ChowColors.orange500),
+        ),
       );
     }
 
@@ -142,7 +138,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: ChowColors.gray600)),
+              Text(_error!),
               const SizedBox(height: 12),
               OutlinedButton(onPressed: _loadPet, child: const Text('다시 시도')),
             ],
@@ -161,97 +157,31 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          // 3D 캐릭터 표시 영역 (중앙)
-          Center(
-            child: GestureDetector(
-              onTap: _openWebViewer,
-              child: Container(
-                width: 300,
-                height: 400,
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: ChowColors.gray300),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.pets, size: 64, color: ChowColors.orange500),
-                    const SizedBox(height: 16),
-                    Text(
-                      '웹에서 3D 보기',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: ChowColors.gray800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '탭하여 3D 캐릭터를 봅시다',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: ChowColors.gray500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // 상태창 (왼쪽 위)
+          WebViewWidget(controller: _webViewController),
           Positioned(
             top: 16,
             left: 16,
-            child: _buildStatsPanel(),
-          ),
-
-          // 정보 (좌하단)
-          Positioned(
-            bottom: 16,
-            left: 16,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ChowColors.orange500,
-                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
+                ],
               ),
-              child: const Text(
-                '💻 웹으로 열기',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _statRow('🍖 배고픔', 50),
+                  const SizedBox(height: 8),
+                  _statRow('😊 행복도', 80),
+                  const SizedBox(height: 8),
+                  _statRow('❤️ 건강도', 75),
+                ],
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsPanel() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _statRow('🍖 배고픔', 50),
-          const SizedBox(height: 8),
-          _statRow('😊 행복도', 80),
-          const SizedBox(height: 8),
-          _statRow('❤️ 건강도', 75),
         ],
       ),
     );

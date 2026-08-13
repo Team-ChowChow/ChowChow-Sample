@@ -11,11 +11,30 @@ import '../services/api_client.dart';
 import '../services/community_service.dart';
 import '../theme/chow_theme.dart';
 
+class CommunityPostDraft {
+  const CommunityPostDraft({
+    required this.title,
+    required this.content,
+    this.imageUrl,
+    this.recipeId,
+    this.petId,
+    this.tags = const [],
+  });
+
+  final String title;
+  final String content;
+  final String? imageUrl;
+  final int? recipeId;
+  final int? petId;
+  final List<String> tags;
+}
+
 class CreatePostPage extends StatefulWidget {
-  const CreatePostPage({super.key, this.initialPost});
+  const CreatePostPage({super.key, this.initialPost, this.initialDraft});
 
   /// null이면 새 글 작성, non-null이면 수정 모드
   final CommunityPost? initialPost;
+  final CommunityPostDraft? initialDraft;
 
   @override
   State<CreatePostPage> createState() => _CreatePostPageState();
@@ -33,6 +52,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
   String? _selectedImagePath;
   String? _existingImageUrl; // 수정 모드에서 기존 이미지 URL 보관
   String? _selectedCategory;
+  int? _linkedRecipeId;
+  int? _linkedPetId;
   String? _selectedPetType; // '강아지', '고양이', null (선택안함)
   bool _isPosting = false;
 
@@ -43,7 +64,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     '자유',
     '질문',
     '후기',
-    '질환정보',
+    '레시피',
   ];
 
   @override
@@ -66,6 +87,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (post.image.isNotEmpty) {
         _existingImageUrl = post.image;
       }
+    }
+    final draft = widget.initialDraft;
+    if (draft != null) {
+      _titleController.text = draft.title;
+      _contentController.text = draft.content;
+      _existingImageUrl = draft.imageUrl;
+      _linkedRecipeId = draft.recipeId;
+      _linkedPetId = draft.petId;
+      _tags.addAll(draft.tags);
     }
   }
 
@@ -139,6 +169,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
           postId: widget.initialPost!.id,
           content: _contentController.text.trim(),
           category: _selectedCategory,
+          petType: _selectedPetType == '강아지'
+              ? 'DOG'
+              : _selectedPetType == '고양이'
+                  ? 'CAT'
+                  : null,
           tags: _tags,
           imageUrl: imageUrl,
         );
@@ -154,6 +189,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
         final created = await CommunityService.createPost(
           content: _contentController.text.trim(),
           category: _selectedCategory,
+          petId: _linkedPetId,
+          recipeId: _linkedRecipeId,
           tags: _tags,
           imageUrl: imageUrl,
           title: _titleController.text.trim(),

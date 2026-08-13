@@ -42,6 +42,33 @@ WHERE LOWER("ingredientName") LIKE '%avocado%';
 ALTER TABLE "RecipeIngredients"
     ALTER COLUMN "ingredientId" DROP NOT NULL;
 """),
+    ("005_community_recipe_category", """
+UPDATE "CommunityPosts"
+SET "postCategory" = '자유'
+WHERE "postCategory" = '질환정보';
+
+ALTER TABLE "CommunityPosts"
+    ALTER COLUMN "petId" DROP NOT NULL,
+    ALTER COLUMN "recipeId" DROP NOT NULL;
+
+ALTER TABLE "CommunityPosts"
+    DROP CONSTRAINT IF EXISTS "CommunityPosts_postCategory_check";
+
+ALTER TABLE "CommunityPosts"
+    ADD CONSTRAINT "CommunityPosts_postCategory_check"
+    CHECK ("postCategory" IN ('자유', '후기', '질문', '레시피'));
+"""),
+    ("006_community_pet_type", """
+ALTER TABLE "CommunityPosts"
+    ADD COLUMN IF NOT EXISTS "petType" VARCHAR(3);
+
+ALTER TABLE "CommunityPosts"
+    DROP CONSTRAINT IF EXISTS "CommunityPosts_petType_check";
+
+ALTER TABLE "CommunityPosts"
+    ADD CONSTRAINT "CommunityPosts_petType_check"
+    CHECK ("petType" IN ('DOG', 'CAT'));
+"""),
 ]
 
 def main():
