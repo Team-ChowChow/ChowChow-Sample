@@ -17,7 +17,7 @@ class CommunityPage extends StatefulWidget {
 }
 
 class _CommunityPageState extends State<CommunityPage> with RouteAware {
-  static const _categories = ['전체', '자유', '질문', '후기', '질환정보'];
+  static const _categories = ['전체', '자유', '질문', '후기', '레시피'];
   static const _petTypes = ['전체', '강아지', '고양이'];
   static const _sortOptions = [
     ('createdAt', 'desc', '최신순 ↓'),

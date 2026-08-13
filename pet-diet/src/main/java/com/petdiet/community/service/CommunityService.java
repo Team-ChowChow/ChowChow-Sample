@@ -63,6 +63,7 @@ public class CommunityService {
                 .user(user)
                 .petId(req.getPetId())
                 .recipeId(req.getRecipeId())
+                .petType(req.getPetType())
                 .postTitle(req.getPostTitle())
                 .postContent(req.getPostContent())
                 .postImageUrl(req.getPostImageUrl())
@@ -79,7 +80,8 @@ public class CommunityService {
         if (!post.getUser().getUserId().equals(user.getUserId())) {
             throw new IllegalArgumentException("수정 권한이 없습니다.");
         }
-        post.update(req.getPostTitle(), req.getPostContent(), req.getPostImageUrl(), req.getPostCategory());
+        post.update(req.getPostTitle(), req.getPostContent(), req.getPostImageUrl(),
+                req.getPostCategory(), req.getPetType());
         return PostResponse.from(post, post.getLikeCount(), false);
     }
 

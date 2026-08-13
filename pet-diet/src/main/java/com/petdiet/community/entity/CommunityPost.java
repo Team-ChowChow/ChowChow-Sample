@@ -33,6 +33,9 @@ public class CommunityPost {
     @Column(name = "\"recipeId\"")
     private Integer recipeId;
 
+    @Column(name = "\"petType\"")
+    private String petType;
+
     @Column(name = "\"postTitle\"", nullable = false)
     private String postTitle;
 
@@ -77,11 +80,13 @@ public class CommunityPost {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CommunityLike> likes = new ArrayList<>();
 
-    public void update(String postTitle, String postContent, String postImageUrl, String postCategory) {
+    public void update(String postTitle, String postContent, String postImageUrl,
+                       String postCategory, String petType) {
         if (postTitle != null) this.postTitle = postTitle;
         if (postContent != null) this.postContent = postContent;
         if (postImageUrl != null) this.postImageUrl = postImageUrl;
         if (postCategory != null) this.postCategory = postCategory;
+        if (petType != null) this.petType = petType;
     }
 
     public void incrementLikeCount() { this.likeCount++; }

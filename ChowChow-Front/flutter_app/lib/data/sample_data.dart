@@ -13,6 +13,7 @@ class CommunityPost {
     required this.views,
     required this.tags,
     this.title,
+    this.recipeId,
     this.petType,
     this.likedByMe = false,
   });
@@ -28,6 +29,7 @@ class CommunityPost {
   final int comments;
   final int views;
   final List<String> tags;
+  final int? recipeId;
   final String? title; // 게시글 제목
   final String? petType; // 'DOG' 또는 'CAT'
   final bool likedByMe;
@@ -76,6 +78,7 @@ class CommunityPost {
           0,
       tags: parsedTags,
       title: json['postTitle'] as String?,
+      recipeId: json['recipeId'] as int?,
       petType: json['petType'] as String?,
       likedByMe: json['likedByMe'] as bool? ?? false,
     );
@@ -86,6 +89,7 @@ class CommunityPost {
     int? comments,
     bool? likedByMe,
     String? title,
+    int? recipeId,
     String? petType,
     List<String>? tags,
   }) {
@@ -103,6 +107,7 @@ class CommunityPost {
       views: views,
       tags: tags ?? this.tags,
       title: title ?? this.title,
+      recipeId: recipeId ?? this.recipeId,
       petType: petType ?? this.petType,
       likedByMe: likedByMe ?? this.likedByMe,
     );
