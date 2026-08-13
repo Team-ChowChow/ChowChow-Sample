@@ -4,7 +4,18 @@ from flask import Flask
 from pathlib import Path
 
 app = Flask(__name__)
-MODEL_DIR = Path(__file__).parent / "ChowChow-Front" / "flutter_app" / "assets" / "models"
+
+# 모델 디렉토리 경로 (절대 경로)
+SCRIPT_DIR = Path(__file__).resolve().parent
+MODEL_DIR = SCRIPT_DIR / "ChowChow-Front" / "flutter_app" / "assets" / "models"
+
+# 경로 확인
+print(f"📂 모델 디렉토리: {MODEL_DIR}")
+print(f"📂 존재: {MODEL_DIR.exists()}")
+if MODEL_DIR.exists():
+    print(f"📂 파일 수: {len(list(MODEL_DIR.glob('*.glb')))}")
+    for f in sorted(MODEL_DIR.glob('*.glb')):
+        print(f"  ✅ {f.name}")
 
 def get_viewer_html(group_num: int) -> str:
     return f'''
