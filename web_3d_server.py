@@ -24,8 +24,8 @@ def get_viewer_html(group_num: int) -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D 펫 캐릭터 - 그룹 {group_num}</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.min.js"></script>
+    <script src="/three.min.js"></script>
+    <script src="/GLTFLoader.js"></script>
     <style>
         * {{ margin: 0; padding: 0; }}
         body {{ width: 100%; height: 100vh; background: #f5f5f5; font-family: sans-serif; }}
@@ -206,10 +206,35 @@ def serve_model(filename):
     try:
         file_path = MODEL_DIR / filename
         if not file_path.exists():
+            print(f"❌ 모델 파일 없음: {file_path}")
             return 'Not found', 404
+        print(f"✅ 모델 제공: {file_path}")
         return send_file(file_path, mimetype='model/gltf-binary')
     except Exception as e:
+        print(f"❌ 에러: {e}")
         return str(e), 500
+
+@app.route('/three.min.js')
+def serve_three_js():
+    """Three.js 라이브러리 (CDN에서 동적으로 제공)"""
+    import requests
+    try:
+        url = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+        resp = requests.get(url, timeout=10)
+        return resp.content, 200, {'Content-Type': 'application/javascript'}
+    except:
+        return 'Failed to load THREE.js', 500
+
+@app.route('/GLTFLoader.js')
+def serve_gltf_loader():
+    """GLTFLoader (CDN에서 동적으로 제공)"""
+    import requests
+    try:
+        url = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/GLTFLoader.min.js'
+        resp = requests.get(url, timeout=10)
+        return resp.content, 200, {'Content-Type': 'application/javascript'}
+    except:
+        return 'Failed to load GLTFLoader', 500
 
 if __name__ == '__main__':
     print('🚀 3D 펫 캐릭터 웹사이트')
