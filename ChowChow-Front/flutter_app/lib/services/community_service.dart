@@ -61,6 +61,8 @@ class CommunityService {
   static Future<CommunityPost> createPost({
     required String content,
     String? category,
+    int? petId,
+    int? recipeId,
     List<String> tags = const [],
     String? imageUrl,
     String? title,
@@ -80,6 +82,8 @@ class CommunityService {
       'postContent': content,
       'postCategory': category ?? '자유',
       'postStatus': 'ACTIVE',
+      if (petId != null) 'petId': petId,
+      if (recipeId != null) 'recipeId': recipeId,
       if (imageUrl != null) 'postImageUrl': imageUrl,
       if (tags.isNotEmpty) 'tagNames': tags,
       if (petType != null) 'petType': petType,
@@ -91,6 +95,7 @@ class CommunityService {
     required int postId,
     required String content,
     String? category,
+    String? petType,
     List<String> tags = const [],
     String? imageUrl,
   }) async {
@@ -102,6 +107,7 @@ class CommunityService {
       'postTitle': title,
       'postContent': content,
       'postCategory': category ?? '자유',
+      if (petType != null) 'petType': petType,
       if (imageUrl != null) 'postImageUrl': imageUrl,
       if (tags.isNotEmpty) 'tagNames': tags,
     });

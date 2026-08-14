@@ -262,9 +262,9 @@ class _ResultView extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: ChowColors.orange50,
+              color: ChowCozy.stone100,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ChowColors.orange100),
+              border: Border.all(color: ChowCozy.stone300),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

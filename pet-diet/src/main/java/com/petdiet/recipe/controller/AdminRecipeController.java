@@ -2,7 +2,9 @@ package com.petdiet.recipe.controller;
 
 import com.petdiet.ai.image.service.ImageGenerateService;
 import com.petdiet.recipe.entity.Recipe;
+import com.petdiet.recipe.repository.RecipeNutritionSummaryRepository;
 import com.petdiet.recipe.repository.RecipeRepository;
+import com.petdiet.recipe.service.NutritionCalculationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +32,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class AdminRecipeController {
 
     private final RecipeRepository recipeRepository;
+    private final RecipeNutritionSummaryRepository nutritionRepository;
+    private final NutritionCalculationService nutritionCalculationService;
     private final ImageGenerateService imageGenerateService;
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
@@ -170,6 +174,42 @@ public class AdminRecipeController {
     private static double numVal(JsonNode node) {
         if (node == null || node.isMissingNode() || node.isNull()) return 0.0;
         return node.isNumber() ? node.numberValue().doubleValue() : 0.0;
+    }
+
+    /**
+     * 영양 정보(RecipeNutritionSummary)가 없는 레시피에 대해 재료×수량 기반으로 일괄 계산.
+     * CSV 씨딩 레시피처럼 NutritionCalculationService를 거치지 않고 생성된 레시피를 백필할 때 사용.
+     */
+    @PostMapping("/recalculate-nutrition")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> recalculateNutrition() {
+        List<Recipe> targets = recipeRepository.findAll().stream()
+                .filter(r -> "ACTIVE".equals(r.getRecipeStatus()))
+                .filter(r -> nutritionRepository.findByRecipeRecipeId(r.getRecipeId())
+                        .map(s -> s.getTotalCalories() == null)
+                        .orElse(true))
+                .toList();
+
+        AtomicInteger success = new AtomicInteger(0);
+        AtomicInteger skipped = new AtomicInteger(0);
+
+        for (Recipe recipe : targets) {
+            nutritionCalculationService.calculateAndSave(recipe);
+            boolean hasCalories = nutritionRepository.findByRecipeRecipeId(recipe.getRecipeId())
+                    .map(s -> s.getTotalCalories() != null)
+                    .orElse(false);
+            if (hasCalories) {
+                success.incrementAndGet();
+            } else {
+                skipped.incrementAndGet();
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "total", targets.size(),
+                "success", success.get(),
+                "skipped", skipped.get()
+        ));
     }
 
     /**

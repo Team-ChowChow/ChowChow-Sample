@@ -292,7 +292,7 @@ class _WalkPageState extends State<WalkPage> {
       builder: (context) => AlertDialog(
         icon: const Icon(
           Icons.celebration_rounded,
-          color: ChowColors.orange500,
+          color: ChowCozy.stone500,
           size: 42,
         ),
         title: const Text('산책 완료!'),
@@ -364,80 +364,192 @@ class _WalkPageState extends State<WalkPage> {
   Widget build(BuildContext context) {
     final previewTodayMeters =
         (_summary?.todayDistanceMeters ?? 0) + _distanceMeters.round();
+    final steps = (previewTodayMeters / 1000 * 1350).round();
+    final active = _status == _WalkStatus.tracking;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('산책'),
-        actions: [
-          if (!_isWalking && _status != _WalkStatus.saving)
-            IconButton(
-              onPressed: _loadWalkData,
-              tooltip: '새로고침',
-              icon: const Icon(Icons.refresh),
-            ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadWalkData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _WalkTrackerCard(
-                    status: _status,
-                    distanceMeters: _distanceMeters,
-                    durationSeconds: _durationSeconds,
-                    ignoredGpsPoints: _ignoredGpsPoints,
-                    onStart: _startWalk,
-                    onPause: _pauseWalk,
-                    onResume: _resumeWalk,
-                    onFinish: _finishWalk,
-                  ),
-                  const SizedBox(height: 20),
-                  if (_loadMessage != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: ChowColors.orange50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _loadMessage!,
-                        style: const TextStyle(
-                          color: ChowColors.orange600,
-                          fontSize: 12,
+      backgroundColor: ChowCozy.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadWalkData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 상단바: 뒤로가기 + 제목 + 오늘 적립 코인
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back, color: ChowCozy.stone700),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            '🚶 산책',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ChowCozy.stone900),
+                          ),
+                        ),
+                        if (!_isWalking && _status != _WalkStatus.saving)
+                          IconButton(
+                            onPressed: _loadWalkData,
+                            tooltip: '새로고침',
+                            icon: const Icon(Icons.refresh, color: ChowCozy.stone700),
+                          )
+                        else
+                          const SizedBox(width: 48),
+                      ],
+                    ),
+                    if (_loadMessage != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: ChowCozy.stone100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _loadMessage!,
+                          style: const TextStyle(color: ChowCozy.stone700, fontSize: 12),
                         ),
                       ),
+
+                    // 오늘의 기록
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: const [BoxShadow(blurRadius: 12, offset: Offset(0, 4), color: Color(0x0F000000))],
+                      ),
+                      child: Column(
+                        children: [
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('오늘의 기록', style: TextStyle(fontSize: 12, color: ChowCozy.mutedForeground)),
+                          ),
+                          const SizedBox(height: 10),
+                          IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _WalkMetric(
+                                    icon: '📍',
+                                    label: 'km',
+                                    value: (previewTodayMeters / 1000).toStringAsFixed(2),
+                                  ),
+                                ),
+                                const VerticalDivider(color: ChowCozy.stone100, thickness: 1),
+                                Expanded(
+                                  child: _WalkMetric(icon: '👣', label: '걸음', value: steps.toString()),
+                                ),
+                                const VerticalDivider(color: ChowCozy.stone100, thickness: 1),
+                                Expanded(
+                                  child: _WalkMetric(
+                                    icon: '⏱️',
+                                    label: '시간',
+                                    value: _formatDuration(_durationSeconds),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (active) ...[
+                            const SizedBox(height: 12),
+                            const Divider(color: ChowCozy.stone100, height: 1),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const _PulsingDot(),
+                                const SizedBox(width: 6),
+                                const Text('GPS 측정 중', style: TextStyle(fontSize: 12, color: ChowColors.green500, fontWeight: FontWeight.w600)),
+                                const Spacer(),
+                                Text(
+                                  _durationSeconds > 0 && _distanceMeters > 0
+                                      ? '페이스 ${(_durationSeconds / 60 / (_distanceMeters / 1000)).toStringAsFixed(1)}분/km'
+                                      : '페이스 --',
+                                  style: const TextStyle(fontSize: 12, color: ChowCozy.mutedForeground),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (_ignoredGpsPoints > 0 && _isWalking) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '정확하지 않은 GPS 신호 $_ignoredGpsPoints건 제외',
+                              style: const TextStyle(color: ChowCozy.mutedForeground, fontSize: 11),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  _TodayRoadmap(
-                    loading: _loading,
-                    summary: _summary,
-                    previewDistanceMeters: previewTodayMeters,
-                    isWalking: _isWalking,
-                  ),
-                  const SizedBox(height: 28),
-                  const Text(
-                    '최근 산책',
-                    style: TextStyle(
-                      color: ChowColors.gray800,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: 18),
+
+                    // 시작/종료 버튼
+                    Center(child: _WalkActionButton(status: _status, onStart: _startWalk, onPause: _pauseWalk, onResume: _resumeWalk, onFinish: _finishWalk)),
+                    const SizedBox(height: 20),
+
+                    _TodayRoadmap(
+                      loading: _loading,
+                      summary: _summary,
+                      previewDistanceMeters: previewTodayMeters,
+                      isWalking: _isWalking,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_loading)
-                    const Center(child: CircularProgressIndicator())
-                  else if (_recentWalks.isEmpty)
-                    const _EmptyWalkHistory()
-                  else
-                    ..._recentWalks.map(_WalkHistoryTile.new),
-                ],
+                    const SizedBox(height: 14),
+
+                    // 코인 안내 배너
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: ChowCozy.stone800,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('🪙 거리별 코인 적립', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                                SizedBox(height: 2),
+                                Text('하루 최대 50코인까지 받을 수 있어요', style: TextStyle(color: Color(0xFFC0AFA0), fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text('${_summary?.todayRewardCoins ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                              const Text('오늘 적립', style: TextStyle(color: Color(0xFFC0AFA0), fontSize: 11)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    const Text(
+                      '최근 산책',
+                      style: TextStyle(
+                        color: ChowColors.gray800,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_loading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_recentWalks.isEmpty)
+                      const _EmptyWalkHistory()
+                    else
+                      ..._recentWalks.map(_WalkHistoryTile.new),
+                  ],
+                ),
               ),
             ),
           ),
@@ -447,12 +559,55 @@ class _WalkPageState extends State<WalkPage> {
   }
 }
 
-class _WalkTrackerCard extends StatelessWidget {
-  const _WalkTrackerCard({
+/// GPS 기록 중 표시되는 초록 점 펄스 애니메이션 (웹 버전 motion.div 대응)
+class _PulsingDot extends StatefulWidget {
+  const _PulsingDot();
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.4, end: 1.0).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+      ),
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: const BoxDecoration(
+          color: ChowColors.green500,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
+
+/// Start/Pause/Resume/Finish 버튼 — Walk.tsx의 중앙 pill 버튼 스타일
+class _WalkActionButton extends StatelessWidget {
+  const _WalkActionButton({
     required this.status,
-    required this.distanceMeters,
-    required this.durationSeconds,
-    required this.ignoredGpsPoints,
     required this.onStart,
     required this.onPause,
     required this.onResume,
@@ -460,9 +615,6 @@ class _WalkTrackerCard extends StatelessWidget {
   });
 
   final _WalkStatus status;
-  final double distanceMeters;
-  final int durationSeconds;
-  final int ignoredGpsPoints;
   final VoidCallback onStart;
   final VoidCallback onPause;
   final VoidCallback onResume;
@@ -472,156 +624,75 @@ class _WalkTrackerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = status == _WalkStatus.tracking;
     final paused = status == _WalkStatus.paused;
-    final saving = status == _WalkStatus.saving;
-    final averageSpeed = durationSeconds == 0
-        ? 0.0
-        : distanceMeters * 3.6 / durationSeconds;
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [ChowColors.orange400, ChowColors.orange600],
+    if (status == _WalkStatus.saving) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 14),
+        child: CircularProgressIndicator(color: ChowCozy.stone500),
+      );
+    }
+
+    if (!active && !paused) {
+      return _pillButton(
+        icon: Icons.play_arrow_rounded,
+        label: '산책 시작',
+        color: ChowCozy.stone800,
+        onTap: onStart,
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _pillButton(
+          icon: active ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          label: active ? '일시정지' : '계속 걷기',
+          color: ChowCozy.stone800,
+          onTap: active ? onPause : onResume,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33F97316),
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        const SizedBox(width: 10),
+        _pillButton(
+          icon: Icons.stop_rounded,
+          label: '산책 종료',
+          color: ChowColors.red500,
+          onTap: onFinish,
+        ),
+      ],
+    );
+  }
+
+  Widget _pillButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                active ? Icons.gps_fixed : Icons.directions_walk_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                active
-                    ? 'GPS로 산책 기록 중'
-                    : paused
-                    ? '산책 일시정지'
-                    : saving
-                    ? '산책 저장 중'
-                    : '반려동물과 산책을 시작해보세요',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
             ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            (distanceMeters / 1000).toStringAsFixed(2),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 52,
-              height: 1,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'km',
-            style: TextStyle(
-              color: Color(0xE6FFFFFF),
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _WalkMetric(
-                  label: '산책 시간',
-                  value: _formatDuration(durationSeconds),
-                ),
-              ),
-              Container(width: 1, height: 36, color: const Color(0x55FFFFFF)),
-              Expanded(
-                child: _WalkMetric(
-                  label: '평균 속도',
-                  value: '${averageSpeed.toStringAsFixed(1)}km/h',
-                ),
-              ),
-            ],
-          ),
-          if (ignoredGpsPoints > 0 && (active || paused)) ...[
-            const SizedBox(height: 12),
-            Text(
-              '정확하지 않은 GPS 신호 $ignoredGpsPoints건 제외',
-              style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 11),
-            ),
-          ],
-          const SizedBox(height: 24),
-          if (saving)
-            const CircularProgressIndicator(color: Colors.white)
-          else if (!active && !paused)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onStart,
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('산책 시작'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: ChowColors.orange600,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                ),
-              ),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: active ? onPause : onResume,
-                    icon: Icon(
-                      active ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    ),
-                    label: Text(active ? '일시정지' : '계속 걷기'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: ChowColors.orange600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onFinish,
-                    icon: const Icon(Icons.stop_rounded),
-                    label: const Text('산책 종료'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _WalkMetric extends StatelessWidget {
-  const _WalkMetric({required this.label, required this.value});
+  const _WalkMetric({required this.icon, required this.label, required this.value});
 
+  final String icon;
   final String label;
   final String value;
 
@@ -629,24 +700,20 @@ class _WalkMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 11),
-        ),
+        Text(icon, style: const TextStyle(fontSize: 18)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(color: ChowCozy.stone900, fontSize: 17, fontWeight: FontWeight.w800),
         ),
+        const SizedBox(height: 1),
+        Text(label, style: const TextStyle(color: ChowCozy.mutedForeground, fontSize: 11)),
       ],
     );
   }
 }
 
+/// 산책 로드맵 — Walk.tsx처럼 가로 경로 위에 마일스톤을 나열
 class _TodayRoadmap extends StatelessWidget {
   const _TodayRoadmap({
     required this.loading,
@@ -672,6 +739,10 @@ class _TodayRoadmap extends StatelessWidget {
   Widget build(BuildContext context) {
     final milestones = summary?.milestones ?? fallbackMilestones;
     final savedMeters = summary?.todayDistanceMeters ?? 0;
+    final maxTarget = milestones.isEmpty ? 1 : milestones.last.targetMeters;
+    final trackFrac = (savedMeters / maxTarget).clamp(0.0, 1.0);
+
+    final nextIndex = milestones.indexWhere((m) => savedMeters < m.targetMeters);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -687,133 +758,164 @@ class _TodayRoadmap extends StatelessWidget {
             children: [
               const Expanded(
                 child: Text(
-                  '오늘의 산책 로드맵',
-                  style: TextStyle(
-                    color: ChowColors.gray800,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  '🗺️ 산책 로드맵',
+                  style: TextStyle(color: ChowCozy.stone900, fontSize: 15, fontWeight: FontWeight.w800),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: ChowColors.orange50,
-                  borderRadius: BorderRadius.circular(999),
+              if (nextIndex >= 0)
+                Text(
+                  '다음 목표 ${_formatDistanceTarget(milestones[nextIndex].targetMeters)}',
+                  style: const TextStyle(color: ChowCozy.mutedForeground, fontSize: 12),
                 ),
-                child: Text(
-                  '${summary?.todayRewardCoins ?? 0} / 50 코인',
-                  style: const TextStyle(
-                    color: ChowColors.orange600,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
             ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            isWalking ? '산책을 종료하면 달성 보상이 지급돼요.' : '매일 최대 50코인을 받을 수 있어요.',
-            style: const TextStyle(color: ChowColors.gray500, fontSize: 12),
           ),
           const SizedBox(height: 18),
           if (loading)
             const LinearProgressIndicator()
-          else
-            ...milestones.map((milestone) {
-              final achieved = savedMeters >= milestone.targetMeters;
-              final preview = !achieved &&
-                  isWalking &&
-                  previewDistanceMeters >= milestone.targetMeters;
-              return _MilestoneRow(
-                milestone: milestone,
-                achieved: achieved,
-                preview: preview,
-              );
-            }),
+          else ...[
+            // 경로 + 마일스톤 노드
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return Stack(
+                  children: [
+                    Positioned(
+                      top: 20,
+                      left: 20,
+                      right: 20,
+                      child: Container(height: 4, decoration: BoxDecoration(color: ChowCozy.stone100, borderRadius: BorderRadius.circular(999))),
+                    ),
+                    Positioned(
+                      top: 20,
+                      left: 20,
+                      child: Container(
+                        height: 4,
+                        width: (constraints.maxWidth - 40) * trackFrac,
+                        decoration: BoxDecoration(color: ChowCozy.stone400, borderRadius: BorderRadius.circular(999)),
+                      ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const _MilestoneNode(emoji: null, label: '출발', achieved: true, isStart: true),
+                        ...milestones.map((m) {
+                          final achieved = savedMeters >= m.targetMeters;
+                          final preview = !achieved && isWalking && previewDistanceMeters >= m.targetMeters;
+                          return _MilestoneNode(
+                            emoji: '🎁',
+                            label: _formatDistanceTarget(m.targetMeters),
+                            reward: '+${m.rewardCoins}',
+                            achieved: achieved,
+                            preview: preview,
+                          );
+                        }),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+            if (nextIndex >= 0) ...[
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('다음 보상까지', style: TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
+                  Text(
+                    '🎁 +${milestones[nextIndex].rewardCoins}코인',
+                    style: const TextStyle(fontSize: 11, color: ChowCozy.stone700, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: SizedBox(
+                  height: 8,
+                  child: Stack(
+                    children: [
+                      Container(color: ChowCozy.stone100),
+                      FractionallySizedBox(
+                        widthFactor: () {
+                          final prevTarget = nextIndex == 0 ? 0 : milestones[nextIndex - 1].targetMeters;
+                          final span = milestones[nextIndex].targetMeters - prevTarget;
+                          if (span <= 0) return 1.0;
+                          return ((savedMeters - prevTarget) / span).clamp(0.0, 1.0);
+                        }(),
+                        child: Container(
+                          decoration: const BoxDecoration(gradient: LinearGradient(colors: [ChowCozy.stone400, ChowCozy.stone700])),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Center(
+                  child: Text('🎉 모든 미션 완료! 대단해요!', style: TextStyle(color: ChowCozy.stone700, fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _MilestoneRow extends StatelessWidget {
-  const _MilestoneRow({
-    required this.milestone,
+class _MilestoneNode extends StatelessWidget {
+  const _MilestoneNode({
+    required this.emoji,
+    required this.label,
+    this.reward,
     required this.achieved,
-    required this.preview,
+    this.preview = false,
+    this.isStart = false,
   });
 
-  final WalkMilestoneModel milestone;
+  final String? emoji;
+  final String label;
+  final String? reward;
   final bool achieved;
   final bool preview;
+  final bool isStart;
 
   @override
   Widget build(BuildContext context) {
-    final color = achieved
-        ? ChowColors.green500
-        : preview
-        ? ChowColors.orange500
-        : ChowColors.gray300;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: achieved || preview ? color : ChowColors.gray100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              achieved
-                  ? Icons.check_rounded
-                  : preview
-                  ? Icons.flag_rounded
-                  : Icons.lock_outline_rounded,
-              color: achieved || preview ? Colors.white : ChowColors.gray400,
-              size: 16,
-            ),
+    final active = achieved || preview;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isStart
+                ? ChowCozy.stone600
+                : achieved
+                ? ChowCozy.stone600
+                : Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: active ? ChowCozy.stone600 : ChowCozy.stone200, width: 2),
+            boxShadow: active ? const [BoxShadow(blurRadius: 6, color: Color(0x1F000000))] : null,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _formatDistanceTarget(milestone.targetMeters),
-              style: TextStyle(
-                color: achieved ? ChowColors.gray800 : ChowColors.gray600,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          alignment: Alignment.center,
+          child: isStart
+              ? const Icon(Icons.location_on, color: Colors.white, size: 16)
+              : Text(achieved ? '✅' : emoji ?? '🎁', style: const TextStyle(fontSize: 16)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: achieved ? ChowCozy.stone700 : preview ? ChowCozy.stone700 : ChowCozy.mutedForeground,
           ),
-          if (preview)
-            const Padding(
-              padding: EdgeInsets.only(right: 8),
-              child: Text(
-                '달성 예정',
-                style: TextStyle(color: ChowColors.orange500, fontSize: 11),
-              ),
-            ),
-          Row(
-            children: [
-              const Icon(
-                Icons.monetization_on_rounded,
-                color: ChowColors.yellow500,
-                size: 18,
-              ),
-              const SizedBox(width: 3),
-              Text(
-                '+${milestone.rewardCoins}',
-                style: const TextStyle(
-                  color: ChowColors.gray700,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+        if (reward != null)
+          Text(reward!, style: const TextStyle(fontSize: 9, color: ChowCozy.mutedForeground)),
+      ],
     );
   }
 }
@@ -844,12 +946,12 @@ class _WalkHistoryTile extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: const BoxDecoration(
-              color: ChowColors.orange50,
+              color: ChowCozy.stone100,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.directions_walk_rounded,
-              color: ChowColors.orange500,
+              color: ChowCozy.stone500,
             ),
           ),
           const SizedBox(width: 12),
@@ -879,7 +981,7 @@ class _WalkHistoryTile extends StatelessWidget {
             Text(
               '+${walk.rewardCoins}',
               style: const TextStyle(
-                color: ChowColors.orange600,
+                color: ChowCozy.stone700,
                 fontWeight: FontWeight.w800,
               ),
             ),

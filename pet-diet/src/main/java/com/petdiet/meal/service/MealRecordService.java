@@ -48,6 +48,8 @@ public class MealRecordService {
                 .mealNote(req.getMealNote())
                 .imageUrl(req.getImageUrl())
                 .mealDate(req.getMealDate())
+                .feedingAmountG(req.getFeedingAmountG())
+                .recipeId(req.getRecipeId())
                 .build();
 
         return MealRecordResponse.from(mealRecordRepository.save(record));

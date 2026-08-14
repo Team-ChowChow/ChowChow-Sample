@@ -2,6 +2,8 @@ package com.petdiet.meal.dto;
 
 import lombok.Getter;
 
+import java.math.BigDecimal;
+
 @Getter
 public class MealRecordRequest {
     private Integer petId;
@@ -9,4 +11,6 @@ public class MealRecordRequest {
     private String mealNote;
     private String imageUrl;
     private String mealDate;
+    private BigDecimal feedingAmountG;
+    private Integer recipeId;
 }

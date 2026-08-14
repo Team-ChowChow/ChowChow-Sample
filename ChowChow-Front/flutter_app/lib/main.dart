@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   debugPrint('🚀 ChowChow 앱 시작...');
-  debugPrint('📱 플랫폼: ${Platform.isAndroid ? 'Android' : Platform.isWindows ? 'Windows' : 'Unknown'}');
+  debugPrint('📱 플랫폼: ${kIsWeb ? 'Web' : Platform.isAndroid ? 'Android' : Platform.isWindows ? 'Windows' : 'Unknown'}');
 
   final loggedIn = await ApiClient.isLoggedIn();
   runApp(ChowChowApp(initialLocation: loggedIn ? '/' : '/login'));

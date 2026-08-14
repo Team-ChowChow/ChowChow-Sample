@@ -4,6 +4,8 @@ import com.petdiet.meal.entity.MealRecord;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Builder
 public class MealRecordResponse {
@@ -14,6 +16,8 @@ public class MealRecordResponse {
     private String mealNote;
     private String imageUrl;
     private String mealDate;
+    private BigDecimal feedingAmountG;
+    private Integer recipeId;
     private String createdAt;
 
     public static MealRecordResponse from(MealRecord r) {
@@ -25,6 +29,8 @@ public class MealRecordResponse {
                 .mealNote(r.getMealNote())
                 .imageUrl(r.getImageUrl())
                 .mealDate(r.getMealDate())
+                .feedingAmountG(r.getFeedingAmountG())
+                .recipeId(r.getRecipeId())
                 .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : null)
                 .build();
     }

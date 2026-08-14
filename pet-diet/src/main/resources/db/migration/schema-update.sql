@@ -57,3 +57,33 @@ CREATE INDEX IF NOT EXISTS "idx_walk_records_user_started"
 -- 어드민 시드 레시피는 특정 유저/펫 없이 삽입 가능하도록 nullable 허용
 ALTER TABLE "Recipes" ALTER COLUMN "userId" DROP NOT NULL;
 ALTER TABLE "Recipes" ALTER COLUMN "petId" DROP NOT NULL;
+
+-- 식단 기록에 실제 급여량/레시피 연결 (조리 완료 여부만이 아닌 급여 기록으로 확장)
+ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "feedingAmountG" NUMERIC(6,2);
+ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "recipeId" INTEGER REFERENCES "Recipes"("recipeId") ON DELETE SET NULL;
+
+-- BCS(체형 점수)/운동량 — DTO에는 있었지만 컬럼이 없어 항상 null로 응답되던 것을 실제 저장하도록 보강
+-- (엔티티 필드가 Integer라 컬럼도 INTEGER로 맞춰야 Hibernate 스키마 검증을 통과함)
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petBodyConditionScore" INTEGER CHECK ("petBodyConditionScore" BETWEEN 1 AND 9);
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petBodyScoreDate" DATE;
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petActivityLevel" INTEGER;
+
+-- 관심 건강 부위 (최대 3개, 콤마 구분 문자열로 저장)
+ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petHealthFocusAreas" TEXT;
+
+-- 상용 사료 데이터 (Open Pet Food Facts 동기화)
+CREATE TABLE IF NOT EXISTS "CommercialFoods" (
+    "foodId"          SERIAL PRIMARY KEY,
+    "barcode"         VARCHAR(50) UNIQUE,
+    "brandName"       VARCHAR(100) NOT NULL,
+    "productName"     VARCHAR(300) NOT NULL,
+    "petType"         VARCHAR(10),
+    "caloriesPer100g" NUMERIC(8,2),
+    "proteinG"        NUMERIC(8,2),
+    "fatG"            NUMERIC(8,2),
+    "carbohydrateG"   NUMERIC(8,2),
+    "ingredientsText" TEXT,
+    "imageUrl"        TEXT,
+    "createdAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updatedAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

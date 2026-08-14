@@ -6,6 +6,7 @@ import com.petdiet.auth.client.SupabaseAuthClient;
 import com.petdiet.auth.client.SupabaseAuthClient.SupabaseSignupResult;
 import com.petdiet.auth.client.SupabaseAuthClient.SupabaseTokenResult;
 import com.petdiet.auth.dto.AuthResponse;
+import com.petdiet.auth.dto.ChangePasswordRequest;
 import com.petdiet.auth.dto.LoginRequest;
 import com.petdiet.auth.dto.SignupRequest;
 import com.petdiet.auth.entity.AuthAccount;
@@ -174,6 +175,25 @@ public class AuthService {
                 .accessToken(result.accessToken())
                 .refreshToken(result.refreshToken())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public void changePassword(SupabasePrincipal principal, ChangePasswordRequest req) {
+        User user = userRepository.findByAuthUuid(principal.authUuid())
+                .orElseThrow(() -> new IllegalStateException("등록되지 않은 유저입니다."));
+
+        AuthAccount account = authAccountRepository.findByUserAndAuthProvider(user, "EMAIL")
+                .orElseThrow(() -> new IllegalArgumentException("소셜 로그인 계정은 비밀번호를 변경할 수 없습니다."));
+
+        // 실제로 로그인을 시도해 현재 비밀번호가 맞는지 검증한다.
+        try {
+            supabaseAuthClient.login(account.getAuthEmail(), req.getCurrentPassword());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
+        }
+
+        supabaseAuthClient.changePassword(principal.authUuid(), req.getNewPassword());
+        log.info("비밀번호 변경 완료: {}", account.getAuthEmail());
     }
 
     @Transactional

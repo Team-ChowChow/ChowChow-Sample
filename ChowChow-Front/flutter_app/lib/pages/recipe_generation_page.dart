@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/sample_data.dart';
 import '../router/app_router.dart';
 import '../services/api_client.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
+import 'create_post.dart';
 
 const _kGenSteps = [
   '반려동물 정보 분석 중...',
@@ -35,7 +37,7 @@ Future<void> showRecipeGenerationFailedDialog(BuildContext context) {
       content: const Text(kRecipeGenerateFailedMessage),
       actions: [
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: ChowColors.orange500),
+          style: FilledButton.styleFrom(backgroundColor: ChowCozy.stone500),
           onPressed: () => Navigator.of(ctx).pop(),
           child: const Text('확인'),
         ),
@@ -75,6 +77,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
   int _progress = 0;
   int _currentStep = 0;
   bool _apiDone = false;
+  bool _isSharing = false;
   String? _errorMsg;
 
   @override
@@ -190,6 +193,50 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
     }
   }
 
+  Future<void> _shareRecipeToCommunity(DietGenerateModel recipe) async {
+    if (_isSharing) return;
+    if (recipe.recipeId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장된 레시피만 커뮤니티에 공유할 수 있어요.')),
+      );
+      return;
+    }
+
+    final ingredients = recipe.ingredients
+        .map((ingredient) => ingredient.amount == null || ingredient.amount!.isEmpty
+            ? '- ${ingredient.name}'
+            : '- ${ingredient.name} (${ingredient.amount})')
+        .join('\n');
+    final steps = recipe.steps
+        .asMap()
+        .entries
+        .map((entry) => '${entry.key + 1}. ${entry.value}')
+        .join('\n');
+    final content = [
+      recipe.description ?? 'AI가 반려동물을 위해 만든 맞춤 레시피를 공유합니다.',
+      if (ingredients.isNotEmpty) '재료\n$ingredients',
+      if (steps.isNotEmpty) '조리 방법\n$steps',
+      if (recipe.feedingAmount != null && recipe.feedingAmount!.isNotEmpty)
+        '급여량 안내\n${recipe.feedingAmount}',
+    ].join('\n\n');
+
+    setState(() => _isSharing = true);
+    final created = await context.push<CommunityPost>(
+      '/create-post',
+      extra: CommunityPostDraft(
+        title: recipe.title,
+        content: content,
+        imageUrl: recipe.imageUrl,
+        recipeId: recipe.recipeId,
+        petId: _selectedPet?.petId,
+        tags: const ['AI레시피'],
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _isSharing = false);
+    if (created != null) context.go('/community');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -209,7 +256,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFF7ED), Colors.white],
+          colors: [ChowCozy.stone100, Colors.white],
         ),
       ),
       child: SafeArea(
@@ -251,10 +298,10 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
             width: 88,
             height: 88,
             decoration: const BoxDecoration(
-              color: Color(0xFFFFF7ED),
+              color: ChowCozy.stone100,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.pets, color: ChowColors.orange400, size: 44),
+            child: const Icon(Icons.pets, color: ChowCozy.stone300, size: 44),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -272,7 +319,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
             width: double.infinity,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: ChowColors.orange500,
+                backgroundColor: ChowCozy.stone500,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
@@ -348,10 +395,10 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: selected ? ChowColors.orange50 : Colors.white,
+                  color: selected ? ChowCozy.stone100 : Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: selected ? ChowColors.orange500 : ChowColors.gray200,
+                    color: selected ? ChowCozy.stone500 : ChowColors.gray200,
                     width: selected ? 2 : 1,
                   ),
                 ),
@@ -361,10 +408,10 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: ChowColors.orange100,
+                        color: ChowCozy.stone300,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.pets, color: ChowColors.orange500),
+                      child: const Icon(Icons.pets, color: ChowCozy.stone500),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -381,7 +428,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       ),
                     ),
                     if (selected)
-                      const Icon(Icons.check_circle, color: ChowColors.orange500),
+                      const Icon(Icons.check_circle, color: ChowCozy.stone500),
                   ],
                 ),
               ),
@@ -415,7 +462,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
             width: double.infinity,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: _selectedPet != null ? ChowColors.orange500 : ChowColors.gray300,
+                backgroundColor: _selectedPet != null ? ChowCozy.stone500 : ChowColors.gray300,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
@@ -437,7 +484,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFF7ED), Colors.white],
+          colors: [ChowCozy.stone100, Colors.white],
         ),
       ),
       child: SafeArea(
@@ -460,7 +507,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                           height: 96,
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(colors: [ChowColors.orange400, ChowColors.orange500]),
+                            gradient: LinearGradient(colors: [ChowCozy.stone300, ChowCozy.stone500]),
                             boxShadow: [BoxShadow(blurRadius: 12, offset: Offset(0, 4), color: Color(0x33000000))],
                           ),
                           child: const Icon(Icons.restaurant_menu, color: Colors.white, size: 48),
@@ -492,7 +539,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                     '레시피가 만들어지고 있어요',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: ChowColors.orange500,
+                          color: ChowCozy.stone500,
                           fontWeight: FontWeight.bold,
                         ),
                   ),
@@ -519,7 +566,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                                 width: constraints.maxWidth * (_progress / 100).clamp(0.0, 1.0),
                                 height: 10,
                                 decoration: const BoxDecoration(
-                                  gradient: LinearGradient(colors: [ChowColors.orange400, ChowColors.orange500]),
+                                  gradient: LinearGradient(colors: [ChowCozy.stone300, ChowCozy.stone500]),
                                 ),
                               ),
                             ],
@@ -535,7 +582,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       Text('$_progress%', style: const TextStyle(fontSize: 13, color: ChowColors.gray600)),
                       Text(
                         _progress >= 100 ? '완료!' : '생성 중...',
-                        style: const TextStyle(fontSize: 13, color: ChowColors.orange500, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 13, color: ChowCozy.stone500, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -545,7 +592,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: ChowColors.orange100),
+                      border: Border.all(color: ChowCozy.stone300),
                       boxShadow: const [BoxShadow(blurRadius: 4, color: Color(0x0A000000))],
                     ),
                     child: Row(
@@ -553,7 +600,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                         const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: ChowColors.orange500),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: ChowCozy.stone500),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -585,7 +632,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                                 color: done
                                     ? ChowColors.green500
                                     : current
-                                        ? ChowColors.orange500
+                                        ? ChowCozy.stone500
                                         : ChowColors.gray300,
                               ),
                               child: done
@@ -621,9 +668,9 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: ChowColors.orange50,
+                      color: ChowCozy.stone100,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: ChowColors.orange100),
+                      border: Border.all(color: ChowCozy.stone300),
                     ),
                     child: const Text.rich(
                       TextSpan(
@@ -704,14 +751,14 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.auto_awesome, size: 14, color: ChowColors.orange500),
+                                Icon(Icons.auto_awesome, size: 14, color: ChowCozy.stone500),
                                 SizedBox(width: 4),
                                 Text(
                                   'AI 생성 레시피',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: ChowColors.orange600,
+                                    color: ChowCozy.stone700,
                                   ),
                                 ),
                               ],
@@ -745,14 +792,14 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: ChowColors.orange50,
+                          color: ChowCozy.stone100,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ChowColors.orange100),
+                          border: Border.all(color: ChowCozy.stone300),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.restaurant, color: ChowColors.orange500, size: 20),
+                            const Icon(Icons.restaurant, color: ChowCozy.stone500, size: 20),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -776,7 +823,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                               if (i > 0) const Divider(height: 20, color: ChowColors.gray100),
                               Row(
                                 children: [
-                                  const Icon(Icons.circle, size: 6, color: ChowColors.orange500),
+                                  const Icon(Icons.circle, size: 6, color: ChowCozy.stone500),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
@@ -817,7 +864,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                                     alignment: Alignment.center,
                                     decoration: const BoxDecoration(
                                       gradient: LinearGradient(
-                                        colors: [ChowColors.orange400, ChowColors.orange500],
+                                        colors: [ChowCozy.stone300, ChowCozy.stone500],
                                       ),
                                       shape: BoxShape.circle,
                                     ),
@@ -850,9 +897,9 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7ED),
+                          color: ChowCozy.stone100,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ChowColors.orange100),
+                          border: Border.all(color: ChowCozy.stone300),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,12 +917,35 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       ),
                     ],
                     const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: ChowCozy.stone500,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: _isSharing ? null : () => _shareRecipeToCommunity(recipe),
+                        icon: _isSharing
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.ios_share),
+                        label: Text(
+                          _isSharing ? '글쓰기 화면 여는 중...' : '커뮤니티에 레시피 공유하기',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     if (recipe.recipeId != null) ...[
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: ChowColors.orange500,
+                            backgroundColor: ChowColors.gray700,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
@@ -938,7 +1008,7 @@ class _ResultCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: ChowColors.orange500),
+              Icon(icon, size: 18, color: ChowCozy.stone500),
               const SizedBox(width: 8),
               Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ChowColors.gray800)),
               if (trailing != null) ...[

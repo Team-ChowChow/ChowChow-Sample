@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'chow_theme.dart';
+
 class RoomVisualStyle {
   const RoomVisualStyle({
     required this.wallColors,
@@ -35,9 +37,9 @@ RoomVisualStyle roomVisualFor(String? itemKey) {
       label: '별빛 캠핑',
     ),
     _ => const RoomVisualStyle(
-      wallColors: [Color(0xFFFFEDD5), Color(0xFFFFF8ED)],
+      wallColors: [ChowCozy.stone300, ChowCozy.stone50],
       floorColor: Color(0xFFE8CDA8),
-      accentColor: Color(0xFFF97316),
+      accentColor: ChowCozy.stone500,
       label: '햇살 가득한 방',
     ),
   };
@@ -68,7 +70,7 @@ ProfileFrameVisual profileFrameVisualFor(String? itemKey) {
       label: '로열 골드',
     ),
     _ => const ProfileFrameVisual(
-      colors: [Color(0xFFFFA24B), Color(0xFFF97316)],
+      colors: [Color(0xFFFB923C), Color(0xFFF97316)],
       shadowColor: Color(0x66F97316),
       label: '오렌지 링',
     ),

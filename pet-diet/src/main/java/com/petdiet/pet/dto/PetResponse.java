@@ -6,6 +6,7 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 @Getter
@@ -30,6 +31,7 @@ public class PetResponse {
     private String petProfileImageUrl;
     private List<Integer> allergyIds;
     private List<Integer> diseaseIds;
+    private List<String> healthFocusAreas;
 
     public static PetResponse from(UserPet pet) {
         return PetResponse.builder()
@@ -41,14 +43,20 @@ public class PetResponse {
                 .petGender(pet.getPetGender())
                 .petBirthdate(pet.getPetBirthdate())
                 .petWeight(pet.getPetWeight())
-                .petBodyConditionScore(null)
-                .petBodyScoreDate(null)
-                .petActivityLevel(null)
+                .petBodyConditionScore(pet.getPetBodyConditionScore())
+                .petBodyScoreDate(pet.getPetBodyScoreDate())
+                .petActivityLevel(pet.getPetActivityLevel())
                 .isNeutered(pet.getIsNeutered())
                 .petProfileImg(pet.getPetProfileImg())
                 .petProfileImageUrl(pet.getPetProfileImg())
                 .allergyIds(pet.getAllergies().stream().map(a -> a.getAllergyId()).toList())
                 .diseaseIds(pet.getDiseases().stream().map(d -> d.getDiseaseId()).toList())
+                .healthFocusAreas(splitCsv(pet.getHealthFocusAreas()))
                 .build();
+    }
+
+    private static List<String> splitCsv(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        return Arrays.stream(csv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
     }
 }

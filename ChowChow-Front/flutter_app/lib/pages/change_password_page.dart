@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/auth_account_ui.dart';
 
@@ -19,6 +20,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _showCurrent = false;
   bool _showNew = false;
   bool _showConfirm = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -49,12 +52,29 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool get _isMatch =>
       _confirm.text.isNotEmpty && _newPass.text == _confirm.text;
 
-  void _submit() {
-    if (!_isValid) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('비밀번호가 성공적으로 변경되었습니다.')),
-    );
-    context.go('/profile');
+  Future<void> _submit() async {
+    if (!_isValid || _isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      await ApiClient.post('/api/auth/change-password', {
+        'currentPassword': _current.text,
+        'newPassword': _newPass.text,
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('비밀번호가 성공적으로 변경되었습니다.')),
+      );
+      context.go('/profile');
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message.isNotEmpty ? e.message : '비밀번호 변경에 실패했습니다.');
+    } catch (e) {
+      setState(() => _errorMessage = '서버에 연결할 수 없습니다: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -117,12 +137,20 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 ],
               ),
             ),
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(fontSize: 12, color: ChowColors.red500),
+              ),
+            ),
           const SizedBox(height: 20),
           const AuthInfoBox(),
           const SizedBox(height: 28),
           AuthPrimaryButton(
-            label: '비밀번호 변경',
-            enabled: _isValid,
+            label: _isLoading ? '변경 중...' : '비밀번호 변경',
+            enabled: _isValid && !_isLoading,
             onPressed: _submit,
           ),
         ],

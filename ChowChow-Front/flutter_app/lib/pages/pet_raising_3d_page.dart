@@ -1,11 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
+/// 3D 뷰어(webview_flutter 기반)는 플랫폼별로 불안정해서 당분간 비활성화하고,
+/// 품종 그룹별로 미리 준비된 2D 캐릭터 이미지(assets/images/characters/)를 보여준다.
+/// 3D가 다시 준비되면 이 페이지만 교체하면 된다.
 class PetRaising3DPage extends StatefulWidget {
   final int petId;
 
@@ -18,17 +23,32 @@ class PetRaising3DPage extends StatefulWidget {
   State<PetRaising3DPage> createState() => _PetRaising3DPageState();
 }
 
-class _PetRaising3DPageState extends State<PetRaising3DPage> {
+class _PetRaising3DPageState extends State<PetRaising3DPage>
+    with SingleTickerProviderStateMixin {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-  String _currentAnimation = 'idle';
-  bool _isAnimating = false;
+
+  late final AnimationController _floatCtrl;
+  late final Animation<double> _floatAnim;
 
   @override
   void initState() {
     super.initState();
+    _floatCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _floatAnim = Tween<double>(begin: -8, end: 8).animate(
+      CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut),
+    );
     _loadPet();
+  }
+
+  @override
+  void dispose() {
+    _floatCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPet() async {
@@ -65,8 +85,8 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     }
   }
 
-  String _getGroupNumber() {
-    final groupMap = {
+  int _groupNumber() {
+    const groupMap = {
       'Toy': 1,
       'Terrier': 2,
       'Working': 3,
@@ -75,55 +95,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       'Sporting': 6,
       'Non-Sporting': 7,
     };
-    return (groupMap[_pet?.groupName] ?? 1).toString();
-  }
-
-  String _getGifPath(String animation) {
-    final groupNum = _getGroupNumber();
-    const fallbackGif = 'group1_idle';
-
-    final animationMap = {
-      'eating': 'group${groupNum}_eating',
-      'petting': 'group${groupNum}_petting',
-      'exercise': 'group${groupNum}_exercise',
-      'bath': 'group${groupNum}_bath',
-      'idle': 'group${groupNum}_idle',
-    };
-
-    final gifName = animationMap[animation] ?? fallbackGif;
-    return 'assets/gifs/$gifName.gif';
-  }
-
-  bool _gifExists(String animation) {
-    final groupNum = _getGroupNumber();
-    final animationMap = {
-      'eating': 'group${groupNum}_eating',
-      'petting': 'group${groupNum}_petting',
-      'exercise': 'group${groupNum}_exercise',
-      'bath': 'group${groupNum}_bath',
-      'idle': 'group${groupNum}_eating',
-    };
-
-    final gifName = animationMap[animation] ?? 'group1_eating';
-    return gifName == 'group1_eating' || gifName.contains('group${_getGroupNumber()}');
-  }
-
-  void _playAnimation(String animation) {
-    if (_isAnimating) return;
-
-    setState(() {
-      _isAnimating = true;
-      _currentAnimation = animation;
-    });
-
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _currentAnimation = 'idle';
-          _isAnimating = false;
-        });
-      }
-    });
+    return groupMap[_pet?.groupName] ?? 1;
   }
 
   @override
@@ -138,7 +110,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           ),
         ),
         body: const Center(
-          child: CircularProgressIndicator(color: ChowColors.orange500),
+          child: CircularProgressIndicator(color: ChowCozy.stone500),
         ),
       );
     }
@@ -175,15 +147,48 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          Center(
-            child: Image.asset(
-              _getGifPath(_currentAnimation),
-              width: 300,
-              height: 300,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Text('GIF를 로드할 수 없습니다');
-              },
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [ChowCozy.stone100, ChowCozy.stone50],
+              ),
+            ),
+            child: Center(
+              child: AnimatedBuilder(
+                animation: _floatAnim,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(0, _floatAnim.value),
+                  child: child,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(
+                      'assets/images/characters/character_group_${_groupNumber()}.png',
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.contain,
+                      // 캐릭터 이미지가 아직 없거나 로드에 실패해도 화면 전체가 죽지 않도록,
+                      // 그 자리만 비워두고 나머지(스탯 카드 등)는 그대로 보여준다.
+                      errorBuilder: (_, _, _) => const SizedBox(width: 220, height: 220),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: ChowCozy.stone200,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        '🐾 2D 캐릭터 — 3D 뷰어는 준비 중이에요',
+                        style: TextStyle(fontSize: 12, color: ChowCozy.stone800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           Positioned(
@@ -195,7 +200,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
                 ],
               ),
               child: Column(
@@ -210,33 +215,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
               ),
             ),
           ),
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _actionButton('🍖', 'eating', _isAnimating ? null : () => _playAnimation('eating')),
-                _actionButton('❤️', 'petting', _isAnimating ? null : () => _playAnimation('petting')),
-                _actionButton('💪', 'exercise', _isAnimating ? null : () => _playAnimation('exercise')),
-                _actionButton('🛁', 'bath', _isAnimating ? null : () => _playAnimation('bath')),
-              ],
-            ),
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _actionButton(String emoji, String label, VoidCallback? onPressed) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: FloatingActionButton(
-        mini: true,
-        onPressed: onPressed,
-        backgroundColor: onPressed == null ? Colors.grey : ChowColors.orange500,
-        child: Text(emoji, style: const TextStyle(fontSize: 20)),
       ),
     );
   }
@@ -256,7 +235,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
               value: value / 100,
               backgroundColor: ChowColors.gray200,
               valueColor: AlwaysStoppedAnimation(
-                value > 70 ? ChowColors.orange500 : ChowColors.red500,
+                value > 70 ? ChowCozy.stone500 : ChowColors.red500,
               ),
             ),
           ),

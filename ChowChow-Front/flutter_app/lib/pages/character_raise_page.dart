@@ -22,7 +22,7 @@ class _CharacterRaisePageState extends State<CharacterRaisePage> {
   bool _acting = false;
 
   static const _activities = [
-    _Act('FEED', Icons.restaurant, '밥주기', '+20 EXP', ChowColors.orange500),
+    _Act('FEED', Icons.restaurant, '밥주기', '+20 EXP', ChowCozy.stone500),
     _Act('PET', Icons.favorite, '쓰다듬기', '+5 EXP', ChowColors.pink500),
     _Act('EXERCISE', Icons.fitness_center, '운동하기', '+10 EXP', Color(0xFF3B82F6)),
     _Act('BATH', Icons.shower, '목욕시키기', '+15 EXP', ChowColors.purple500),
@@ -100,12 +100,12 @@ class _CharacterRaisePageState extends State<CharacterRaisePage> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: ChowColors.orange500))
+          ? const Center(child: CircularProgressIndicator(color: ChowCozy.stone500))
           : c == null
               ? const Center(child: Text('캐릭터를 찾을 수 없습니다.'))
               : RefreshIndicator(
                   onRefresh: _load,
-                  color: ChowColors.orange500,
+                  color: ChowCozy.stone500,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
@@ -190,8 +190,8 @@ class _ProfileCard extends StatelessWidget {
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: ChowColors.orange100, borderRadius: BorderRadius.circular(8)),
-              child: Text('레벨 ${character.level}', style: const TextStyle(color: ChowColors.orange600, fontWeight: FontWeight.w600)),
+              decoration: BoxDecoration(color: ChowCozy.stone300, borderRadius: BorderRadius.circular(8)),
+              child: Text('레벨 ${character.level}', style: const TextStyle(color: ChowCozy.stone700, fontWeight: FontWeight.w600)),
             ),
             const SizedBox(height: 12),
             Row(
@@ -209,7 +209,7 @@ class _ProfileCard extends StatelessWidget {
                 value: character.expFraction,
                 minHeight: 8,
                 backgroundColor: ChowColors.gray200,
-                color: ChowColors.orange500,
+                color: ChowCozy.stone500,
               ),
             ),
             const SizedBox(height: 16),
@@ -217,7 +217,7 @@ class _ProfileCard extends StatelessWidget {
             const SizedBox(height: 8),
             _GaugeRow(label: '행복', value: character.happiness, color: ChowColors.yellow500),
             const SizedBox(height: 8),
-            _GaugeRow(label: '배고픔', value: character.hunger, color: ChowColors.orange500),
+            _GaugeRow(label: '배고픔', value: character.hunger, color: ChowCozy.stone500),
           ],
         ),
       ),

@@ -46,10 +46,14 @@ class _ChowBottomNavState extends State<ChowBottomNav>
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
-    return Material(
-      elevation: 8,
-      color: Colors.white,
-      child: SizedBox(
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: ChowCozy.card,
+        border: Border(top: BorderSide(color: ChowCozy.border)),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: SizedBox(
         height: 60 + bottom,
         child: Padding(
           padding: EdgeInsets.only(
@@ -132,8 +136,8 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              ChowColors.orange400,
-                              ChowColors.orange500,
+                              ChowCozy.stone300,
+                              ChowCozy.stone400,
                             ],
                           ),
                           border: Border.all(color: Colors.white, width: 4),
@@ -150,7 +154,7 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                           'assets/images/paw.png',
                           width: 30,
                           height: 30,
-                          color: Colors.brown,
+                          color: ChowCozy.stone900,
                         ),
                       ),
                     ),
@@ -159,6 +163,7 @@ class _ChowBottomNavState extends State<ChowBottomNav>
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -186,7 +191,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? ChowColors.orange500 : ChowColors.gray400;
+    final color = active ? ChowCozy.stone600 : ChowCozy.mutedForeground;
     return InkWell(
       onTap: onTap,
       child: Column(

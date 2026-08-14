@@ -11,6 +11,7 @@ import com.petdiet.recipe.entity.RecipeIngredient;
 import com.petdiet.recipe.entity.RecipeStep;
 import com.petdiet.recipe.repository.MenuRepository;
 import com.petdiet.recipe.repository.RecipeRepository;
+import com.petdiet.recipe.service.NutritionCalculationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class DietRecipeSaveService {
     private final RecipeRepository recipeRepository;
     private final MenuRepository menuRepository;
     private final IngredientResolutionService ingredientResolutionService;
+    private final NutritionCalculationService nutritionCalculationService;
 
     private static final Pattern AMOUNT_PATTERN = Pattern.compile("([\\d.]+)\\s*(.*)");
 
@@ -61,6 +63,7 @@ public class DietRecipeSaveService {
         addSteps(recipe, response.getSteps(), stepImages);
 
         Recipe saved = recipeRepository.save(recipe);
+        nutritionCalculationService.calculateAndSave(saved);
         log.info("AI 레시피 저장 완료: recipeId={}, title={}", saved.getRecipeId(), saved.getRecipeTitle());
         return saved;
     }

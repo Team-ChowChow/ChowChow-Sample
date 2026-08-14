@@ -8,8 +8,8 @@ import '../pages/character_list_page.dart';
 import '../pages/character_form_page.dart';
 import '../pages/character_page.dart';
 import '../pages/character_growth_logs_page.dart';
-import '../pages/pet_raising_3d_page.dart';
 import '../pages/coin_shop_page.dart';
+import '../pages/pet_raising_3d_page.dart';
 import '../pages/community_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
@@ -31,6 +31,7 @@ import '../pages/create_post.dart';
 import '../pages/tip_detail_page.dart';
 import '../pages/my_posts_page.dart';
 import '../pages/walk_page.dart';
+import '../pages/feeding_guideline_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
@@ -101,6 +102,11 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
+        path: '/feeding-guideline',
+        builder: (context, state) => const FeedingGuidelinePage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
         path: '/recipe-generation',
         builder: (context, state) {
           final quickStart = state.uri.queryParameters['quickStart'] == 'true';
@@ -161,7 +167,13 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
           final initialPost = state.extra is CommunityPost
               ? state.extra as CommunityPost
               : null;
-          return CreatePostPage(initialPost: initialPost);
+          final initialDraft = state.extra is CommunityPostDraft
+              ? state.extra as CommunityPostDraft
+              : null;
+          return CreatePostPage(
+            initialPost: initialPost,
+            initialDraft: initialDraft,
+          );
         },
       ),
       GoRoute(
