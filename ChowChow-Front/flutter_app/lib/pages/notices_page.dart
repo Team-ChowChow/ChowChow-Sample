@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../theme/chow_theme.dart';
+
 class NoticesPage extends StatefulWidget {
   const NoticesPage({super.key});
 
@@ -278,7 +280,7 @@ class _NoticesPageState extends State<NoticesPage> {
             TextSpan(
               text: '${_notices.length}',
               style: const TextStyle(
-                color: Color(0xFFF97316),
+                color: ChowCozy.stone500,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -476,7 +478,7 @@ class _NoticeTextContent extends StatelessWidget {
               const SizedBox(width: 6),
               const _Badge(
                 text: 'NEW',
-                color: Color(0xFFF97316),
+                color: ChowCozy.stone500,
                 minWidth: 36,
               ),
             ],

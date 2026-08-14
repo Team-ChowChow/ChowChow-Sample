@@ -281,7 +281,7 @@ class _HomePageState extends State<HomePage> {
                           height: 6,
                           decoration: BoxDecoration(
                             color: active
-                                ? ChowColors.orange500
+                                ? ChowCozy.stone500
                                 : ChowColors.gray300,
                             borderRadius: BorderRadius.circular(4),
                           ),
@@ -313,7 +313,7 @@ class _HomePageState extends State<HomePage> {
                             child: const Text(
                               '전체보기',
                               style: TextStyle(
-                                color: ChowColors.orange500,
+                                color: ChowCozy.stone500,
                                 fontSize: 14,
                               ),
                             ),
@@ -374,8 +374,8 @@ class _HomePageState extends State<HomePage> {
                                 icon: const Icon(Icons.add_a_photo_outlined, size: 18),
                                 label: const Text('식단 사진 추가'),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: ChowColors.orange500,
-                                  side: const BorderSide(color: ChowColors.orange100),
+                                  foregroundColor: ChowCozy.stone500,
+                                  side: const BorderSide(color: ChowCozy.stone300),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                 ),
                               ),
@@ -607,7 +607,7 @@ class _HeaderState extends State<_Header> {
                                               width: 8,
                                               height: 8,
                                               decoration: const BoxDecoration(
-                                                color: ChowColors.orange500,
+                                                color: ChowCozy.stone500,
                                                 shape: BoxShape.circle,
                                               ),
                                             )
@@ -647,7 +647,7 @@ class _HeaderState extends State<_Header> {
   Color _noticeBg(String type) {
     switch (type) {
       case 'recipe':
-        return ChowColors.orange100;
+        return ChowCozy.stone300;
       case 'achievement':
         return const Color(0xFFFDF2C9);
       case 'community':
@@ -660,7 +660,7 @@ class _HeaderState extends State<_Header> {
   Color _noticeFg(String type) {
     switch (type) {
       case 'recipe':
-        return ChowColors.orange500;
+        return ChowCozy.stone500;
       case 'achievement':
         return ChowColors.yellow600;
       case 'community':
@@ -684,7 +684,7 @@ class _HeaderState extends State<_Header> {
               Text(
                 '펫푸드 레시피',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: ChowColors.orange500,
+                      color: ChowCozy.stone500,
                       fontWeight: FontWeight.bold,
                     ),
               ),
@@ -703,7 +703,7 @@ class _HeaderState extends State<_Header> {
                           width: 8,
                           height: 8,
                           decoration: const BoxDecoration(
-                            color: ChowColors.orange500,
+                            color: ChowCozy.stone500,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -873,9 +873,9 @@ class _TodayWalkCard extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
+              colors: [ChowCozy.stone100, ChowCozy.stone300],
             ),
-            border: Border.all(color: ChowColors.orange100),
+            border: Border.all(color: ChowCozy.stone300),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -891,7 +891,7 @@ class _TodayWalkCard extends StatelessWidget {
                     ),
                     child: const Icon(
                       Icons.directions_walk_rounded,
-                      color: ChowColors.orange500,
+                      color: ChowCozy.stone500,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -954,7 +954,7 @@ class _TodayWalkCard extends StatelessWidget {
                     Text(
                       '${summary?.todayRewardCoins ?? 0} 코인 획득',
                       style: const TextStyle(
-                        color: ChowColors.orange600,
+                        color: ChowCozy.stone700,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -968,7 +968,7 @@ class _TodayWalkCard extends StatelessWidget {
                     value: progress,
                     minHeight: 9,
                     backgroundColor: Colors.white,
-                    color: ChowColors.orange500,
+                    color: ChowCozy.stone500,
                   ),
                 ),
                 const SizedBox(height: 9),
@@ -1004,7 +1004,7 @@ class _AiChefBanner extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [ChowColors.orange400, ChowColors.orange500],
+          colors: [ChowCozy.stone300, ChowCozy.stone500],
         ),
         boxShadow: const [
           BoxShadow(blurRadius: 12, offset: Offset(0, 4), color: Color(0x33000000)),
@@ -1050,7 +1050,7 @@ class _AiChefBanner extends StatelessWidget {
                 onPressed: onTap,
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: ChowColors.orange500,
+                  foregroundColor: ChowCozy.stone500,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                   shape: const StadiumBorder(),

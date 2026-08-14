@@ -67,7 +67,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                 FilledButton(
                   onPressed: () => Navigator.pop(context, true),
                   style: FilledButton.styleFrom(
-                    backgroundColor: ChowColors.orange500,
+                    backgroundColor: ChowCozy.stone500,
                   ),
                   child: const Text('구매'),
                 ),
@@ -150,7 +150,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                 ? _ErrorState(message: _error!, onRetry: _load)
                 : const Center(
                     child: CircularProgressIndicator(
-                      color: ChowColors.orange500,
+                      color: ChowCozy.stone500,
                     ),
                   )
           : CustomScrollView(
@@ -183,15 +183,15 @@ class _CoinShopPageState extends State<CoinShopPage> {
                             selected: selected,
                             label: Text(filter.label),
                             avatar: Icon(filter.icon, size: 18),
-                            selectedColor: ChowColors.orange100,
+                            selectedColor: ChowCozy.stone300,
                             side: BorderSide(
                               color: selected
-                                  ? ChowColors.orange400
+                                  ? ChowCozy.stone300
                                   : ChowColors.gray200,
                             ),
                             labelStyle: TextStyle(
                               color: selected
-                                  ? ChowColors.orange600
+                                  ? ChowCozy.stone700
                                   : ChowColors.gray600,
                               fontWeight: selected
                                   ? FontWeight.w700
@@ -432,7 +432,7 @@ class _ShopItemCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: item.equipped ? ChowColors.orange400 : ChowColors.gray200,
+              color: item.equipped ? ChowCozy.stone300 : ChowColors.gray200,
               width: item.equipped ? 2 : 1,
             ),
           ),
@@ -446,7 +446,7 @@ class _ShopItemCard extends StatelessWidget {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: item.type == ShopItemType.profileFrame
-                            ? const Color(0xFFFFF7ED)
+                            ? ChowCozy.stone100
                             : const Color(0xFFF7F7F5),
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -528,7 +528,7 @@ class _ShopItemCard extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: item.owned
                         ? ChowColors.gray700
-                        : ChowColors.orange500,
+                        : ChowCozy.stone500,
                     padding: EdgeInsets.zero,
                   ),
                   child: busy

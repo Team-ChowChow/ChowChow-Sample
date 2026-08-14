@@ -1,12 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
+/// 3D 뷰어(webview_flutter 기반)는 플랫폼별로 불안정해서 당분간 비활성화하고,
+/// 품종 그룹별로 미리 준비된 2D 캐릭터 이미지(assets/images/characters/)를 보여준다.
+/// 3D가 다시 준비되면 이 페이지만 교체하면 된다.
 class PetRaising3DPage extends StatefulWidget {
   final int petId;
 
@@ -19,29 +23,32 @@ class PetRaising3DPage extends StatefulWidget {
   State<PetRaising3DPage> createState() => _PetRaising3DPageState();
 }
 
-class _PetRaising3DPageState extends State<PetRaising3DPage> {
+class _PetRaising3DPageState extends State<PetRaising3DPage>
+    with SingleTickerProviderStateMixin {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-  late WebViewController _webViewController;
+
+  late final AnimationController _floatCtrl;
+  late final Animation<double> _floatAnim;
 
   @override
   void initState() {
     super.initState();
-    _initWebView();
+    _floatCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _floatAnim = Tween<double>(begin: -8, end: 8).animate(
+      CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut),
+    );
     _loadPet();
   }
 
-  void _initWebView() {
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            debugPrint('✅ 3D 뷰어 로드됨');
-          },
-        ),
-      );
+  @override
+  void dispose() {
+    _floatCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPet() async {
@@ -63,7 +70,6 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
           _pet = pet;
           _loading = false;
         });
-        _loadWebView();
       } else {
         setState(() {
           _error = '펫 정보 로드 실패';
@@ -79,8 +85,8 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     }
   }
 
-  String _getGroupNumber() {
-    final groupMap = {
+  int _groupNumber() {
+    const groupMap = {
       'Toy': 1,
       'Terrier': 2,
       'Working': 3,
@@ -89,23 +95,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       'Sporting': 6,
       'Non-Sporting': 7,
     };
-    return (groupMap[_pet?.groupName] ?? 1).toString();
-  }
-
-  Future<void> _loadWebView() async {
-    try {
-      final groupNum = _getGroupNumber();
-      final html = await DefaultAssetBundle.of(context).loadString('assets/viewer.html');
-
-      _webViewController.loadHtmlString(
-        html,
-        baseUrl: 'about:blank',
-      );
-
-      debugPrint('🌐 3D 뷰어 로드 시도: 그룹 $groupNum');
-    } catch (e) {
-      debugPrint('❌ 뷰어 로드 실패: $e');
-    }
+    return groupMap[_pet?.groupName] ?? 1;
   }
 
   @override
@@ -113,14 +103,14 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('3D 펫 키우기'),
+          title: const Text('펫 키우기'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
           ),
         ),
         body: const Center(
-          child: CircularProgressIndicator(color: ChowColors.orange500),
+          child: CircularProgressIndicator(color: ChowCozy.stone500),
         ),
       );
     }
@@ -128,7 +118,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('3D 펫 키우기'),
+          title: const Text('펫 키우기'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -149,7 +139,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_pet?.petName ?? '3D 펫 키우기'),
+        title: Text(_pet?.petName ?? '펫 키우기'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
@@ -157,7 +147,50 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _webViewController),
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [ChowCozy.stone100, ChowCozy.stone50],
+              ),
+            ),
+            child: Center(
+              child: AnimatedBuilder(
+                animation: _floatAnim,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(0, _floatAnim.value),
+                  child: child,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(
+                      'assets/images/characters/character_group_${_groupNumber()}.png',
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.contain,
+                      // 캐릭터 이미지가 아직 없거나 로드에 실패해도 화면 전체가 죽지 않도록,
+                      // 그 자리만 비워두고 나머지(스탯 카드 등)는 그대로 보여준다.
+                      errorBuilder: (_, _, _) => const SizedBox(width: 220, height: 220),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: ChowCozy.stone200,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        '🐾 2D 캐릭터 — 3D 뷰어는 준비 중이에요',
+                        style: TextStyle(fontSize: 12, color: ChowCozy.stone800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           Positioned(
             top: 16,
             left: 16,
@@ -167,7 +200,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
                 ],
               ),
               child: Column(
@@ -202,7 +235,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage> {
               value: value / 100,
               backgroundColor: ChowColors.gray200,
               valueColor: AlwaysStoppedAnimation(
-                value > 70 ? ChowColors.orange500 : ChowColors.red500,
+                value > 70 ? ChowCozy.stone500 : ChowColors.red500,
               ),
             ),
           ),

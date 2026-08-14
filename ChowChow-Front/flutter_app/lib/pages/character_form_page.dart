@@ -198,19 +198,19 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: ChowColors.orange50,
+                  color: ChowCozy.stone100,
                   borderRadius: BorderRadius.circular(99),
-                  border: Border.all(color: ChowColors.orange100),
+                  border: Border.all(color: ChowCozy.stone300),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.monetization_on, color: ChowColors.orange500, size: 16),
+                    const Icon(Icons.monetization_on, color: ChowCozy.stone500, size: 16),
                     const SizedBox(width: 4),
                     Text(
                       '$_coinBalance',
                       style: const TextStyle(
-                        color: ChowColors.orange600,
+                        color: ChowCozy.stone700,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -223,7 +223,7 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: ChowColors.orange500))
+          ? const Center(child: CircularProgressIndicator(color: ChowCozy.stone500))
           : _generatingImage
               ? _GeneratingImageOverlay(petName: _selectedPet?.petName ?? '')
               : SingleChildScrollView(
@@ -262,7 +262,7 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
                       FilledButton(
                         onPressed: _saving || !_valid ? null : _save,
                         style: FilledButton.styleFrom(
-                          backgroundColor: ChowColors.orange500,
+                          backgroundColor: ChowCozy.stone500,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
@@ -382,14 +382,14 @@ class _PetCard extends StatelessWidget {
           color: hasCharacter
               ? ChowColors.gray100
               : selected
-                  ? ChowColors.orange50
+                  ? ChowCozy.stone100
                   : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: hasCharacter
                 ? ChowColors.gray200
                 : selected
-                    ? ChowColors.orange500
+                    ? ChowCozy.stone500
                     : ChowColors.gray200,
             width: selected ? 2 : 1,
           ),
@@ -421,7 +421,7 @@ class _PetCard extends StatelessWidget {
                     color: hasCharacter
                         ? ChowColors.gray400
                         : selected
-                            ? ChowColors.orange600
+                            ? ChowCozy.stone700
                             : ChowColors.gray800,
                   ),
                 ),
@@ -454,7 +454,7 @@ class _GeneratingImageOverlay extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: ChowColors.orange500),
+            const CircularProgressIndicator(color: ChowCozy.stone500),
             const SizedBox(height: 24),
             Text(
               '$petName의 AI 캐릭터 생성 중...',

@@ -181,7 +181,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 width: double.infinity,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: ChowColors.orange500,
+                    backgroundColor: ChowCozy.stone500,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -412,7 +412,7 @@ class _InstagramActionBar extends StatelessWidget {
                 onPressed: onToggleSaved,
                 icon: Icon(
                   isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                  color: isSaved ? ChowColors.orange500 : ChowColors.gray800,
+                  color: isSaved ? ChowCozy.stone500 : ChowColors.gray800,
                   size: 28,
                 ),
               ),
@@ -475,13 +475,13 @@ class _TitleSection extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                     decoration: BoxDecoration(
-                      color: ChowColors.orange50,
+                      color: ChowCozy.stone100,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       '#$tag',
                       style: const TextStyle(
-                        color: ChowColors.orange600,
+                        color: ChowCozy.stone700,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -497,8 +497,8 @@ class _TitleSection extends StatelessWidget {
             children: [
               const CircleAvatar(
                 radius: 22,
-                backgroundColor: ChowColors.orange50,
-                child: Icon(Icons.pets, color: ChowColors.orange400),
+                backgroundColor: ChowCozy.stone100,
+                child: Icon(Icons.pets, color: ChowCozy.stone300),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -581,14 +581,14 @@ class _InfoSection extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ChowColors.orange50,
+                color: ChowCozy.stone100,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: ChowColors.orange100),
+                border: Border.all(color: ChowCozy.stone300),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.group_outlined, color: ChowColors.orange500, size: 18),
+                  const Icon(Icons.group_outlined, color: ChowCozy.stone500, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -757,7 +757,7 @@ class _InstructionsSection extends StatelessWidget {
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
-                        colors: [ChowColors.orange400, ChowColors.orange500],
+                        colors: [ChowCozy.stone300, ChowCozy.stone500],
                       ),
                     ),
                     child: Text(
@@ -931,8 +931,8 @@ class _TipsSection extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: ChowColors.orange50,
-          border: Border.all(color: ChowColors.orange100),
+          color: ChowCozy.stone100,
+          border: Border.all(color: ChowCozy.stone300),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -940,7 +940,7 @@ class _TipsSection extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.lightbulb_outline, color: ChowColors.orange500, size: 18),
+                Icon(Icons.lightbulb_outline, color: ChowCozy.stone500, size: 18),
                 SizedBox(width: 6),
                 _SectionTitle('조리 팁'),
               ],
@@ -954,7 +954,7 @@ class _TipsSection extends StatelessWidget {
                   children: [
                     const Text(
                       '•',
-                      style: TextStyle(color: ChowColors.orange500),
+                      style: TextStyle(color: ChowCozy.stone500),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -1057,7 +1057,7 @@ class _ReviewsSection extends StatelessWidget {
                 FilledButton(
                   onPressed: onWriteReview,
                   style: FilledButton.styleFrom(
-                    backgroundColor: ChowColors.orange500,
+                    backgroundColor: ChowCozy.stone500,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -1161,7 +1161,7 @@ class _InfoCell extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Icon(icon, color: ChowColors.orange500, size: 21),
+          Icon(icon, color: ChowCozy.stone500, size: 21),
           const SizedBox(height: 6),
           Text(
             label,
@@ -1201,7 +1201,7 @@ class _TabButton extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: selected ? ChowColors.orange500 : Colors.transparent,
+              color: selected ? ChowCozy.stone500 : Colors.transparent,
               width: 2,
             ),
           ),
@@ -1209,7 +1209,7 @@ class _TabButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? ChowColors.orange500 : ChowColors.gray600,
+            color: selected ? ChowCozy.stone500 : ChowColors.gray600,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
@@ -1695,7 +1695,7 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.check_circle_outline, color: ChowColors.orange500),
+            Icon(Icons.check_circle_outline, color: ChowCozy.stone500),
             SizedBox(width: 8),
             Text('급여 기록', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           ],
@@ -1727,7 +1727,7 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: ChowColors.orange500,
+              backgroundColor: ChowCozy.stone500,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -1753,7 +1753,7 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('조리 완료 기록이 저장됐어요!'),
-          backgroundColor: ChowColors.orange500,
+          backgroundColor: ChowCozy.stone500,
         ),
       );
     } catch (_) {
@@ -1768,21 +1768,21 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
       child: SizedBox(
         width: double.infinity,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: ChowColors.orange500))
+            ? const Center(child: CircularProgressIndicator(color: ChowCozy.stone500))
             : _done
                 ? Container(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: ChowColors.orange50,
+                      color: ChowCozy.stone100,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ChowColors.orange500),
+                      border: Border.all(color: ChowCozy.stone500),
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle, color: ChowColors.orange500, size: 20),
+                        Icon(Icons.check_circle, color: ChowCozy.stone500, size: 20),
                         SizedBox(width: 8),
-                        Text('조리 완료 기록됨', style: TextStyle(color: ChowColors.orange500, fontWeight: FontWeight.w600)),
+                        Text('조리 완료 기록됨', style: TextStyle(color: ChowCozy.stone500, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   )
@@ -1791,7 +1791,7 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
                     icon: const Icon(Icons.check_circle_outline),
                     label: const Text('조리 완료', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     style: FilledButton.styleFrom(
-                      backgroundColor: ChowColors.orange500,
+                      backgroundColor: ChowCozy.stone500,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),

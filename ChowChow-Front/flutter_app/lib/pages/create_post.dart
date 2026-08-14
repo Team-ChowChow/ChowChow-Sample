@@ -418,7 +418,7 @@ class _CreatePostHeader extends StatelessWidget {
               child: FilledButton(
                 onPressed: canPost ? onPost : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: ChowColors.orange500,
+                  backgroundColor: ChowCozy.stone500,
                   disabledBackgroundColor: ChowColors.gray300,
                   foregroundColor: Colors.white,
                   disabledForegroundColor: Colors.white,
@@ -611,7 +611,7 @@ class _TagCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: ChowColors.orange500),
+                      borderSide: const BorderSide(color: ChowCozy.stone500),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -640,7 +640,7 @@ class _TagCard extends StatelessWidget {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: ChowColors.orange50,
+                    color: ChowCozy.stone100,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(
@@ -650,14 +650,14 @@ class _TagCard extends StatelessWidget {
                         '#$tag',
                         style: const TextStyle(
                           fontSize: 13,
-                          color: ChowColors.orange600,
+                          color: ChowCozy.stone700,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () => onRemoveTag(tag),
-                        child: const Icon(Icons.close, size: 14, color: ChowColors.orange600),
+                        child: const Icon(Icons.close, size: 14, color: ChowCozy.stone700),
                       ),
                     ],
                   ),
@@ -695,12 +695,12 @@ class _ImageUploadCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: const BoxDecoration(
-                  color: ChowColors.orange50,
+                  color: ChowCozy.stone100,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.image_outlined,
-                  color: ChowColors.orange500,
+                  color: ChowCozy.stone500,
                   size: 28,
                 ),
               ),
@@ -764,7 +764,7 @@ class _CategorySuggestionCard extends StatelessWidget {
               final selected = selectedCategory == category;
 
               return Material(
-                color: selected ? ChowColors.orange500 : ChowColors.gray100,
+                color: selected ? ChowCozy.stone500 : ChowColors.gray100,
                 borderRadius: BorderRadius.circular(999),
                 child: InkWell(
                   onTap: () => onTapCategory(category),
@@ -834,7 +834,7 @@ class _PetTypeOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Material(
-        color: selected ? ChowColors.orange100 : ChowColors.gray100,
+        color: selected ? ChowCozy.stone300 : ChowColors.gray100,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
@@ -856,7 +856,7 @@ class _PetTypeOption extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? ChowColors.orange600 : ChowColors.gray600,
+                    color: selected ? ChowCozy.stone700 : ChowColors.gray600,
                   ),
                 ),
               ],

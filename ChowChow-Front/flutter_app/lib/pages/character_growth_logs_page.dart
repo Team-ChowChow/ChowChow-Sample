@@ -103,22 +103,22 @@ class _CharacterGrowthLogsPageState extends State<CharacterGrowthLogsPage> {
                     setState(() => _filter = value);
                     _load();
                   },
-                  selectedColor: ChowColors.orange100,
-                  checkmarkColor: ChowColors.orange600,
+                  selectedColor: ChowCozy.stone300,
+                  checkmarkColor: ChowCozy.stone700,
                 );
               },
             ),
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: ChowColors.orange500))
+                ? const Center(child: CircularProgressIndicator(color: ChowCozy.stone500))
                 : _logs.isEmpty
                     ? const Center(
                         child: Text('아직 성장 기록이 없습니다', style: TextStyle(color: ChowColors.gray500, fontSize: 16)),
                       )
                     : RefreshIndicator(
                         onRefresh: _load,
-                        color: ChowColors.orange500,
+                        color: ChowCozy.stone500,
                         child: ListView(
                           padding: const EdgeInsets.all(16),
                           children: [
@@ -177,8 +177,8 @@ class _GrowthLogCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundColor: ChowColors.orange50,
-              child: Icon(_icon, size: 20, color: ChowColors.orange500),
+              backgroundColor: ChowCozy.stone100,
+              child: Icon(_icon, size: 20, color: ChowCozy.stone500),
             ),
             const SizedBox(width: 12),
             Expanded(

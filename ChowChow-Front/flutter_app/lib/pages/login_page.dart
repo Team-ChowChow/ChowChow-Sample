@@ -13,8 +13,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  static const _bgCream = Color(0xFFFFFBF5);
-
   final _id = TextEditingController();
   final _password = TextEditingController();
 
@@ -71,8 +69,15 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgCream,
-      body: SafeArea(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [ChowCozy.stone50, Colors.white],
+          ),
+        ),
+        child: SafeArea(
         child: Column(
           children: [
             Expanded(
@@ -90,7 +95,7 @@ class _LoginPageState extends State<LoginPage> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFFFF7000),
+                            color: ChowCozy.stone500,
                             letterSpacing: -0.3,
                           ),
                         ),
@@ -139,7 +144,7 @@ class _LoginPageState extends State<LoginPage> {
                                   child: Checkbox(
                                     value: _autoLogin,
                                     onChanged: (v) => setState(() => _autoLogin = v ?? false),
-                                    activeColor: const Color(0xFFFF7000),
+                                    activeColor: ChowCozy.stone500,
                                     side: const BorderSide(color: ChowColors.gray300, width: 1.5),
                                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     visualDensity: VisualDensity.compact,
@@ -158,7 +163,7 @@ class _LoginPageState extends State<LoginPage> {
                             padding: const EdgeInsets.only(bottom: 12),
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(fontSize: 13, color: Color(0xFFEF4444)),
+                              style: const TextStyle(fontSize: 13, color: ChowCozy.destructive),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -202,7 +207,7 @@ class _LoginPageState extends State<LoginPage> {
                                   child: const Text(
                                     '회원가입',
                                     style: TextStyle(
-                                      color: Color(0xFFFF7000),
+                                      color: ChowCozy.stone500,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -219,12 +224,13 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
 }
 
-/// 이미지와 동일: 오렌지 원 + 검은 발바닥 2개
+/// 이미지와 동일: 스톤 톤 원 + 발바닥 아이콘
 class _PawLogo extends StatelessWidget {
   const _PawLogo();
 
@@ -234,11 +240,15 @@ class _PawLogo extends StatelessWidget {
       width: 80,
       height: 80,
       decoration: const BoxDecoration(
-        color: Color(0xFFFF7000),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [ChowCozy.stone300, ChowCozy.stone400],
+        ),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Color(0x33FF7000),
+            color: Color(0x33927F7B),
             blurRadius: 14,
             offset: Offset(0, 6),
           ),
@@ -249,7 +259,7 @@ class _PawLogo extends StatelessWidget {
           'assets/images/paw.png',
           width: 34,
           height: 34,
-          color: Colors.brown,
+          color: ChowCozy.stone900,
           colorBlendMode: BlendMode.srcIn,
           fit: BoxFit.contain,
         ),
@@ -268,7 +278,7 @@ class _LoginButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFFF7000),
+      color: ChowCozy.stone500,
       borderRadius: BorderRadius.circular(12),
       elevation: 0,
       child: InkWell(

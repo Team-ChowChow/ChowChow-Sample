@@ -103,7 +103,7 @@ class _AiChatPageState extends State<AiChatPage> {
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [ChowColors.orange400, ChowColors.orange500]),
+              gradient: LinearGradient(colors: [ChowCozy.stone300, ChowCozy.stone500]),
               boxShadow: [BoxShadow(blurRadius: 6, offset: Offset(0, 2), color: Color(0x22000000))],
             ),
             child: SafeArea(
@@ -120,7 +120,7 @@ class _AiChatPageState extends State<AiChatPage> {
                       width: 42,
                       height: 42,
                       decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      child: const Icon(Icons.auto_awesome, color: ChowColors.orange500, size: 22),
+                      child: const Icon(Icons.auto_awesome, color: ChowCozy.stone500, size: 22),
                     ),
                     const SizedBox(width: 10),
                     const Expanded(
@@ -153,7 +153,7 @@ class _AiChatPageState extends State<AiChatPage> {
                     constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.82),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: m.isUser ? ChowColors.orange500 : Colors.white,
+                      color: m.isUser ? ChowCozy.stone500 : Colors.white,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
                         topRight: const Radius.circular(16),
@@ -170,9 +170,9 @@ class _AiChatPageState extends State<AiChatPage> {
                             padding: EdgeInsets.only(bottom: 6),
                             child: Row(
                               children: [
-                                Icon(Icons.auto_awesome, size: 16, color: ChowColors.orange500),
+                                Icon(Icons.auto_awesome, size: 16, color: ChowCozy.stone500),
                                 SizedBox(width: 6),
-                                Text('AI 셰프', style: TextStyle(fontSize: 11, color: ChowColors.orange500)),
+                                Text('AI 셰프', style: TextStyle(fontSize: 11, color: ChowCozy.stone500)),
                               ],
                             ),
                           ),
@@ -261,7 +261,7 @@ class _AiChatPageState extends State<AiChatPage> {
                       builder: (context, v, _) {
                         final enabled = v.text.trim().isNotEmpty;
                         return Material(
-                          color: enabled ? ChowColors.orange500 : ChowColors.gray300,
+                          color: enabled ? ChowCozy.stone500 : ChowColors.gray300,
                           shape: const CircleBorder(),
                           child: InkWell(
                             customBorder: const CircleBorder(),

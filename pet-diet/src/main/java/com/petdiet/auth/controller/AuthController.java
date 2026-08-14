@@ -1,6 +1,7 @@
 package com.petdiet.auth.controller;
 
 import com.petdiet.auth.dto.AuthResponse;
+import com.petdiet.auth.dto.ChangePasswordRequest;
 import com.petdiet.auth.dto.LoginRequest;
 import com.petdiet.auth.dto.SignupRequest;
 import com.petdiet.auth.service.AuthService;
@@ -57,6 +58,15 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(@AuthenticationPrincipal SupabasePrincipal principal) {
         return ResponseEntity.ok(authService.getMe(principal.authUuid()));
+    }
+
+    // 로그인 상태에서 비밀번호 변경 (현재 비밀번호 확인 후 변경)
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @RequestBody @Valid ChangePasswordRequest request) {
+        authService.changePassword(principal, request);
+        return ResponseEntity.ok(java.util.Map.of("message", "비밀번호가 변경되었습니다."));
     }
 
     // 이메일 인증 링크 클릭 콜백

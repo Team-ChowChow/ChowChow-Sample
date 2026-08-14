@@ -323,7 +323,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ? _submitPetForm
                                     : null,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: ChowColors.orange500,
+                                  backgroundColor: ChowCozy.stone500,
                                   disabledBackgroundColor: ChowColors.gray300,
                                   foregroundColor: Colors.white,
                                   elevation: 0,
@@ -416,7 +416,7 @@ class _ProfilePageState extends State<ProfilePage> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: selected ? const Color(0xFFFFF7ED) : Colors.white,
+      color: selected ? ChowCozy.stone100 : Colors.white,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -426,7 +426,7 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? ChowColors.orange500 : ChowColors.gray200,
+              color: selected ? ChowCozy.stone500 : ChowColors.gray200,
               width: 2,
             ),
           ),
@@ -440,7 +440,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               if (selected) ...[
                 const SizedBox(height: 6),
-                const Icon(Icons.check, color: ChowColors.orange500, size: 20),
+                const Icon(Icons.check, color: ChowCozy.stone500, size: 20),
               ],
             ],
           ),
@@ -488,7 +488,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 trailing: _breedId == breed.breedId
                                     ? const Icon(
                                         Icons.check,
-                                        color: ChowColors.orange500,
+                                        color: ChowCozy.stone500,
                                       )
                                     : null,
                                 onTap: () {
@@ -520,7 +520,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           height: 14,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: ChowColors.orange500,
+                            color: ChowCozy.stone500,
                           ),
                         ),
                         SizedBox(width: 10),
@@ -589,11 +589,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: selected ? ChowColors.orange100 : Colors.white,
+                    color: selected ? ChowCozy.stone300 : Colors.white,
                     borderRadius: BorderRadius.circular(99),
                     border: Border.all(
                       color: selected
-                          ? ChowColors.orange500
+                          ? ChowCozy.stone500
                           : ChowColors.gray300,
                       width: selected ? 1.5 : 1,
                     ),
@@ -603,7 +603,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: TextStyle(
                       fontSize: 13,
                       color: selected
-                          ? ChowColors.orange600
+                          ? ChowCozy.stone700
                           : ChowColors.gray700,
                       fontWeight: selected
                           ? FontWeight.w600
@@ -650,7 +650,7 @@ class _ProfilePageState extends State<ProfilePage> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(
-                color: ChowColors.orange500,
+                color: ChowCozy.stone500,
                 width: 2,
               ),
             ),
@@ -676,7 +676,7 @@ class _ProfilePageState extends State<ProfilePage> {
           if (required)
             const TextSpan(
               text: ' *',
-              style: TextStyle(color: ChowColors.orange500),
+              style: TextStyle(color: ChowCozy.stone500),
             ),
         ],
       ),
@@ -880,7 +880,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Color _noticeBg(String type) {
     switch (type) {
       case 'recipe':
-        return ChowColors.orange100;
+        return ChowCozy.stone300;
       case 'achievement':
         return const Color(0xFFFDF2C9);
       case 'community':
@@ -893,7 +893,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Color _noticeFg(String type) {
     switch (type) {
       case 'recipe':
-        return ChowColors.orange500;
+        return ChowCozy.stone500;
       case 'achievement':
         return ChowColors.yellow600;
       case 'community':
@@ -918,7 +918,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 SliverToBoxAdapter(
                   child: Container(
                     width: double.infinity,
-                    color: ChowColors.orange500,
+                    color: ChowCozy.stone500,
                     padding: const EdgeInsets.fromLTRB(20, 48, 8, 40),
                     child: Column(
                       children: [
@@ -1065,7 +1065,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   child: const Text(
                                     '+ 추가하기',
                                     style: TextStyle(
-                                      color: ChowColors.orange500,
+                                      color: ChowCozy.stone500,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -1444,7 +1444,7 @@ class _PetRowState extends State<_PetRow> {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: const BoxDecoration(
-                        color: ChowColors.orange500,
+                        color: ChowCozy.stone500,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -1551,7 +1551,7 @@ class _PetRowState extends State<_PetRow> {
                           right: -4,
                           bottom: -4,
                           child: Material(
-                            color: ChowColors.orange500,
+                            color: ChowCozy.stone500,
                             shape: const CircleBorder(),
                             elevation: 1,
                             shadowColor: Colors.black26,
@@ -1687,7 +1687,7 @@ class _MenuItem extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: ChowColors.orange500,
+                  color: ChowCozy.stone500,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(

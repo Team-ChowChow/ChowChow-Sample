@@ -205,7 +205,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         setState(() => _loadError = false);
                         _loadData();
                       },
-                      style: TextButton.styleFrom(foregroundColor: ChowColors.orange500),
+                      style: TextButton.styleFrom(foregroundColor: ChowCozy.stone500),
                       child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ],
@@ -330,7 +330,7 @@ class _PostContentSection extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: ChowColors.orange100,
+                  backgroundColor: ChowCozy.stone300,
                   child: Text(post.avatar, style: const TextStyle(fontSize: 23)),
                 ),
                 const SizedBox(width: 12),
@@ -360,7 +360,7 @@ class _PostContentSection extends StatelessWidget {
                 FilledButton(
                   onPressed: () {},
                   style: FilledButton.styleFrom(
-                    backgroundColor: ChowColors.orange500,
+                    backgroundColor: ChowCozy.stone500,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -421,8 +421,8 @@ class _PostContentSection extends StatelessWidget {
                 icon: const Icon(Icons.restaurant_menu_outlined, size: 18),
                 label: const Text('공유된 레시피 보기'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: ChowColors.orange600,
-                  side: const BorderSide(color: ChowColors.orange100),
+                  foregroundColor: ChowCozy.stone700,
+                  side: const BorderSide(color: ChowCozy.stone300),
                 ),
               ),
             ),
@@ -436,7 +436,7 @@ class _PostContentSection extends StatelessWidget {
                     (tag) => Text(
                       tag,
                       style: const TextStyle(
-                        color: ChowColors.orange500,
+                        color: ChowCozy.stone500,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -666,7 +666,7 @@ class _CommentsSection extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: '$commentCount',
-                    style: const TextStyle(color: ChowColors.orange500),
+                    style: const TextStyle(color: ChowCozy.stone500),
                   ),
                 ],
               ),
@@ -788,7 +788,7 @@ class _CommentTile extends StatelessWidget {
                                 : Icons.thumb_up_alt_outlined,
                             size: 15,
                             color: comment.isLiked
-                                ? ChowColors.orange500
+                                ? ChowCozy.stone500
                                 : ChowColors.gray500,
                           ),
                           const SizedBox(width: 4),
@@ -797,7 +797,7 @@ class _CommentTile extends StatelessWidget {
                               '${comment.likes}',
                               style: TextStyle(
                                 color: comment.isLiked
-                                    ? ChowColors.orange500
+                                    ? ChowCozy.stone500
                                     : ChowColors.gray500,
                                 fontSize: 12,
                               ),
@@ -890,7 +890,7 @@ class _CommentInputBarState extends State<_CommentInputBar> {
               ),
               const SizedBox(width: 8),
               Material(
-                color: enabled ? ChowColors.orange500 : ChowColors.gray300,
+                color: enabled ? ChowCozy.stone500 : ChowColors.gray300,
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
