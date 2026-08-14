@@ -5,7 +5,6 @@ import '../services/api_client.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
-import '../widgets/lowest_price_sheet.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   const RecipeDetailPage({
@@ -237,6 +236,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _similarRecipes = res.map((e) {
           final m = e as Map<String, dynamic>;
           return _RelatedRecipe(
+            recipeId: m['recipeId'] as int,
             title: m['recipeTitle'] as String? ?? '',
             imageUrl: m['imageUrl'] as String? ?? _placeholder,
             rating: (m['averageRating'] as num?)?.toDouble() ?? 0.0,
@@ -713,28 +713,6 @@ class _IngredientsSection extends StatelessWidget {
                       color: ChowColors.gray600,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => showLowestPriceSheet(context, item.name),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: ChowCozy.stone100,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.sell_outlined, size: 12, color: ChowCozy.stone700),
-                          SizedBox(width: 3),
-                          Text(
-                            '최저가',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ],
@@ -1266,7 +1244,7 @@ class _RelatedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      onTap: () => context.push('/recipes/${recipe.recipeId}'),
       borderRadius: BorderRadius.circular(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1507,6 +1485,7 @@ class _RecipeDetailData {
     final nutritionJson = json['nutrition'] as Map<String, dynamic>?;
     final nutritionItems = <_NutritionItem>[];
     if (nutritionJson != null) {
+      if (nutritionJson['totalCalories'] != null) nutritionItems.add(_NutritionItem(label: '칼로리', value: '${(nutritionJson['totalCalories'] as num).toStringAsFixed(0)}kcal'));
       if (nutritionJson['proteinG'] != null) nutritionItems.add(_NutritionItem(label: '단백질', value: '${(nutritionJson['proteinG'] as num).toStringAsFixed(1)}g'));
       if (nutritionJson['fatG'] != null) nutritionItems.add(_NutritionItem(label: '지방', value: '${(nutritionJson['fatG'] as num).toStringAsFixed(1)}g'));
       if (nutritionJson['carbohydrateG'] != null) nutritionItems.add(_NutritionItem(label: '탄수화물', value: '${(nutritionJson['carbohydrateG'] as num).toStringAsFixed(1)}g'));
@@ -1531,7 +1510,9 @@ class _RecipeDetailData {
       servings: json['feedingAmount'] as String? ?? base.servings,
       cookTime: json['cookTime'] as String? ?? base.cookTime,
       difficulty: json['difficulty'] as String? ?? base.difficulty,
-      calories: json['calories'] as String? ?? base.calories,
+      calories: nutritionJson?['totalCalories'] != null
+          ? '${(nutritionJson!['totalCalories'] as num).toStringAsFixed(0)}kcal'
+          : json['calories'] as String? ?? base.calories,
       rating: (json['averageRating'] as num?)?.toDouble() ?? base.rating,
       reviewCount: (json['reviewCount'] as num?)?.toInt() ?? base.reviewCount,
       likes: (json['likeCount'] as num?)?.toInt() ?? base.likes,
@@ -1615,11 +1596,13 @@ class _Review {
 
 class _RelatedRecipe {
   const _RelatedRecipe({
+    required this.recipeId,
     required this.title,
     required this.imageUrl,
     required this.rating,
   });
 
+  final int recipeId;
   final String title;
   final String imageUrl;
   final double rating;
@@ -1697,6 +1680,13 @@ class _CookingCompleteButton extends StatefulWidget {
 class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
   bool _done = false;
   bool _loading = false;
+  final _amountController = TextEditingController();
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
 
   Future<void> _confirmAndComplete() async {
     final confirmed = await showDialog<bool>(
@@ -1707,12 +1697,28 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
           children: [
             Icon(Icons.check_circle_outline, color: ChowCozy.stone500),
             SizedBox(width: 8),
-            Text('조리 완료', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text('급여 기록', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           ],
         ),
-        content: Text(
-          '"${widget.recipeTitle}" 레시피로 조리를 완료했나요?\n완료 기록이 저장됩니다.',
-          style: const TextStyle(fontSize: 14, color: ChowColors.gray700, height: 1.5),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '"${widget.recipeTitle}" 레시피로 조리를 완료했나요?\n완료 기록이 저장됩니다.',
+              style: const TextStyle(fontSize: 14, color: ChowColors.gray700, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _amountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: '실제 급여량 (g, 선택)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -1734,10 +1740,13 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
     if (confirmed != true || !mounted) return;
     setState(() => _loading = true);
     try {
+      final amount = double.tryParse(_amountController.text.trim());
       await ApiClient.post('/api/meal-records', {
         'mealTitle': widget.recipeTitle,
         'mealDate': DateTime.now().toIso8601String().substring(0, 10),
         'mealNote': '레시피 #${widget.recipeId} 조리 완료',
+        'recipeId': widget.recipeId,
+        if (amount != null) 'feedingAmountG': amount,
       });
       if (!mounted) return;
       setState(() { _done = true; _loading = false; });

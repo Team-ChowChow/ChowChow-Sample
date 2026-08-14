@@ -34,6 +34,7 @@ public class RecipeService {
     private final UserPetRepository userPetRepository;
     private final RecipeNutritionSummaryRepository nutritionRepository;
     private final IngredientRepository ingredientRepository;
+    private final NutritionCalculationService nutritionCalculationService;
     private final JdbcTemplate jdbc;
 
     @PostConstruct
@@ -66,6 +67,16 @@ public class RecipeService {
         User user = findUser(authUuid);
         return recipeRepository.findAllByUserAndRecipeStatus(user, "ACTIVE", pageable)
                 .map(RecipeResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipeResponse> getRecipesByPet(UUID authUuid, Integer petId) {
+        User user = findUser(authUuid);
+        userPetRepository.findByPetIdAndUser(petId, user)
+                .orElseThrow(() -> new IllegalArgumentException("반려동물을 찾을 수 없습니다."));
+        return recipeRepository.findTop8ByPet_PetIdAndIsAiGeneratedTrueOrderByCreatedAtDesc(petId).stream()
+                .map(RecipeResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -167,7 +178,9 @@ public class RecipeService {
 
         addIngredients(recipe, req.getIngredients());
         addSteps(recipe, req.getSteps());
-        return RecipeResponse.from(recipeRepository.save(recipe));
+        Recipe saved = recipeRepository.save(recipe);
+        nutritionCalculationService.calculateAndSave(saved);
+        return RecipeResponse.from(saved);
     }
 
     @Transactional
@@ -178,7 +191,8 @@ public class RecipeService {
         recipe.update(req.getRecipeTitle(), req.getRecipeDescription(),
                 req.getRecipePurpose(), req.getFeedingAmount(), req.getIsPublic());
 
-        if (req.getIngredients() != null) {
+        boolean ingredientsChanged = req.getIngredients() != null;
+        if (ingredientsChanged) {
             recipe.getIngredients().clear();
             addIngredients(recipe, req.getIngredients());
         }
@@ -186,7 +200,11 @@ public class RecipeService {
             recipe.getSteps().clear();
             addSteps(recipe, req.getSteps());
         }
-        return RecipeResponse.from(recipeRepository.save(recipe));
+        Recipe saved = recipeRepository.save(recipe);
+        if (ingredientsChanged) {
+            nutritionCalculationService.calculateAndSave(saved);
+        }
+        return RecipeResponse.from(saved);
     }
 
     @Transactional

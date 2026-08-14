@@ -9,16 +9,30 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
  * AI가 반환한 재료명(한글/영어 혼용)을 Ingredients 테이블의 ingredientId로 변환.
- * 순서: 한글 정확일치 → 한글 LIKE → Spoonacular 검색 후 신규 생성
+ * 순서: 한글 정확일치 → 한글 LIKE → 한글 동의어 매핑 → Spoonacular 검색 후 신규 생성
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class IngredientResolutionService {
+
+    // Spoonacular는 영어 DB라 한글 재료명은 항상 검색 실패함(4단계가 무력화됨).
+    // AI 레시피 생성에서 반복적으로 매칭 실패하던 한글 표현을 이미 DB에 있는 표준 명칭으로 우회.
+    // ponytail: 관측된 상위 빈발 케이스만 반영. 매핑에 없는 새 한글 재료명은 여전히 미해결로 남음
+    // → 반복되면 항목 추가, 근본 해결하려면 Spoonacular 조회 전 한→영 번역 단계 필요.
+    private static final Map<String, String> KOREAN_SYNONYMS = Map.ofEntries(
+            Map.entry("오리고기", "오리 가슴살"),
+            Map.entry("닭고기", "닭가슴살"),
+            Map.entry("달걀", "계란"),
+            Map.entry("단호박", "설탕 호박"),
+            Map.entry("올리브유", "올리브 오일"),
+            Map.entry("올리브오일", "올리브 오일")
+    );
 
     private final IngredientRepository ingredientRepository;
     private final SpoonacularClient spoonacularClient;
@@ -43,7 +57,14 @@ public class IngredientResolutionService {
             return Optional.of(likeResults.get(0).getIngredientId());
         }
 
-        // 4. Spoonacular 검색 → 신규 Ingredient 생성
+        // 4. 한글 동의어 매핑
+        String synonym = KOREAN_SYNONYMS.get(trimmed);
+        if (synonym != null) {
+            Optional<Ingredient> bySynonym = ingredientRepository.findByIngredientNameKo(synonym);
+            if (bySynonym.isPresent()) return Optional.of(bySynonym.get().getIngredientId());
+        }
+
+        // 5. Spoonacular 검색 → 신규 Ingredient 생성
         return resolveFromSpoonacular(trimmed);
     }
 

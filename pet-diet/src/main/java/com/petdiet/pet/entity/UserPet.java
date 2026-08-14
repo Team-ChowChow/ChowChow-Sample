@@ -50,6 +50,19 @@ public class UserPet {
     @Column(name = "\"isNeutered\"")
     private Boolean isNeutered;
 
+    @Column(name = "\"petBodyConditionScore\"")
+    private Integer petBodyConditionScore;
+
+    @Column(name = "\"petBodyScoreDate\"")
+    private LocalDate petBodyScoreDate;
+
+    @Column(name = "\"petActivityLevel\"")
+    private Integer petActivityLevel;
+
+    // 콤마 구분 태그 문자열(예: "알레르기,장,피부/모질"). 최대 3개, 서비스 계층에서 검증.
+    @Column(name = "\"petHealthFocusAreas\"")
+    private String healthFocusAreas;
+
     @Column(name = "\"petProfileImg\"")
     private String petProfileImg;
 
@@ -70,7 +83,8 @@ public class UserPet {
     private List<PetDisease> diseases = new ArrayList<>();
 
     public void update(String petName, String petGender, LocalDate petBirthdate,
-                       BigDecimal petWeight, Boolean isNeutered, String petProfileImg, Integer breedId) {
+                       BigDecimal petWeight, Boolean isNeutered, String petProfileImg, Integer breedId,
+                       Integer petBodyConditionScore, Integer petActivityLevel, String healthFocusAreas) {
         if (petName != null) this.petName = petName;
         if (petGender != null) this.petGender = petGender;
         if (petBirthdate != null) this.petBirthdate = petBirthdate;
@@ -78,5 +92,11 @@ public class UserPet {
         if (isNeutered != null) this.isNeutered = isNeutered;
         if (petProfileImg != null) this.petProfileImg = petProfileImg;
         if (breedId != null) this.breedId = breedId;
+        if (petBodyConditionScore != null) {
+            this.petBodyConditionScore = petBodyConditionScore;
+            this.petBodyScoreDate = LocalDate.now();
+        }
+        if (petActivityLevel != null) this.petActivityLevel = petActivityLevel;
+        if (healthFocusAreas != null) this.healthFocusAreas = healthFocusAreas;
     }
 }

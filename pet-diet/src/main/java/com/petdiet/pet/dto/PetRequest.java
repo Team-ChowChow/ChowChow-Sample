@@ -29,6 +29,7 @@ public class PetRequest {
     private String petProfileImageUrl;
     private List<Integer> allergyIds;
     private List<Integer> diseaseIds;
+    private List<String> healthFocusAreas;
 
     public Boolean getIsNeutered() {
         return isNeutered != null ? isNeutered : petNeutered;
