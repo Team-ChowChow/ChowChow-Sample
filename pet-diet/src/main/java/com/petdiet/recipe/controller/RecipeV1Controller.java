@@ -165,6 +165,12 @@ public class RecipeV1Controller {
         return ResponseEntity.ok(recipeService.getMyRecipes(principal.authUuid(), pageable).getContent());
     }
 
+    @GetMapping("/recipes/by-pet/{petId}")
+    public ResponseEntity<?> getRecipesByPet(
+            @AuthenticationPrincipal SupabasePrincipal principal, @PathVariable Integer petId) {
+        return ResponseEntity.ok(recipeService.getRecipesByPet(principal.authUuid(), petId));
+    }
+
     @GetMapping("/recipes/{recipeId}/reviews")
     public ResponseEntity<List<ReviewResponse>> getReviews(@PathVariable Integer recipeId) {
         return ResponseEntity.ok(recipeService.getReviews(recipeId));

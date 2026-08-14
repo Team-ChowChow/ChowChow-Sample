@@ -70,3 +70,20 @@ ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petActivityLevel" INTEGER;
 
 -- 관심 건강 부위 (최대 3개, 콤마 구분 문자열로 저장)
 ALTER TABLE "UserPets" ADD COLUMN IF NOT EXISTS "petHealthFocusAreas" TEXT;
+
+-- 상용 사료 데이터 (Open Pet Food Facts 동기화)
+CREATE TABLE IF NOT EXISTS "CommercialFoods" (
+    "foodId"          SERIAL PRIMARY KEY,
+    "barcode"         VARCHAR(50) UNIQUE,
+    "brandName"       VARCHAR(100) NOT NULL,
+    "productName"     VARCHAR(300) NOT NULL,
+    "petType"         VARCHAR(10),
+    "caloriesPer100g" NUMERIC(8,2),
+    "proteinG"        NUMERIC(8,2),
+    "fatG"            NUMERIC(8,2),
+    "carbohydrateG"   NUMERIC(8,2),
+    "ingredientsText" TEXT,
+    "imageUrl"        TEXT,
+    "createdAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "updatedAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

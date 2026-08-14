@@ -26,6 +26,10 @@ public class FoodDataCentralClient {
             "chips", "cake", "cookie", "cereal", "syrup", "extract", "concentrate", "flour"
     );
 
+    // 검색어가 오일/지방 자체를 뜻하지 않는데 결과가 오일/지방 제품으로 매칭되면(예: "salmon"→"Fish oil, salmon")
+    // 열량이 실제 재료보다 훨씬 높게 왜곡되므로 배제
+    private static final List<String> FAT_KEYWORDS = List.of("oil", "fat", "butter", "lard", "suet");
+
     private final WebClient webClient;
     private final String apiKey;
     private final ObjectMapper objectMapper;
@@ -62,14 +66,16 @@ public class FoodDataCentralClient {
 
             // 검색 1순위 결과가 가공식품(건조/분말/주스 등)이라 100g당 영양소가 왜곡되는 경우가 있어,
             // 가공식품이 아닌 첫 결과를 우선 채택하고, 없으면 Energy 값이 채워진 첫 결과로 폴백한다.
+            boolean queryMeansFat = FAT_KEYWORDS.stream().anyMatch(query.toLowerCase()::contains);
             IngredientInfo fallback = null;
             for (JsonNode food : foods) {
                 IngredientInfo info = parseNutrients(food);
                 if (info == null) continue;
                 if (fallback == null) fallback = info;
-                if (!isProcessed(str(food.path("description")))) {
-                    return info;
-                }
+                String description = str(food.path("description"));
+                if (isProcessed(description)) continue;
+                if (!queryMeansFat && isFatProduct(description)) continue;
+                return info;
             }
             return fallback;
 
@@ -104,6 +110,12 @@ public class FoodDataCentralClient {
         if (description == null) return false;
         String lower = description.toLowerCase();
         return PROCESSED_KEYWORDS.stream().anyMatch(lower::contains);
+    }
+
+    private static boolean isFatProduct(String description) {
+        if (description == null) return false;
+        String lower = description.toLowerCase();
+        return FAT_KEYWORDS.stream().anyMatch(lower::contains);
     }
 
     private static String str(JsonNode node) {

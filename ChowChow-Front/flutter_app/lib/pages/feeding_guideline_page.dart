@@ -50,19 +50,32 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
     });
     try {
       final petsRes = await ApiClient.get('/api/pets') as List<dynamic>;
-      final recipesRes = await ApiClient.get('/api/v1/recipes/me') as List<dynamic>;
       setState(() {
         _pets = petsRes.map((e) => PetModel.fromJson(e as Map<String, dynamic>)).toList();
-        _recipes = recipesRes.map((e) => RecipeModel.fromJson(e as Map<String, dynamic>)).toList();
         _selectedPet = _pets.isNotEmpty ? _pets.first : null;
         _loadingPets = false;
       });
+      if (_selectedPet != null) await _loadRecipesForPet(_selectedPet!.petId);
     } catch (e) {
       setState(() {
         _loadError = '반려동물 정보를 불러오지 못했어요.';
         _loadingPets = false;
       });
     }
+  }
+
+  Future<void> _loadRecipesForPet(int petId) async {
+    setState(() {
+      _recipes = [];
+      _selectedRecipe = null;
+    });
+    try {
+      final recipesRes = await ApiClient.get('/api/v1/recipes/by-pet/$petId') as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _recipes = recipesRes.map((e) => RecipeModel.fromJson(e as Map<String, dynamic>)).toList();
+      });
+    } catch (_) {}
   }
 
   Future<void> _calculate() async {
@@ -148,10 +161,13 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
                                       child: Text(p.petWeight != null ? '${p.petName} (${p.petWeight}kg)' : '${p.petName} (체중 미등록)'),
                                     ))
                                 .toList(),
-                            onChanged: (p) => setState(() {
-                              _selectedPet = p;
-                              _result = null;
-                            }),
+                            onChanged: (p) {
+                              setState(() {
+                                _selectedPet = p;
+                                _result = null;
+                              });
+                              if (p != null) _loadRecipesForPet(p.petId);
+                            },
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -174,7 +190,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
                           const SizedBox(height: 8),
                           _card(
                             child: _recipes.isEmpty
-                                ? const Text('저장된 레시피가 없어요. AI 레시피를 먼저 생성해보세요.', style: TextStyle(color: ChowColors.gray500))
+                                ? const Text('이 아이를 위해 생성된 AI 레시피가 없어요. AI 레시피를 먼저 생성해보세요.', style: TextStyle(color: ChowColors.gray500))
                                 : DropdownButtonFormField<RecipeModel>(
                                     initialValue: _selectedRecipe,
                                     isExpanded: true,

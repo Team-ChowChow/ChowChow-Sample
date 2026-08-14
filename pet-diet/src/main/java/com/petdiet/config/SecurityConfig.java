@@ -55,6 +55,7 @@ public class SecurityConfig {
                     "/api/v1/allergies",
                     "/api/v1/diseases",
                     "/api/pets/breeds",
+                    "/api/v1/foods/search",
                     "/api/characters/group-image/**",
                     "/error"
                 ).permitAll()

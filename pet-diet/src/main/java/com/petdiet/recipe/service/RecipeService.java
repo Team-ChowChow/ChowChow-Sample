@@ -70,6 +70,16 @@ public class RecipeService {
     }
 
     @Transactional(readOnly = true)
+    public List<RecipeResponse> getRecipesByPet(UUID authUuid, Integer petId) {
+        User user = findUser(authUuid);
+        userPetRepository.findByPetIdAndUser(petId, user)
+                .orElseThrow(() -> new IllegalArgumentException("반려동물을 찾을 수 없습니다."));
+        return recipeRepository.findTop8ByPet_PetIdAndIsAiGeneratedTrueOrderByCreatedAtDesc(petId).stream()
+                .map(RecipeResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public RecipeResponse getRecipe(Integer recipeId) {
         return getRecipe(recipeId, null);
     }
