@@ -13,4 +13,5 @@ public class MealRecordRequest {
     private String mealDate;
     private BigDecimal feedingAmountG;
     private Integer recipeId;
+    private Integer commercialFoodId;
 }

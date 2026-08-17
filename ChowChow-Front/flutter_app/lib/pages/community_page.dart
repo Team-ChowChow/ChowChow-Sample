@@ -38,20 +38,10 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
   int? _currentUserId;
 
   List<CommunityPost> get _filteredAndSortedPosts {
+    // 카테고리/강아지·고양이 필터링은 _loadPosts()가 서버에 요청할 때 이미 반영됨
     var result = _posts;
 
-    // 1. 카테고리 필터링
-    if (_selectedCategory != '전체') {
-      result = result.where((post) => post.category == _selectedCategory).toList();
-    }
-
-    // 2. 강아지/고양이 필터링
-    if (_selectedPetType != '전체') {
-      final petTypeValue = _selectedPetType == '강아지' ? 'DOG' : 'CAT';
-      result = result.where((post) => post.petType == petTypeValue).toList();
-    }
-
-    // 3. 검색 필터링 (태그명 또는 제목/내용)
+    // 검색 필터링 (태그명 또는 제목/내용)
     if (_searchKeyword.isNotEmpty) {
       final keyword = _searchKeyword.toLowerCase().trim();
       final cleanKeyword = keyword.replaceAll('#', '');
@@ -166,6 +156,9 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
     try {
       final posts = await CommunityService.getPosts(
         category: _selectedCategory != '전체' ? _selectedCategory : null,
+        petType: _selectedPetType == '강아지'
+            ? 'DOG'
+            : (_selectedPetType == '고양이' ? 'CAT' : null),
         sortBy: _sortBy,
         sortOrder: _sortOrder,
       );
@@ -282,6 +275,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                                 setState(() {
                                   _selectedCategory = category;
                                 });
+                                _loadPosts();
                               },
                             ),
                           )
@@ -311,6 +305,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                                       setState(() {
                                         _selectedPetType = petType;
                                       });
+                                      _loadPosts();
                                     },
                                     size: 'small',
                                   ),

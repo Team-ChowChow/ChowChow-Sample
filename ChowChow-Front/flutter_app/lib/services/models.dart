@@ -108,6 +108,9 @@ class PetModel {
   final double? petWeight;
   final String? petProfileImg;
   final List<int> allergyIds;
+  final int? petBodyConditionScore;
+  final int? petActivityLevel;
+  final List<String> healthFocusAreas;
 
   PetModel({
     required this.petId,
@@ -120,6 +123,9 @@ class PetModel {
     this.petWeight,
     this.petProfileImg,
     required this.allergyIds,
+    this.petBodyConditionScore,
+    this.petActivityLevel,
+    this.healthFocusAreas = const [],
   });
 
   factory PetModel.fromJson(Map<String, dynamic> j) => PetModel(
@@ -133,6 +139,9 @@ class PetModel {
         petWeight: (j['petWeight'] as num?)?.toDouble(),
         petProfileImg: j['petProfileImageUrl'] as String? ?? j['petProfileImg'] as String?,
         allergyIds: (j['allergyIds'] as List<dynamic>?)?.cast<int>() ?? [],
+        petBodyConditionScore: (j['petBodyConditionScore'] as num?)?.toInt(),
+        petActivityLevel: (j['petActivityLevel'] as num?)?.toInt(),
+        healthFocusAreas: (j['healthFocusAreas'] as List<dynamic>?)?.cast<String>() ?? const [],
       );
 
   String get displayType => petType == 'DOG' ? '강아지' : petType == 'CAT' ? '고양이' : petType ?? '';
@@ -326,6 +335,33 @@ class FeedingGuidelineModel {
         recommendedGrams: (j['recommendedGrams'] as num?)?.toDouble(),
         status: j['status'] as String?,
         message: j['message'] as String?,
+      );
+}
+
+class CommercialFoodModel {
+  final int foodId;
+  final String brandName;
+  final String productName;
+  final String? petType;
+  final double? caloriesPer100g;
+  final String? imageUrl;
+
+  CommercialFoodModel({
+    required this.foodId,
+    required this.brandName,
+    required this.productName,
+    this.petType,
+    this.caloriesPer100g,
+    this.imageUrl,
+  });
+
+  factory CommercialFoodModel.fromJson(Map<String, dynamic> j) => CommercialFoodModel(
+        foodId: j['foodId'] as int,
+        brandName: j['brandName'] as String,
+        productName: j['productName'] as String,
+        petType: j['petType'] as String?,
+        caloriesPer100g: (j['caloriesPer100g'] as num?)?.toDouble(),
+        imageUrl: j['imageUrl'] as String?,
       );
 }
 

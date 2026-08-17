@@ -87,3 +87,6 @@ CREATE TABLE IF NOT EXISTS "CommercialFoods" (
     "createdAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updatedAt"       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 식단 기록이 레시피뿐 아니라 상용 사료(CommercialFoods)도 급여 소스로 참조할 수 있도록
+ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "commercialFoodId" INTEGER REFERENCES "CommercialFoods"("foodId") ON DELETE SET NULL;

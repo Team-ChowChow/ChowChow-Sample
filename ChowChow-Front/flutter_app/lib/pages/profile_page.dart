@@ -1086,8 +1086,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               )
                             else
                               ..._pets.map(
-                                (pet) =>
-                                    _PetRow(pet: pet, onDeleted: _loadProfile),
+                                (pet) => _PetRow(
+                                  pet: pet,
+                                  onDeleted: _loadProfile,
+                                  onUpdated: _loadProfile,
+                                ),
                               ),
                           ],
                         ),
@@ -1108,18 +1111,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: '저장한 글',
                         icon: Icons.bookmark_border,
                         onTap: () => context.push('/saved-posts'),
-                      ),
-                    ],
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _MenuSection(
-                    title: '건강 관리',
-                    items: [
-                      _MenuItem(
-                        label: '급여량 계산기',
-                        icon: Icons.monitor_weight_outlined,
-                        onTap: () => context.push('/feeding-guideline'),
                       ),
                     ],
                   ),
@@ -1294,9 +1285,10 @@ class _StatTile extends StatelessWidget {
 }
 
 class _PetRow extends StatefulWidget {
-  const _PetRow({required this.pet, this.onDeleted});
+  const _PetRow({required this.pet, this.onDeleted, this.onUpdated});
   final PetModel pet;
   final VoidCallback? onDeleted;
+  final VoidCallback? onUpdated;
   @override
   State<_PetRow> createState() => _PetRowState();
 }
@@ -1485,7 +1477,31 @@ class _PetRowState extends State<_PetRow> {
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              _CharacteristicsSummary(pet: pet),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    _openEditCharacteristicsSheet(context);
+                  },
+                  icon: const Icon(Icons.tune, color: ChowCozy.stone500),
+                  label: const Text(
+                    '특징 수정',
+                    style: TextStyle(color: ChowCozy.stone500),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: ChowCozy.stone300),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -1508,6 +1524,124 @@ class _PetRowState extends State<_PetRow> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _activityLabels = ['매우 적음', '적음', '보통', '많음', '매우 많음'];
+  static const _healthFocusOptions = [
+    '피부/피모', '관절', '소화기', '비뇨기', '치아/구강', '눈/귀', '체중 관리', '심장',
+  ];
+
+  void _openEditCharacteristicsSheet(BuildContext context) {
+    int bcs = pet.petBodyConditionScore ?? 5;
+    int activity = pet.petActivityLevel ?? 3;
+    List<String> healthFocus = List.from(pet.healthFocusAreas);
+    bool saving = false;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('반려동물 특징 수정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 20),
+                Text('체형 점수 (BCS): $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Text('1(마름) ~ 5(적정) ~ 9(비만)', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
+                Slider(
+                  value: bcs.toDouble(),
+                  min: 1,
+                  max: 9,
+                  divisions: 8,
+                  activeColor: ChowCozy.stone500,
+                  label: '$bcs',
+                  onChanged: (v) => setSheet(() => bcs = v.round()),
+                ),
+                const SizedBox(height: 12),
+                Text('활동량: ${_activityLabels[activity - 1]}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Slider(
+                  value: activity.toDouble(),
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  activeColor: ChowCozy.stone500,
+                  label: _activityLabels[activity - 1],
+                  onChanged: (v) => setSheet(() => activity = v.round()),
+                ),
+                const SizedBox(height: 12),
+                const Text('관심 건강 부위 (최대 3개)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _healthFocusOptions.map((area) {
+                    final selected = healthFocus.contains(area);
+                    return ChoiceChip(
+                      label: Text(area),
+                      selected: selected,
+                      selectedColor: ChowCozy.stone100,
+                      onSelected: (v) => setSheet(() {
+                        if (v) {
+                          if (healthFocus.length < 3) healthFocus.add(area);
+                        } else {
+                          healthFocus.remove(area);
+                        }
+                      }),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            setSheet(() => saving = true);
+                            try {
+                              await ApiClient.patch('/api/pets/${pet.petId}', {
+                                'petName': pet.petName,
+                                'petType': pet.petType,
+                                'petBodyConditionScore': bcs,
+                                'petActivityLevel': activity,
+                                'healthFocusAreas': healthFocus,
+                              });
+                              if (ctx.mounted) Navigator.of(ctx).pop();
+                              widget.onUpdated?.call();
+                            } catch (_) {
+                              setSheet(() => saving = false);
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(content: Text('저장에 실패했어요. 잠시 후 다시 시도해주세요.')),
+                                );
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ChowCozy.stone500,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('저장하기'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1731,6 +1865,49 @@ class _ProfileNotice {
       message: message ?? this.message,
       time: time ?? this.time,
       isNew: isNew ?? this.isNew,
+    );
+  }
+}
+
+class _CharacteristicsSummary extends StatelessWidget {
+  const _CharacteristicsSummary({required this.pet});
+  final PetModel pet;
+
+  static const _activityLabels = ['매우 적음', '적음', '보통', '많음', '매우 많음'];
+
+  @override
+  Widget build(BuildContext context) {
+    final bcs = pet.petBodyConditionScore;
+    final activity = pet.petActivityLevel;
+    final areas = pet.healthFocusAreas;
+
+    if (bcs == null && activity == null && areas.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ChowColors.gray50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (bcs != null)
+            Text('체형 점수(BCS): $bcs / 9', style: const TextStyle(fontSize: 13, color: ChowColors.gray700)),
+          if (activity != null) ...[
+            if (bcs != null) const SizedBox(height: 4),
+            Text('활동량: ${_activityLabels[activity - 1]}', style: const TextStyle(fontSize: 13, color: ChowColors.gray700)),
+          ],
+          if (areas.isNotEmpty) ...[
+            if (bcs != null || activity != null) const SizedBox(height: 4),
+            Text('관심 건강 부위: ${areas.join(', ')}', style: const TextStyle(fontSize: 13, color: ChowColors.gray700)),
+          ],
+        ],
+      ),
     );
   }
 }

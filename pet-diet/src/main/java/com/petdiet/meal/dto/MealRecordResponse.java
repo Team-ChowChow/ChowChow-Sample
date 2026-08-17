@@ -18,6 +18,7 @@ public class MealRecordResponse {
     private String mealDate;
     private BigDecimal feedingAmountG;
     private Integer recipeId;
+    private Integer commercialFoodId;
     private String createdAt;
 
     public static MealRecordResponse from(MealRecord r) {
@@ -31,6 +32,7 @@ public class MealRecordResponse {
                 .mealDate(r.getMealDate())
                 .feedingAmountG(r.getFeedingAmountG())
                 .recipeId(r.getRecipeId())
+                .commercialFoodId(r.getCommercialFoodId())
                 .createdAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : null)
                 .build();
     }
