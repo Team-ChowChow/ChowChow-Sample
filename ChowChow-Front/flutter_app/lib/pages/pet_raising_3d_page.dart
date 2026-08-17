@@ -8,9 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
-/// 3D 뷰어(webview_flutter 기반)는 플랫폼별로 불안정해서 당분간 비활성화하고,
-/// 품종 그룹별로 미리 준비된 2D 캐릭터 이미지(assets/images/characters/)를 보여준다.
-/// 3D가 다시 준비되면 이 페이지만 교체하면 된다.
 class PetRaising3DPage extends StatefulWidget {
   final int petId;
 
@@ -23,32 +20,17 @@ class PetRaising3DPage extends StatefulWidget {
   State<PetRaising3DPage> createState() => _PetRaising3DPageState();
 }
 
-class _PetRaising3DPageState extends State<PetRaising3DPage>
-    with SingleTickerProviderStateMixin {
+class _PetRaising3DPageState extends State<PetRaising3DPage> {
   PetModel? _pet;
   bool _loading = true;
   String? _error;
-
-  late final AnimationController _floatCtrl;
-  late final Animation<double> _floatAnim;
+  String _currentAnimation = 'idle';
+  bool _isAnimating = false;
 
   @override
   void initState() {
     super.initState();
-    _floatCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _floatAnim = Tween<double>(begin: -8, end: 8).animate(
-      CurvedAnimation(parent: _floatCtrl, curve: Curves.easeInOut),
-    );
     _loadPet();
-  }
-
-  @override
-  void dispose() {
-    _floatCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _loadPet() async {
@@ -98,6 +80,76 @@ class _PetRaising3DPageState extends State<PetRaising3DPage>
     return groupMap[_pet?.groupName] ?? 1;
   }
 
+  String _getGifPath(String animation) {
+    final group = _groupNumber();
+    final animName = animation;
+
+    // 명시적 1:1 매핑
+    if (group == 1) {
+      if (animName == 'idle') return 'assets/gifs/group1_idle.gif';
+      if (animName == 'eating') return 'assets/gifs/group1_eating.gif';
+      if (animName == 'petting') return 'assets/gifs/group1_petting.gif';
+      if (animName == 'exercise') return 'assets/gifs/group1_exercise.gif';
+      if (animName == 'bath') return 'assets/gifs/group1_bath.gif';
+    } else if (group == 2) {
+      if (animName == 'idle') return 'assets/gifs/group2_idle.gif';
+      if (animName == 'eating') return 'assets/gifs/group2_eating.gif';
+      if (animName == 'petting') return 'assets/gifs/group2_petting.gif';
+      if (animName == 'exercise') return 'assets/gifs/group2_exercise.gif';
+      if (animName == 'bath') return 'assets/gifs/group2_bath.gif';
+    } else if (group == 3) {
+      if (animName == 'idle') return 'assets/gifs/group3_idle.gif';
+      if (animName == 'eating') return 'assets/gifs/group3_eating.gif';
+      if (animName == 'petting') return 'assets/gifs/group3_petting.gif';
+      if (animName == 'exercise') return 'assets/gifs/group3_exercise.gif';
+      if (animName == 'bath') return 'assets/gifs/group3_bath.gif';
+    } else if (group == 4) {
+      if (animName == 'idle') return 'assets/gifs/group4_idle.gif';
+      if (animName == 'eating') return 'assets/gifs/group4_eating.gif';
+      if (animName == 'petting') return 'assets/gifs/group4_petting.gif';
+      if (animName == 'exercise') return 'assets/gifs/group4_exercise.gif';
+      if (animName == 'bath') return 'assets/gifs/group4_bath.gif';
+    } else if (group == 5) {
+      if (animName == 'idle') return 'assets/gifs/group5_idle.gif';
+      if (animName == 'eating') return 'assets/gifs/group5_eating.gif';
+      if (animName == 'petting') return 'assets/gifs/group5_petting.gif';
+      if (animName == 'exercise') return 'assets/gifs/group5_exercise.gif';
+      if (animName == 'bath') return 'assets/gifs/group5_bath.gif';
+    } else if (group == 6) {
+      if (animName == 'idle') return 'assets/gifs/group6_idle.gif';
+      if (animName == 'eating') return 'assets/gifs/group6_eating.gif';
+      if (animName == 'petting') return 'assets/gifs/group6_petting.gif';
+      if (animName == 'exercise') return 'assets/gifs/group6_exercise.gif';
+      if (animName == 'bath') return 'assets/gifs/group6_bath.gif';
+    } else if (group == 7) {
+      if (animName == 'idle') return 'assets/gifs/group7_idle.gif';
+      if (animName == 'eating') return 'assets/gifs/group7_eating.gif';
+      if (animName == 'petting') return 'assets/gifs/group7_petting.gif';
+      if (animName == 'exercise') return 'assets/gifs/group7_exercise.gif';
+      if (animName == 'bath') return 'assets/gifs/group7_bath.gif';
+    }
+
+    return 'assets/gifs/group1_idle.gif'; // 기본값
+  }
+
+  void _playAnimation(String animation) {
+    if (_isAnimating) return;
+
+    setState(() {
+      _isAnimating = true;
+      _currentAnimation = animation;
+    });
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _currentAnimation = 'idle';
+          _isAnimating = false;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -125,14 +177,7 @@ class _PetRaising3DPageState extends State<PetRaising3DPage>
           ),
         ),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(_error!),
-              const SizedBox(height: 12),
-              OutlinedButton(onPressed: _loadPet, child: const Text('다시 시도')),
-            ],
-          ),
+          child: Text(_error!),
         ),
       );
     }
@@ -145,102 +190,61 @@ class _PetRaising3DPageState extends State<PetRaising3DPage>
           onPressed: () => context.pop(),
         ),
       ),
-      body: Stack(
-        children: [
-          DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [ChowCozy.stone100, ChowCozy.stone50],
-              ),
-            ),
-            child: Center(
-              child: AnimatedBuilder(
-                animation: _floatAnim,
-                builder: (context, child) => Transform.translate(
-                  offset: Offset(0, _floatAnim.value),
-                  child: child,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      'assets/images/characters/character_group_${_groupNumber()}.png',
-                      width: 220,
-                      height: 220,
-                      fit: BoxFit.contain,
-                      // 캐릭터 이미지가 아직 없거나 로드에 실패해도 화면 전체가 죽지 않도록,
-                      // 그 자리만 비워두고 나머지(스탯 카드 등)는 그대로 보여준다.
-                      errorBuilder: (_, _, _) => const SizedBox(width: 220, height: 220),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: ChowCozy.stone200,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        '🐾 2D 캐릭터 — 3D 뷰어는 준비 중이에요',
-                        style: TextStyle(fontSize: 12, color: ChowCozy.stone800),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _statRow('🍖 배고픔', 50),
-                  const SizedBox(height: 8),
-                  _statRow('😊 행복도', 80),
-                  const SizedBox(height: 8),
-                  _statRow('❤️ 건강도', 75),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statRow(String label, int value) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 80,
-          height: 6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: value / 100,
-              backgroundColor: ChowColors.gray200,
-              valueColor: AlwaysStoppedAnimation(
-                value > 70 ? ChowCozy.stone500 : ChowColors.red500,
-              ),
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [ChowCozy.stone100, ChowCozy.stone50],
           ),
         ),
-      ],
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                _getGifPath(_currentAnimation),
+                width: 280,
+                height: 280,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 40),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FloatingActionButton(
+                    mini: true,
+                    onPressed: _isAnimating ? null : () => _playAnimation('eating'),
+                    backgroundColor: _isAnimating ? Colors.grey : ChowCozy.stone500,
+                    child: const Text('🍖', style: TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 16),
+                  FloatingActionButton(
+                    mini: true,
+                    onPressed: _isAnimating ? null : () => _playAnimation('petting'),
+                    backgroundColor: _isAnimating ? Colors.grey : ChowCozy.stone500,
+                    child: const Text('❤️', style: TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 16),
+                  FloatingActionButton(
+                    mini: true,
+                    onPressed: _isAnimating ? null : () => _playAnimation('exercise'),
+                    backgroundColor: _isAnimating ? Colors.grey : ChowCozy.stone500,
+                    child: const Text('💪', style: TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 16),
+                  FloatingActionButton(
+                    mini: true,
+                    onPressed: _isAnimating ? null : () => _playAnimation('bath'),
+                    backgroundColor: _isAnimating ? Colors.grey : ChowCozy.stone500,
+                    child: const Text('🛁', style: TextStyle(fontSize: 20)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

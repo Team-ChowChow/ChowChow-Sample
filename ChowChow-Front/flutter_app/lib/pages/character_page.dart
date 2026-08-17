@@ -37,6 +37,7 @@ class _CharacterPageState extends State<CharacterPage>
   String _petName = '';
   String _petType = 'DOG';
   String? _characterImageUrl;
+  String? _groupName;
   String _roomBackgroundKey = 'room_sunrise';
   Set<String> _equippedDecorKeys = {};
   bool _attendanceClaimedToday = false;
@@ -52,6 +53,7 @@ class _CharacterPageState extends State<CharacterPage>
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
   final _random = Random();
+  String _currentAnimation = 'idle';
 
   late final AnimationController _idleCtrl;
   late final AnimationController _interactCtrl;
@@ -122,30 +124,62 @@ class _CharacterPageState extends State<CharacterPage>
     return url;
   }
 
+  int _getGroupNumber() {
+    final groupMap = {
+      'Toy': 1,
+      'Terrier': 2,
+      'Working': 3,
+      'Herding': 4,
+      'Hound': 5,
+      'Sporting': 6,
+      'Non-Sporting': 7,
+    };
+    return groupMap[_groupName] ?? 1;
+  }
+
+  String _getGifPath() {
+    final group = _getGroupNumber();
+    final anim = _currentAnimation;
+    final path = 'assets/gifs/group${group}_$anim.gif';
+    debugPrint('🎯 [CharacterPage] groupName=$_groupName, group=$group, anim=$anim, path=$path');
+    return path;
+  }
+
   Widget _buildCharacterImage(String url) {
-    final resolvedUrl = _resolveImageUrl(url);
     final fallback = Text(
       _petType == 'CAT' ? '🐱' : '🐶',
       style: const TextStyle(fontSize: 96),
     );
 
-    if (resolvedUrl.startsWith('assets/')) {
-      return Image.asset(
-        resolvedUrl,
-        fit: BoxFit.contain,
-        width: 220,
-        height: 220,
-        errorBuilder: (_, _, _) => fallback,
-      );
-    } else {
-      return Image.network(
-        resolvedUrl,
-        fit: BoxFit.contain,
-        width: 220,
-        height: 220,
-        errorBuilder: (_, _, _) => fallback,
-      );
-    }
+    // GIF 로드 시도
+    return Image.asset(
+      _getGifPath(),
+      fit: BoxFit.contain,
+      width: 220,
+      height: 220,
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('❌ [CharacterPage] GIF 로드 실패: ${_getGifPath()} - $error');
+        // GIF 실패 시 기존 이미지 로드
+        final resolvedUrl = _resolveImageUrl(url);
+        if (resolvedUrl.startsWith('assets/')) {
+          return Image.asset(
+            resolvedUrl,
+            fit: BoxFit.contain,
+            width: 220,
+            height: 220,
+            errorBuilder: (_, _, _) => fallback,
+          );
+        } else {
+          return Image.network(
+            resolvedUrl,
+            fit: BoxFit.contain,
+            width: 220,
+            height: 220,
+            errorBuilder: (_, _, _) => fallback,
+          );
+        }
+      },
+    );
   }
 
   Future<void> _loadCharacter() async {
@@ -155,11 +189,27 @@ class _CharacterPageState extends State<CharacterPage>
         final c =
             await ApiClient.get('/api/characters/${widget.characterId}')
                 as Map<String, dynamic>;
+        debugPrint('📊 Character API 응답: $c');
+
+        // petId로 pet 정보 조회해서 groupName 얻기
+        String? groupName = c['groupName'] as String?;
+        if (groupName == null && c['petId'] != null) {
+          try {
+            final pet = await ApiClient.get('/api/pets/${c['petId']}')
+                as Map<String, dynamic>;
+            debugPrint('📊 Pet API 응답: $pet');
+            groupName = pet['groupName'] as String?;
+          } catch (e) {
+            debugPrint('⚠️ Pet 조회 실패: $e');
+          }
+        }
+
         if (!mounted) return;
         setState(() {
           _petName = c['characterName'] as String? ?? '';
           _petType = c['petType'] as String? ?? 'DOG';
           _characterImageUrl = c['characterImageUrl'] as String?;
+          _groupName = groupName;
           level = (c['characterLevel'] as num?)?.toInt() ?? 1;
           exp = (c['currentExp'] as num?)?.toInt() ?? 0;
           maxExp = (c['requiredExp'] as num?)?.toInt() ?? 100;
@@ -399,8 +449,10 @@ class _CharacterPageState extends State<CharacterPage>
       if (!ok) return;
     }
 
+    String? gifAnimation;
     switch (activity.label) {
       case '밥주기':
+        gifAnimation = 'eating';
         await _runInteract(
           _InteractAnim.wiggle,
           duration: const Duration(milliseconds: 500),
@@ -412,6 +464,7 @@ class _CharacterPageState extends State<CharacterPage>
           },
         );
       case '쓰다듬기':
+        gifAnimation = 'petting';
         await _runInteract(
           _InteractAnim.scale,
           duration: const Duration(milliseconds: 400),
@@ -422,6 +475,7 @@ class _CharacterPageState extends State<CharacterPage>
           },
         );
       case '운동하기':
+        gifAnimation = 'exercise';
         await _runInteract(
           _InteractAnim.shake,
           duration: const Duration(milliseconds: 1000),
@@ -433,6 +487,7 @@ class _CharacterPageState extends State<CharacterPage>
           },
         );
       case '목욕시키기':
+        gifAnimation = 'bath';
         await _runInteract(
           _InteractAnim.wiggle,
           duration: const Duration(milliseconds: 800),
@@ -442,6 +497,15 @@ class _CharacterPageState extends State<CharacterPage>
             exp = (exp + 20).clamp(0, maxExp);
           },
         );
+    }
+
+    // GIF 애니메이션 설정
+    if (gifAnimation != null) {
+      setState(() => _currentAnimation = gifAnimation!);
+      await Future.delayed(const Duration(seconds: 3));
+      if (mounted) {
+        setState(() => _currentAnimation = 'idle');
+      }
     }
 
     // 경험치 만렙 레벨업

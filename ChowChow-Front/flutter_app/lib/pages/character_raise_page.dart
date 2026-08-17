@@ -167,9 +167,29 @@ class _ProfileCard extends StatelessWidget {
 
   final CharacterModel character;
 
+  int _getGroupNumber() {
+    final groupMap = {
+      'Toy': 1,
+      'Terrier': 2,
+      'Working': 3,
+      'Herding': 4,
+      'Hound': 5,
+      'Sporting': 6,
+      'Non-Sporting': 7,
+    };
+    return groupMap[character.groupName] ?? 1;
+  }
+
+  String _getGifPath() {
+    final group = _getGroupNumber();
+    final path = 'assets/gifs/group${group}_idle.gif';
+    debugPrint('🎯 [ProfileCard] groupName=${character.groupName}, group=$group, path=$path');
+    return path;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final img = character.characterImageUrl;
+    debugPrint('🎬 [ProfileCard] 빌드 시작 - 캐릭터: ${character.characterName}');
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: ChowColors.gray200)),
@@ -177,12 +197,20 @@ class _ProfileCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            if (img != null && img.isNotEmpty)
-              ClipOval(
-                child: SizedBox(width: 120, height: 120, child: ChowNetworkImage(url: img, fit: BoxFit.cover)),
-              )
-            else
-              const CircleAvatar(radius: 60, child: Icon(Icons.pets, size: 48)),
+            ClipOval(
+              child: SizedBox(
+                width: 120,
+                height: 120,
+                child: Image.asset(
+                  _getGifPath(),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    debugPrint('❌ [ProfileCard] GIF 로드 실패: ${_getGifPath()} - $error');
+                    return const Icon(Icons.pets, size: 48);
+                  },
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             Text(character.characterName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             if (character.typeBreedLine.isNotEmpty)

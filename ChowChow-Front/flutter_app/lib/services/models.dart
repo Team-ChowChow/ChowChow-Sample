@@ -197,6 +197,7 @@ class CharacterModel {
   final String? petTypeLabel;
   final int? breedId;
   final String? breedName;
+  final String? groupName;
   final int level;
   final int exp;
   final int requiredExp;
@@ -215,6 +216,7 @@ class CharacterModel {
     this.petTypeLabel,
     this.breedId,
     this.breedName,
+    this.groupName,
     required this.level,
     required this.exp,
     required this.requiredExp,
@@ -234,6 +236,7 @@ class CharacterModel {
         petTypeLabel: j['petTypeLabel'] as String?,
         breedId: j['breedId'] as int?,
         breedName: j['breedName'] as String?,
+        groupName: j['groupName'] as String?,
         level: j['characterLevel'] as int? ?? j['level'] as int? ?? 1,
         exp: j['currentExp'] as int? ?? j['exp'] as int? ?? 0,
         requiredExp: j['requiredExp'] as int? ?? 100,
