@@ -582,6 +582,16 @@ class _CharacterPageState extends State<CharacterPage>
   }
 
   Widget _buildCharacterStage(RoomVisualStyle roomStyle) {
+    return LayoutBuilder(
+      builder: (context, constraints) => _buildCharacterStageContent(
+        roomStyle,
+        constraints.maxWidth,
+        constraints.maxHeight,
+      ),
+    );
+  }
+
+  Widget _buildCharacterStageContent(RoomVisualStyle roomStyle, double stageWidth, double stageHeight) {
     return Stack(
       alignment: Alignment.center,
       clipBehavior: Clip.none,
@@ -628,10 +638,10 @@ class _CharacterPageState extends State<CharacterPage>
             final t = _decorCtrl.value * 2 * pi;
             return Stack(
               children: [
-                _FloatingDeco('🌸', top: 0.10, left: 0.08, dy: sin(t) * 10, angle: sin(t) * 0.09),
-                _FloatingDeco('🍖', top: 0.12, right: 0.10, dy: sin(t + 1.4) * 12),
-                _FloatingDeco('📚', bottom: 0.20, left: 0.06, dy: sin(t + 2.3) * 8),
-                _FloatingDeco('🎾', bottom: 0.22, right: 0.08, dy: sin(t + 0.7) * 10, angle: sin(t + 0.7) * 0.06),
+                _FloatingDeco('🌸', top: 0.10, left: 0.08, dy: sin(t) * 10, angle: sin(t) * 0.09, width: stageWidth, height: stageHeight),
+                _FloatingDeco('🍖', top: 0.12, right: 0.10, dy: sin(t + 1.4) * 12, width: stageWidth, height: stageHeight),
+                _FloatingDeco('📚', bottom: 0.20, left: 0.06, dy: sin(t + 2.3) * 8, width: stageWidth, height: stageHeight),
+                _FloatingDeco('🎾', bottom: 0.22, right: 0.08, dy: sin(t + 0.7) * 10, angle: sin(t + 0.7) * 0.06, width: stageWidth, height: stageHeight),
               ],
             );
           },
@@ -639,11 +649,11 @@ class _CharacterPageState extends State<CharacterPage>
 
         // 코인 상점에서 구매/장착한 방 소품
         if (_equippedDecorKeys.contains('decor_lamp'))
-          const _FloatingDeco('💡', bottom: 0.06, left: 0.10, dy: 0),
+          _FloatingDeco('💡', bottom: 0.06, left: 0.10, dy: 0, width: stageWidth, height: stageHeight),
         if (_equippedDecorKeys.contains('decor_plant'))
-          const _FloatingDeco('🪴', bottom: 0.04, right: 0.08, dy: 0),
+          _FloatingDeco('🪴', bottom: 0.04, right: 0.08, dy: 0, width: stageWidth, height: stageHeight),
         if (_equippedDecorKeys.contains('decor_cushion'))
-          const _FloatingDeco('🧸', bottom: 0.02, right: 0.32, dy: 0),
+          _FloatingDeco('🧸', bottom: 0.02, right: 0.32, dy: 0, width: stageWidth, height: stageHeight),
 
         // 캐릭터
         AnimatedBuilder(
@@ -859,6 +869,8 @@ class _FloatingDeco extends StatelessWidget {
     this.right,
     required this.dy,
     this.angle = 0,
+    required this.width,
+    required this.height,
   });
 
   final String emoji;
@@ -868,27 +880,25 @@ class _FloatingDeco extends StatelessWidget {
   final double? right;
   final double dy;
   final double angle;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Positioned(
-          top: top == null ? null : constraints.maxHeight * top!,
-          bottom: bottom == null ? null : constraints.maxHeight * bottom!,
-          left: left == null ? null : constraints.maxWidth * left!,
-          right: right == null ? null : constraints.maxWidth * right!,
-          child: IgnorePointer(
-            child: Transform.translate(
-              offset: Offset(0, dy),
-              child: Transform.rotate(
-                angle: angle,
-                child: Text(emoji, style: const TextStyle(fontSize: 26)),
-              ),
-            ),
+    return Positioned(
+      top: top == null ? null : height * top!,
+      bottom: bottom == null ? null : height * bottom!,
+      left: left == null ? null : width * left!,
+      right: right == null ? null : width * right!,
+      child: IgnorePointer(
+        child: Transform.translate(
+          offset: Offset(0, dy),
+          child: Transform.rotate(
+            angle: angle,
+            child: Text(emoji, style: const TextStyle(fontSize: 26)),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

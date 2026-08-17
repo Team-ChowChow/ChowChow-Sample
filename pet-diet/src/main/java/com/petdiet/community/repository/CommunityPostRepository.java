@@ -14,6 +14,10 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, In
 
     Page<CommunityPost> findAllByPostCategoryAndPostStatus(String postCategory, String postStatus, Pageable pageable);
 
+    Page<CommunityPost> findAllByPetTypeAndPostStatus(String petType, String postStatus, Pageable pageable);
+
+    Page<CommunityPost> findAllByPostCategoryAndPetTypeAndPostStatus(String postCategory, String petType, String postStatus, Pageable pageable);
+
     Page<CommunityPost> findAllByUserAndPostStatus(User user, String postStatus, Pageable pageable);
 
     Optional<CommunityPost> findByPostIdAndPostStatus(Integer postId, String postStatus);

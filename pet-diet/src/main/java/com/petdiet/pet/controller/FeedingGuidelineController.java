@@ -22,9 +22,10 @@ public class FeedingGuidelineController {
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer petId,
             @RequestParam(required = false) Integer recipeId,
+            @RequestParam(required = false) Integer commercialFoodId,
             @RequestParam(required = false) BigDecimal kcalPer100g,
             @RequestParam(required = false) BigDecimal currentFeedingAmountG) {
         return ResponseEntity.ok(feedingGuidelineService.calculate(
-                principal.authUuid(), petId, recipeId, kcalPer100g, currentFeedingAmountG));
+                principal.authUuid(), petId, recipeId, commercialFoodId, kcalPer100g, currentFeedingAmountG));
     }
 }
