@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
@@ -27,9 +25,6 @@ class _HomePageState extends State<HomePage> {
   List<RecipeModel> _recipes = [];
   bool _loading = true;
 
-  List<_MealRecord> _mealRecords = [];
-  bool _mealLoading = true;
-
   String _tipText = '';
   String _tipDetail = '';
 
@@ -41,7 +36,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _pageController = PageController();
     _loadRecipes();
-    _loadMealRecords();
     _loadTip();
     _loadWalkSummary();
   }
@@ -68,43 +62,6 @@ class _HomePageState extends State<HomePage> {
           _tipDetail = res['detail'] as String? ?? '';
         });
       }
-    } catch (_) {}
-  }
-
-  Future<void> _loadMealRecords() async {
-    try {
-      final res = await ApiClient.get('/api/meal-records') as List<dynamic>;
-      if (!mounted) return;
-      setState(() {
-        _mealRecords = res.map((e) {
-          final m = e as Map<String, dynamic>;
-          return _MealRecord(
-            mealId: m['mealId'] as int? ?? 0,
-            title: m['mealTitle'] as String? ?? '',
-            imageUrl: m['imageUrl'] as String?,
-            petName: m['petName'] as String?,
-            mealDate: m['mealDate'] as String?,
-          );
-        }).toList();
-        _mealLoading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _mealLoading = false);
-    }
-  }
-
-  Future<void> _addMealRecord() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked == null || !mounted) return;
-    try {
-      final url = await ApiClient.uploadImage(File(picked.path), type: 'meal');
-      await ApiClient.post('/api/meal-records', {
-        'mealTitle': '${DateTime.now().month}/${DateTime.now().day} 식단',
-        'imageUrl': url,
-        'mealDate': DateTime.now().toIso8601String().substring(0, 10),
-      });
-      await _loadMealRecords();
     } catch (_) {}
   }
 
@@ -298,91 +255,10 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 32),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '나의 식단 기록',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: ChowColors.gray800,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                          TextButton(
-                            onPressed: () => context.go('/search'),
-                            child: const Text(
-                              '전체보기',
-                              style: TextStyle(
-                                color: ChowCozy.stone500,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: _FeedingCalculatorEntry(
+                        onTap: () => context.push('/feeding-guideline'),
                       ),
                     ),
-                    if (_mealLoading)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: LinearProgressIndicator(minHeight: 2),
-                      )
-                    else if (_mealRecords.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: GestureDetector(
-                          onTap: _addMealRecord,
-                          child: Container(
-                            height: 96,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: ChowColors.gray300, width: 2),
-                              color: ChowColors.gray50,
-                            ),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.camera_alt_outlined, size: 32, color: ChowColors.gray400),
-                                SizedBox(height: 8),
-                                Text('오늘의 식단을 기록해보세요', style: TextStyle(fontSize: 14, color: ChowColors.gray600)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: [
-                            GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: 0.85,
-                              ),
-                              itemCount: _mealRecords.take(4).length,
-                              itemBuilder: (context, i) => _MealRecordCard(record: _mealRecords[i]),
-                            ),
-                            const SizedBox(height: 10),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _addMealRecord,
-                                icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                                label: const Text('식단 사진 추가'),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: ChowCozy.stone500,
-                                  side: const BorderSide(color: ChowCozy.stone300),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     const SizedBox(height: 32),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1097,61 +973,59 @@ class _HeaderNotice {
   }
 }
 
-class _MealRecord {
-  const _MealRecord({
-    required this.mealId,
-    required this.title,
-    this.imageUrl,
-    this.petName,
-    this.mealDate,
-  });
-  final int mealId;
-  final String title;
-  final String? imageUrl;
-  final String? petName;
-  final String? mealDate;
-}
-
-class _MealRecordCard extends StatelessWidget {
-  const _MealRecordCard({required this.record});
-  final _MealRecord record;
-
-  static const _placeholder =
-      'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=400&q=80';
+class _FeedingCalculatorEntry extends StatelessWidget {
+  const _FeedingCalculatorEntry({required this.onTap});
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      elevation: 1,
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
       color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: ChowNetworkImage(url: record.imageUrl ?? _placeholder),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: ChowCozy.stone300),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  record.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ChowColors.gray800),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: ChowCozy.stone100,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                if (record.mealDate != null)
-                  Text(
-                    record.mealDate!,
-                    style: const TextStyle(fontSize: 10, color: ChowColors.gray500),
-                  ),
-              ],
-            ),
+                child: const Icon(Icons.calculate_outlined, color: ChowCozy.stone500),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '급여량 계산기',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: ChowColors.gray800,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '먹는 사료를 고르고 오늘의 식단을 기록해보세요',
+                      style: TextStyle(fontSize: 13, color: ChowColors.gray500),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: ChowColors.gray400),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

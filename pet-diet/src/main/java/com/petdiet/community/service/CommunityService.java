@@ -31,11 +31,21 @@ public class CommunityService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public Page<PostResponse> getPosts(UUID authUuid, String category, Pageable pageable) {
+    public Page<PostResponse> getPosts(UUID authUuid, String category, String petType, Pageable pageable) {
         User user = getUser(authUuid);
-        Page<CommunityPost> posts = (category == null || category.isBlank())
-                ? postRepository.findAllByPostStatus("ACTIVE", pageable)
-                : postRepository.findAllByPostCategoryAndPostStatus(category, "ACTIVE", pageable);
+        boolean hasCategory = category != null && !category.isBlank();
+        boolean hasPetType = petType != null && !petType.isBlank();
+
+        Page<CommunityPost> posts;
+        if (hasCategory && hasPetType) {
+            posts = postRepository.findAllByPostCategoryAndPetTypeAndPostStatus(category, petType, "ACTIVE", pageable);
+        } else if (hasCategory) {
+            posts = postRepository.findAllByPostCategoryAndPostStatus(category, "ACTIVE", pageable);
+        } else if (hasPetType) {
+            posts = postRepository.findAllByPetTypeAndPostStatus(petType, "ACTIVE", pageable);
+        } else {
+            posts = postRepository.findAllByPostStatus("ACTIVE", pageable);
+        }
 
         return posts.map(post -> PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user)));
     }

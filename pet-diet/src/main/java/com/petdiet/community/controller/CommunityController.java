@@ -25,8 +25,9 @@ public class CommunityController {
     public ResponseEntity<Page<PostResponse>> getPosts(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String petType,
             @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(communityService.getPosts(principal.authUuid(), category, pageable));
+        return ResponseEntity.ok(communityService.getPosts(principal.authUuid(), category, petType, pageable));
     }
 
     @GetMapping("/posts/{postId}")

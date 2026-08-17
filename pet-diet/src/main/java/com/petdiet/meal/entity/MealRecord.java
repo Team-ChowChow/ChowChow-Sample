@@ -48,6 +48,9 @@ public class MealRecord {
     @Column(name = "\"recipeId\"")
     private Integer recipeId;
 
+    @Column(name = "\"commercialFoodId\"")
+    private Integer commercialFoodId;
+
     @CreationTimestamp
     @Column(name = "\"createdAt\"", updatable = false)
     private OffsetDateTime createdAt;

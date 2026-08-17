@@ -6,12 +6,16 @@ class CommunityService {
 
   static Future<List<CommunityPost>> getPosts({
     String? category,
+    String? petType,
     String? sortBy,
     String? sortOrder,
   }) async {
     final query = <String, String>{};
     if (category != null && category != '전체') {
       query['category'] = category;
+    }
+    if (petType != null) {
+      query['petType'] = petType;
     }
     // 정렬 파라미터 추가 (예: 'likes,desc', 'createdAt,desc')
     if (sortBy != null) {

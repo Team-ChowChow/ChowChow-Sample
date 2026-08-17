@@ -2,6 +2,7 @@ package com.petdiet.pet.service;
 
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
+import com.petdiet.food.repository.CommercialFoodRepository;
 import com.petdiet.pet.dto.FeedingGuidelineResponse;
 import com.petdiet.pet.entity.UserPet;
 import com.petdiet.pet.repository.UserPetRepository;
@@ -27,6 +28,7 @@ public class FeedingGuidelineService {
     private final UserPetRepository userPetRepository;
     private final UserRepository userRepository;
     private final RecipeNutritionSummaryRepository nutritionRepository;
+    private final CommercialFoodRepository commercialFoodRepository;
 
     private static final BigDecimal GROWING_FACTOR = BigDecimal.valueOf(2.5);
     private static final BigDecimal ADULT_NEUTERED_FACTOR = BigDecimal.valueOf(1.6);
@@ -34,7 +36,7 @@ public class FeedingGuidelineService {
     private static final BigDecimal STATUS_TOLERANCE = BigDecimal.valueOf(0.1); // ±10%
 
     @Transactional(readOnly = true)
-    public FeedingGuidelineResponse calculate(UUID authUuid, Integer petId, Integer recipeId,
+    public FeedingGuidelineResponse calculate(UUID authUuid, Integer petId, Integer recipeId, Integer commercialFoodId,
                                                BigDecimal kcalPer100g, BigDecimal currentFeedingAmountG) {
         User user = findUser(authUuid);
         UserPet pet = userPetRepository.findByPetIdAndUser(petId, user)
@@ -52,7 +54,7 @@ public class FeedingGuidelineService {
                 .setScale(1, RoundingMode.HALF_UP);
         BigDecimal mer = rer.multiply(factor).setScale(1, RoundingMode.HALF_UP);
 
-        BigDecimal density = resolveKcalPer100g(recipeId, kcalPer100g);
+        BigDecimal density = resolveKcalPer100g(recipeId, commercialFoodId, kcalPer100g);
         BigDecimal recommendedGrams = density != null && density.compareTo(BigDecimal.ZERO) > 0
                 ? mer.divide(density, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                         .setScale(1, RoundingMode.HALF_UP)
@@ -88,8 +90,13 @@ public class FeedingGuidelineService {
                 .build();
     }
 
-    private BigDecimal resolveKcalPer100g(Integer recipeId, BigDecimal kcalPer100g) {
+    private BigDecimal resolveKcalPer100g(Integer recipeId, Integer commercialFoodId, BigDecimal kcalPer100g) {
         if (kcalPer100g != null) return kcalPer100g;
+        if (commercialFoodId != null) {
+            return commercialFoodRepository.findById(commercialFoodId)
+                    .map(f -> f.getCaloriesPer100g())
+                    .orElse(null);
+        }
         if (recipeId == null) return null;
         return nutritionRepository.findByRecipeRecipeId(recipeId)
                 .filter(n -> n.getTotalWeight() != null && n.getTotalCalories() != null

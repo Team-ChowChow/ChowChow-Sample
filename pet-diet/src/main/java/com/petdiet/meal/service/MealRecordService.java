@@ -50,6 +50,7 @@ public class MealRecordService {
                 .mealDate(req.getMealDate())
                 .feedingAmountG(req.getFeedingAmountG())
                 .recipeId(req.getRecipeId())
+                .commercialFoodId(req.getCommercialFoodId())
                 .build();
 
         return MealRecordResponse.from(mealRecordRepository.save(record));
