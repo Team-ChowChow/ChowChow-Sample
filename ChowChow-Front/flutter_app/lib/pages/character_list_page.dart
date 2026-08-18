@@ -95,7 +95,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
                 children: [
                   const Text(
                     '캐릭터 키우기',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: ChowColors.gray800),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: ChowColors.gray800),
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -106,7 +106,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
                           children: [
                             const Text(
                               '캐릭터 관리',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray700),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray700),
                             ),
                             FittedBox(
                               fit: BoxFit.scaleDown,
@@ -281,7 +281,7 @@ class _CharacterCard extends StatelessWidget {
                       children: [
                         Text(
                           character.characterName,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ChowColors.gray800),
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: ChowColors.gray800),
                         ),
                         if (character.typeBreedLine.isNotEmpty)
                           Text(
@@ -297,7 +297,7 @@ class _CharacterCard extends StatelessWidget {
                           ),
                           child: Text(
                             '레벨 ${character.level}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ChowCozy.stone700),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ChowCozy.stone700),
                           ),
                         ),
                       ],

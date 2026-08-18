@@ -250,7 +250,7 @@ class _ResultView extends StatelessWidget {
           const SizedBox(height: 16),
           const Text(
             '아이디를 찾았습니다',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: ChowColors.gray900),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: ChowColors.gray900),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -273,7 +273,7 @@ class _ResultView extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   foundEmail,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: ChowColors.gray900),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: ChowColors.gray900),
                 ),
               ],
             ),

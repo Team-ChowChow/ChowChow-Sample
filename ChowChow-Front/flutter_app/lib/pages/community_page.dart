@@ -378,7 +378,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                           TextButton(
                             onPressed: _loadPosts,
                             style: TextButton.styleFrom(foregroundColor: ChowCozy.stone500),
-                            child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w600)),
+                            child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w500)),
                           ),
                         ],
                       ),
@@ -494,7 +494,7 @@ class _TabChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: isSmall ? 11 : 13,
                 color: selected ? Colors.white : ChowColors.gray600,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
               ),
             ),
           ),
@@ -692,7 +692,7 @@ class _PostCardState extends State<_PostCard> {
                         Text(
                           post.author,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             color: ChowColors.gray800,
                           ),
                         ),
@@ -729,7 +729,7 @@ class _PostCardState extends State<_PostCard> {
                       post.title!,
                       style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: ChowColors.gray900,
                       ),
                     ),
@@ -751,7 +751,7 @@ class _PostCardState extends State<_PostCard> {
                         style: const TextStyle(
                           fontSize: 11,
                           color: ChowColors.gray600,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -818,7 +818,7 @@ class _PostCardState extends State<_PostCard> {
                       style: TextStyle(
                         color: likeColor,
                         fontWeight:
-                            post.likedByMe ? FontWeight.w700 : FontWeight.w500,
+                            post.likedByMe ? FontWeight.w500 : FontWeight.w500,
                       ),
                     ),
                   ),
@@ -999,7 +999,7 @@ class _PostCommentsSheetState extends State<_PostCommentsSheet> {
               style: TextStyle(
                 color: ChowColors.gray900,
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 18),
@@ -1050,7 +1050,7 @@ class _EmptyComments extends StatelessWidget {
             style: TextStyle(
               color: ChowColors.gray900,
               fontSize: 24,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
             ),
           ),
           SizedBox(height: 14),
@@ -1059,7 +1059,7 @@ class _EmptyComments extends StatelessWidget {
             style: TextStyle(
               color: ChowColors.gray500,
               fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -1126,7 +1126,7 @@ class _SheetCommentTile extends StatelessWidget {
                       style: const TextStyle(
                         color: ChowColors.gray900,
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1163,7 +1163,7 @@ class _SheetCommentTile extends StatelessWidget {
                         style: const TextStyle(
                           color: ChowColors.gray500,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -1174,7 +1174,7 @@ class _SheetCommentTile extends StatelessWidget {
                         style: TextStyle(
                           color: ChowColors.gray500,
                           fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -1415,7 +1415,7 @@ class _PostMenuItem extends StatelessWidget {
           style: TextStyle(
             color: color,
             fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -1441,7 +1441,7 @@ class _CategoryBadge extends StatelessWidget {
         style: const TextStyle(
           color: ChowCozy.stone700,
           fontSize: 11,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

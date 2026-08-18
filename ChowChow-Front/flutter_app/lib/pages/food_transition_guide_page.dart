@@ -90,7 +90,7 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
                 ),
                 const SizedBox(height: 20),
                 if (_pets.isNotEmpty) ...[
-                  const Text('반려동물', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('반려동물', style: TextStyle(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<PetModel>(
                     initialValue: _selectedPet,
@@ -199,7 +199,7 @@ class _FoodPickerFieldState extends State<_FoodPickerField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         if (widget.selected != null)
           Container(
@@ -291,7 +291,7 @@ class _FoodTransitionResultView extends StatelessWidget {
           ),
           child: Text(
             result.summary,
-            style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4),
+            style: const TextStyle(fontWeight: FontWeight.w500, height: 1.4),
           ),
         ),
         const SizedBox(height: 16),
@@ -301,7 +301,7 @@ class _FoodTransitionResultView extends StatelessWidget {
         ],
         if (result.warnings.isNotEmpty) ...[
           const SizedBox(height: 8),
-          const Text('주의사항', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('주의사항', style: TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           for (final w in result.warnings)
             Padding(
@@ -336,7 +336,7 @@ class _TransitionStepCard extends StatelessWidget {
         children: [
           SizedBox(
             width: 72,
-            child: Text(step.dayRange, style: const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(step.dayRange, style: const TextStyle(fontWeight: FontWeight.w500)),
           ),
           Expanded(
             child: ClipRRect(

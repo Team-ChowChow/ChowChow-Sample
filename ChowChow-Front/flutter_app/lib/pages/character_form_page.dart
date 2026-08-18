@@ -211,7 +211,7 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
                       '$_coinBalance',
                       style: const TextStyle(
                         color: ChowCozy.stone700,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         fontSize: 14,
                       ),
                     ),
@@ -274,7 +274,7 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
                               )
                             : Text(
                                 widget.isEdit ? '수정 완료' : '생성하기',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                               ),
                       ),
                     ],
@@ -306,7 +306,7 @@ class _PetSelectionSection extends StatelessWidget {
       children: [
         const Text(
           '반려동물 선택 *',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: ChowColors.gray800),
+          style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15, color: ChowColors.gray800),
         ),
         const SizedBox(height: 4),
         const Text(
@@ -417,7 +417,7 @@ class _PetCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     color: hasCharacter
                         ? ChowColors.gray400
                         : selected
@@ -458,7 +458,7 @@ class _GeneratingImageOverlay extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               '$petName의 AI 캐릭터 생성 중...',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray800),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),

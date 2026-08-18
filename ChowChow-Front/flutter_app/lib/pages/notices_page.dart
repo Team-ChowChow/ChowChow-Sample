@@ -500,7 +500,7 @@ class _NoticeTextContent extends StatelessWidget {
           style: const TextStyle(
             color: Color(0xFF111827),
             fontSize: 16,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             height: 1.28,
           ),
         ),
@@ -582,7 +582,7 @@ class _Badge extends StatelessWidget {
         style: const TextStyle(
           color: Colors.white,
           fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
           height: 1.0,
           letterSpacing: -0.2,
         ),

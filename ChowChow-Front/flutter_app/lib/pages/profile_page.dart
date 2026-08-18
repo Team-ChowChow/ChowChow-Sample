@@ -397,7 +397,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               '반려동물 추가',
                               style: TextStyle(
                                 fontSize: 22,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w500,
                                 color: Color(0xFF111827),
                               ),
                             ),
@@ -473,7 +473,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   '추가하기',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
@@ -1044,7 +1044,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                  Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 18),
                   Expanded(
                     child: options.isEmpty
@@ -1153,7 +1153,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ? ChowCozy.stone700
                           : ChowColors.gray700,
                       fontWeight: selected
-                          ? FontWeight.w600
+                          ? FontWeight.w500
                           : FontWeight.normal,
                     ),
                   ),
@@ -1191,7 +1191,7 @@ class _ProfilePageState extends State<ProfilePage> {
             onTap: () => updateForm(() => _isExactBirthdate = exact),
             child: AnimatedContainer(duration: const Duration(milliseconds: 150), padding: const EdgeInsets.symmetric(vertical: 13),
               decoration: BoxDecoration(color: _isExactBirthdate == exact ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(10), boxShadow: _isExactBirthdate == exact ? const [BoxShadow(color: Colors.black12, blurRadius: 4)] : null),
-              child: Text(exact ? '정확한 날짜' : '대략', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: _isExactBirthdate == exact ? ChowColors.gray900 : ChowColors.gray500))),
+              child: Text(exact ? '정확한 날짜' : '대략', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w500, color: _isExactBirthdate == exact ? ChowColors.gray900 : ChowColors.gray500))),
           )),
         ]),
       ),
@@ -1248,7 +1248,7 @@ class _ProfilePageState extends State<ProfilePage> {
   ) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: ChowColors.gray700)),
+      Text(label, style: const TextStyle(fontWeight: FontWeight.w500, color: ChowColors.gray700)),
       const SizedBox(height: 6),
       Container(
         height: 64,
@@ -1263,7 +1263,7 @@ class _ProfilePageState extends State<ProfilePage> {
               onPressed: value > 0 ? () => onChanged(value - 1) : null,
               icon: const Icon(Icons.remove),
             ),
-            Text('$value', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            Text('$value', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
             IconButton(
               onPressed: value < max ? () => onChanged(value + 1) : null,
               icon: const Icon(Icons.add),
@@ -1303,9 +1303,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                const Text('체중 기록', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('체중 기록', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 16),
-                const Text('체중 *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text('체중 *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 16),
                 TextField(
                   controller: weightController,
@@ -1322,7 +1322,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           'kg',
                           style: TextStyle(
                             fontSize: 22,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: ChowColors.gray800,
                           ),
                         ),
@@ -1336,7 +1336,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onChanged: (value) => setSheet(() => temporaryWeight = value),
                 ),
                 const SizedBox(height: 16),
-                const Text('신체충실지수 (BCS) *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text('신체충실지수 (BCS) *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1348,7 +1348,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Container(
                         width: 34, height: 34, alignment: Alignment.center,
                         decoration: BoxDecoration(shape: BoxShape.circle, color: selected ? ChowCozy.stone700 : Colors.white, border: Border.all(color: selected ? ChowCozy.stone700 : ChowColors.gray300)),
-                        child: Text('${index + 1}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: selected ? Colors.white : ChowColors.gray600)),
+                        child: Text('${index + 1}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: selected ? Colors.white : ChowColors.gray600)),
                       ),
                     );
                   }),
@@ -1514,7 +1514,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           '알림',
                           style: TextStyle(
                             fontSize: 26,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         const Spacer(),
@@ -1600,7 +1600,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               Text(
                                                 item.title,
                                                 style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
+                                                  fontWeight: FontWeight.w500,
                                                   fontSize: 16,
                                                 ),
                                               ),
@@ -1758,7 +1758,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 20,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w500,
                                         height: 1.2,
                                       ),
                                     ),
@@ -1844,7 +1844,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     '우리 아이들',
                                     style: TextStyle(
                                       fontSize: 17,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w500,
                                       color: ChowColors.gray800,
                                     ),
                                   ),
@@ -2059,7 +2059,7 @@ class _StatTile extends StatelessWidget {
             style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               height: 1,
             ),
           ),
@@ -2253,7 +2253,7 @@ class _PetRowState extends State<_PetRow> {
                 pet.petName,
                 style: const TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   color: ChowColors.gray900,
                 ),
               ),
@@ -2351,9 +2351,9 @@ class _PetRowState extends State<_PetRow> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('반려동물 특징 수정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text('반려동물 특징 수정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 20),
-                Text('체형 점수 (BCS): $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('체형 점수 (BCS): $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 const Text('1(마름) ~ 5(적정) ~ 9(비만)', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
                 Slider(
                   value: bcs.toDouble(),
@@ -2365,7 +2365,7 @@ class _PetRowState extends State<_PetRow> {
                   onChanged: (v) => setSheet(() => bcs = v.round()),
                 ),
                 const SizedBox(height: 12),
-                Text('활동량: ${_activityLabels[activity - 1]}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('활동량: ${_activityLabels[activity - 1]}', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 Slider(
                   value: activity.toDouble(),
                   min: 1,
@@ -2376,7 +2376,7 @@ class _PetRowState extends State<_PetRow> {
                   onChanged: (v) => setSheet(() => activity = v.round()),
                 ),
                 const SizedBox(height: 12),
-                const Text('관심 건강 부위 (최대 3개)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Text('관심 건강 부위 (최대 3개)', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -2510,7 +2510,7 @@ class _PetRowState extends State<_PetRow> {
                             pet.petName,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: ChowColors.gray800,
                               height: 1.2,
                             ),

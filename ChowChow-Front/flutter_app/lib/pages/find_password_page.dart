@@ -87,7 +87,7 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
             const SizedBox(height: 16),
             const Text(
               '비밀번호 변경 완료',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: ChowColors.gray900),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: ChowColors.gray900),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -116,7 +116,7 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
             const Text(
               '새 비밀번호 설정',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: ChowColors.gray900),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: ChowColors.gray900),
             ),
             const SizedBox(height: 8),
             const Text(

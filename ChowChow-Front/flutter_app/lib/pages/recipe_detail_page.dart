@@ -147,7 +147,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             children: [
               Container(width: 40, height: 4, decoration: BoxDecoration(color: ChowColors.gray300, borderRadius: BorderRadius.circular(99))),
               const SizedBox(height: 16),
-              const Text('리뷰 작성', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('리뷰 작성', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -190,7 +190,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     Navigator.of(ctx).pop();
                     _submitReview(selectedRating, text);
                   },
-                  child: const Text('등록하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  child: const Text('등록하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 ),
               ),
             ],
@@ -345,7 +345,7 @@ class _DetailHeader extends StatelessWidget {
                 style: TextStyle(
                   color: ChowColors.gray900,
                   fontSize: 17,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -426,7 +426,7 @@ class _InstagramActionBar extends StatelessWidget {
                 style: const TextStyle(
                   color: ChowColors.gray900,
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             )
@@ -456,7 +456,7 @@ class _TitleSection extends StatelessWidget {
             style: const TextStyle(
               color: ChowColors.gray900,
               fontSize: 21,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
               height: 1.25,
             ),
           ),
@@ -483,7 +483,7 @@ class _TitleSection extends StatelessWidget {
                       style: const TextStyle(
                         color: ChowCozy.stone700,
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -509,7 +509,7 @@ class _TitleSection extends StatelessWidget {
                       '관리자',
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: ChowColors.gray900,
                       ),
                     ),
@@ -712,7 +712,7 @@ class _IngredientsSection extends StatelessWidget {
                     style: const TextStyle(
                       color: ChowColors.gray600,
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -764,7 +764,7 @@ class _InstructionsSection extends StatelessWidget {
                       '${step.step}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -837,7 +837,7 @@ class _NutritionSection extends StatelessWidget {
                       style: const TextStyle(
                         color: ChowColors.gray900,
                         fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -905,13 +905,13 @@ class _LoadErrorBanner extends StatelessWidget {
           const Expanded(
             child: Text(
               '레시피 정보를 불러오지 못했어요',
-              style: TextStyle(color: Color(0xFFB91C1C), fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(color: Color(0xFFB91C1C), fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
           TextButton(
             onPressed: onRetry,
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
-            child: const Text('다시 시도', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            child: const Text('다시 시도', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -1038,7 +1038,7 @@ class _ReviewsSection extends StatelessWidget {
                       recipe.rating.toStringAsFixed(1),
                       style: const TextStyle(
                         fontSize: 28,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                         color: ChowColors.gray900,
                       ),
                     ),
@@ -1128,7 +1128,7 @@ class _StatCell extends StatelessWidget {
                 value,
                 style: const TextStyle(
                   color: ChowColors.gray900,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w500,
                   fontSize: 14,
                 ),
               ),
@@ -1210,7 +1210,7 @@ class _TabButton extends StatelessWidget {
           label,
           style: TextStyle(
             color: selected ? ChowCozy.stone500 : ChowColors.gray600,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
           ),
         ),
       ),
@@ -1230,7 +1230,7 @@ class _SectionTitle extends StatelessWidget {
       style: const TextStyle(
         color: ChowColors.gray900,
         fontSize: 16,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w500,
       ),
     );
   }
@@ -1265,7 +1265,7 @@ class _RelatedCard extends StatelessWidget {
             style: const TextStyle(
               color: ChowColors.gray900,
               fontSize: 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 4),
@@ -1318,7 +1318,7 @@ class _ReviewTile extends StatelessWidget {
                             style: const TextStyle(
                               color: ChowColors.gray900,
                               fontSize: 13,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -1697,7 +1697,7 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
           children: [
             Icon(Icons.check_circle_outline, color: ChowCozy.stone500),
             SizedBox(width: 8),
-            Text('급여 기록', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text('급여 기록', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
           ],
         ),
         content: Column(
@@ -1782,14 +1782,14 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
                       children: [
                         Icon(Icons.check_circle, color: ChowCozy.stone500, size: 20),
                         SizedBox(width: 8),
-                        Text('조리 완료 기록됨', style: TextStyle(color: ChowCozy.stone500, fontWeight: FontWeight.w600)),
+                        Text('조리 완료 기록됨', style: TextStyle(color: ChowCozy.stone500, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   )
                 : FilledButton.icon(
                     onPressed: _confirmAndComplete,
                     icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('조리 완료', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    label: const Text('조리 완료', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                     style: FilledButton.styleFrom(
                       backgroundColor: ChowCozy.stone500,
                       padding: const EdgeInsets.symmetric(vertical: 14),

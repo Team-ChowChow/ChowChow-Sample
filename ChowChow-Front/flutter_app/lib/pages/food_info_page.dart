@@ -127,7 +127,7 @@ class _FoodInfoPageState extends State<FoodInfoPage> {
               ],
             ),
             const SizedBox(height: 12),
-            const Text('1. 반려동물 종류', style: TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w600)),
+            const Text('1. 반려동물 종류', style: TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w500)),
             const SizedBox(height: 6),
             Row(
               children: [
@@ -152,7 +152,7 @@ class _FoodInfoPageState extends State<FoodInfoPage> {
             ),
             if (_brands.isNotEmpty) ...[
               const SizedBox(height: 14),
-              const Text('2. 브랜드', style: TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w600)),
+              const Text('2. 브랜드', style: TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w500)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String?>(
                 key: ValueKey(_filter),
@@ -250,12 +250,12 @@ class _FoodCard extends StatelessWidget {
               children: [
                 Text(
                   food.brandName,
-                  style: const TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   food.productName,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
                 if (food.features != null) ...[
                   const SizedBox(height: 6),
@@ -301,7 +301,7 @@ class _NutrientChip extends StatelessWidget {
       ),
       child: Text(
         '$label ${value!.toStringAsFixed(1)}$unit/100g',
-        style: const TextStyle(fontSize: 12, color: ChowCozy.stone700, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontSize: 12, color: ChowCozy.stone700, fontWeight: FontWeight.w500),
       ),
     );
   }

@@ -166,7 +166,7 @@ class _DietLogCard extends StatelessWidget {
                   children: [
                     Text(
                       recipe.recipeTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (recipe.recipeDescription != null) ...[

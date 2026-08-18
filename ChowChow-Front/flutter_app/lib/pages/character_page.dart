@@ -728,7 +728,7 @@ class _CharacterPageState extends State<CharacterPage>
                       '$_coins',
                       style: const TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone800,
                       ),
                     ),
@@ -803,7 +803,7 @@ class _CharacterPageState extends State<CharacterPage>
                       _sceneLabelFor(_scene)!,
                       style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone700,
                       ),
                     )
@@ -820,7 +820,7 @@ class _CharacterPageState extends State<CharacterPage>
                           roomStyle.label,
                           style: const TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: ChowCozy.stone700,
                           ),
                         ),
@@ -1014,7 +1014,7 @@ class _CharacterPageState extends State<CharacterPage>
                     '$level',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                       fontSize: 14,
                     ),
                   ),
@@ -1031,7 +1031,7 @@ class _CharacterPageState extends State<CharacterPage>
                             _petName.isNotEmpty ? _petName : '나의 반려동물',
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                               color: ChowCozy.stone900,
                             ),
                           ),
@@ -1162,7 +1162,7 @@ class _ShortcutChip extends StatelessWidget {
                     data.label,
                     style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       color: ChowCozy.stone800,
                     ),
                   ),
@@ -1185,7 +1185,7 @@ class _ShortcutChip extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 9,
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -1367,7 +1367,7 @@ class _StatRow extends StatelessWidget {
               '$value%',
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 color: ChowCozy.stone800,
               ),
             ),
@@ -1421,7 +1421,7 @@ class _ActionButton extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     color: ChowCozy.stone800,
                   ),
                 ),

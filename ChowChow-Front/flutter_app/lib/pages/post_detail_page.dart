@@ -202,7 +202,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         _loadData();
                       },
                       style: TextButton.styleFrom(foregroundColor: ChowCozy.stone500),
-                      child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w600)),
+                      child: const Text('다시 시도', style: TextStyle(fontWeight: FontWeight.w500)),
                     ),
                   ],
                 )
@@ -277,7 +277,7 @@ class _DetailHeader extends StatelessWidget {
                 style: TextStyle(
                   color: ChowColors.gray900,
                   fontSize: 17,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -339,7 +339,7 @@ class _PostContentSection extends StatelessWidget {
                         style: const TextStyle(
                           color: ChowColors.gray900,
                           fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -387,7 +387,7 @@ class _PostContentSection extends StatelessWidget {
                 style: const TextStyle(
                   color: ChowColors.gray900,
                   fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   height: 1.4,
                 ),
               ),
@@ -434,7 +434,7 @@ class _PostContentSection extends StatelessWidget {
                       style: const TextStyle(
                         color: ChowCozy.stone500,
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   )
@@ -550,7 +550,7 @@ class _PostMenuItem extends StatelessWidget {
           style: TextStyle(
             color: color,
             fontSize: 14,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -619,7 +619,7 @@ class _PostStatButton extends StatelessWidget {
               label,
               style: TextStyle(
                 color: color,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 fontSize: 13,
               ),
             ),
@@ -656,7 +656,7 @@ class _CommentsSection extends StatelessWidget {
                 text: '댓글 ',
                 style: const TextStyle(
                   color: ChowColors.gray900,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w500,
                   fontSize: 16,
                 ),
                 children: [
@@ -748,7 +748,7 @@ class _CommentTile extends StatelessWidget {
                       style: const TextStyle(
                         color: ChowColors.gray900,
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -808,7 +808,7 @@ class _CommentTile extends StatelessWidget {
                         style: TextStyle(
                           color: ChowColors.gray500,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],

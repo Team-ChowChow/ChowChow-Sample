@@ -112,7 +112,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
           _title,
           style: const TextStyle(
             fontSize: 17,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             color: Color(0xFF111827),
           ),
         ),
@@ -173,7 +173,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
                             const Padding(
                               padding: EdgeInsets.only(bottom: 8),
                               child: Text('저장한 레시피',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.gray700)),
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: ChowColors.gray700)),
                             ),
                             ..._savedRecipes.map((recipe) => Padding(
                               padding: const EdgeInsets.only(bottom: 10),
@@ -186,7 +186,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
                               const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 8),
                                 child: Text('저장한 커뮤니티 글',
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.gray700)),
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: ChowColors.gray700)),
                               ),
                             ],
                           ],
@@ -241,7 +241,7 @@ class _PostListItem extends StatelessWidget {
                       post.category,
                       style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone500,
                       ),
                     ),
@@ -261,7 +261,7 @@ class _PostListItem extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   color: Color(0xFF111827),
                 ),
               ),
@@ -367,14 +367,14 @@ class _RecipeListItem extends StatelessWidget {
                     if (recipe.menuName != null)
                       Text(
                         recipe.menuName!,
-                        style: const TextStyle(fontSize: 11, color: ChowCozy.stone500, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 11, color: ChowCozy.stone500, fontWeight: FontWeight.w500),
                       ),
                     const SizedBox(height: 2),
                     Text(
                       recipe.recipeTitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
                     ),
                     const SizedBox(height: 6),
                     Row(

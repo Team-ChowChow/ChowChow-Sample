@@ -262,7 +262,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('BCS $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text('BCS $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w500)),
               Slider(
                 value: bcs.toDouble(),
                 min: 1,
@@ -304,7 +304,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _goBack),
-        title: const Text('급여량 계산기', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('급여량 계산기', style: TextStyle(fontWeight: FontWeight.w500)),
         centerTitle: true,
       ),
       body: _loadingPets
@@ -415,7 +415,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
             ),
             child: loading
                 ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                : Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
           ),
         ),
       ),
@@ -428,11 +428,11 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
       children: [
         Text(
           '${_selectedPet?.petName ?? ''}이(가)\n먹는 건 뭔가요?',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: ChowColors.gray900, height: 1.3),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: ChowColors.gray900, height: 1.3),
         ),
         const SizedBox(height: 24),
         if (_pets.length > 1) ...[
-          const Text('반려동물 선택', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const Text('반려동물 선택', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 8),
           _card(
             child: DropdownButtonFormField<PetModel>(
@@ -456,7 +456,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
           ),
           const SizedBox(height: 20),
         ],
-        const Text('급여 방식', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+        const Text('급여 방식', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -467,7 +467,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
         ),
         const SizedBox(height: 24),
         if (_dietType == _DietType.recipe) ...[
-          const Text('레시피 선택', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const Text('레시피 선택', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 8),
           _card(
             child: _recipes.isEmpty
@@ -483,7 +483,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
                   ),
           ),
         ] else ...[
-          const Text('사료 검색', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const Text('사료 검색', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -565,7 +565,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
       children: [
         const Text(
           '하루 몇 번\n급여하나요?',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: ChowColors.gray900, height: 1.3),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: ChowColors.gray900, height: 1.3),
         ),
         const Text(
           '최소 한 번 이상 선택해주세요',
@@ -631,7 +631,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
                     time,
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
                       color: selected ? ChowColors.orange600 : ChowColors.gray700,
                     ),
                   ),
@@ -657,7 +657,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
       children: [
         Text(
           '${pet?.petName ?? ''}의 정보를\n확인해요',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: ChowColors.gray900, height: 1.3),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: ChowColors.gray900, height: 1.3),
         ),
         const SizedBox(height: 24),
         _infoRow(
@@ -697,7 +697,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: const TextStyle(fontSize: 13, color: ChowColors.gray500)),
-                Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ChowColors.green500)),
+                Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: ChowColors.green500)),
               ],
             ),
           ),
@@ -727,7 +727,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
       children: [
         const Text(
           '권장 급여량이에요',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: ChowColors.gray900),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: ChowColors.gray900),
         ),
         const SizedBox(height: 16),
         _ResultCard(result: result, statusColor: result.status != null ? _statusColor(result.status!) : ChowColors.gray500),
@@ -753,7 +753,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
               children: [
                 Icon(Icons.check_circle, color: ChowColors.orange500, size: 20),
                 SizedBox(width: 8),
-                Text('오늘의 식단 기록에 저장했어요', style: TextStyle(color: ChowColors.orange600, fontWeight: FontWeight.w600)),
+                Text('오늘의 식단 기록에 저장했어요', style: TextStyle(color: ChowColors.orange600, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -790,7 +790,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
               style: TextStyle(
                 fontSize: 14,
                 color: selected ? ChowColors.orange600 : ChowColors.gray600,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
               ),
             ),
           ],
@@ -842,17 +842,17 @@ class _ResultCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
-                  child: Text(result.status!, style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 13)),
+                  child: Text(result.status!, style: TextStyle(color: statusColor, fontWeight: FontWeight.w500, fontSize: 13)),
                 ),
             ],
           ),
           const SizedBox(height: 12),
           Text('하루 권장 섭취 칼로리', style: const TextStyle(color: ChowColors.gray600, fontSize: 13)),
-          Text('${result.dailyEnergyKcal.toStringAsFixed(0)} kcal', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ChowColors.gray900)),
+          Text('${result.dailyEnergyKcal.toStringAsFixed(0)} kcal', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: ChowColors.gray900)),
           if (result.recommendedGrams != null) ...[
             const SizedBox(height: 12),
             Text('하루 권장 급여량', style: const TextStyle(color: ChowColors.gray600, fontSize: 13)),
-            Text('${result.recommendedGrams!.toStringAsFixed(0)} g', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ChowColors.orange600)),
+            Text('${result.recommendedGrams!.toStringAsFixed(0)} g', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: ChowColors.orange600)),
           ],
           if (result.message != null) ...[
             const SizedBox(height: 12),

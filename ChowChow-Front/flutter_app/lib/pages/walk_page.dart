@@ -317,7 +317,7 @@ class _WalkPageState extends State<WalkPage> {
               '${result.walk.distanceKm.toStringAsFixed(2)}km',
               style: const TextStyle(
                 fontSize: 30,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w500,
                 color: ChowColors.gray900,
               ),
             ),
@@ -419,7 +419,7 @@ class _WalkPageState extends State<WalkPage> {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w500,
                               color: ChowCozy.stone900,
                             ),
                           ),
@@ -533,7 +533,7 @@ class _WalkPageState extends State<WalkPage> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: ChowColors.green500,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 const Spacer(),
@@ -604,7 +604,7 @@ class _WalkPageState extends State<WalkPage> {
                                   '🪙 거리별 코인 적립',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w500,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -627,7 +627,7 @@ class _WalkPageState extends State<WalkPage> {
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 22,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               const Text(
@@ -656,7 +656,7 @@ class _WalkPageState extends State<WalkPage> {
                       style: TextStyle(
                         color: ChowColors.gray800,
                         fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -804,7 +804,7 @@ class _WalkActionButton extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -837,7 +837,7 @@ class _WalkMetric extends StatelessWidget {
           style: const TextStyle(
             color: ChowCozy.stone900,
             fontSize: 17,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 1),
@@ -901,7 +901,7 @@ class _TodayRoadmap extends StatelessWidget {
                   style: TextStyle(
                     color: ChowCozy.stone900,
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -1004,7 +1004,7 @@ class _TodayRoadmap extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 11,
                       color: ChowCozy.stone700,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -1050,7 +1050,7 @@ class _TodayRoadmap extends StatelessWidget {
                     '🎉 모든 미션 완료! 대단해요!',
                     style: TextStyle(
                       color: ChowCozy.stone700,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       fontSize: 13,
                     ),
                   ),
@@ -1117,7 +1117,7 @@ class _MilestoneNode extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 10,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             color: achieved
                 ? ChowCozy.stone700
                 : preview
@@ -1181,7 +1181,7 @@ class _WalkHistoryTile extends StatelessWidget {
                   '${walk.distanceKm.toStringAsFixed(2)}km · ${_formatDuration(walk.durationSeconds)}',
                   style: const TextStyle(
                     color: ChowColors.gray800,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -1200,7 +1200,7 @@ class _WalkHistoryTile extends StatelessWidget {
               '+${walk.rewardCoins}',
               style: const TextStyle(
                 color: ChowCozy.stone700,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w500,
               ),
             ),
         ],

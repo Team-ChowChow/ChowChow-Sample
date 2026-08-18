@@ -123,7 +123,7 @@ class _HomePageState extends State<HomePage> {
                         '트렌드 레시피',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: ChowColors.gray800,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                       ),
                     ),
@@ -229,7 +229,7 @@ class _HomePageState extends State<HomePage> {
                         '급여',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: ChowColors.gray800,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                       ),
                     ),
@@ -275,7 +275,7 @@ class _HomePageState extends State<HomePage> {
                         '오늘의 팁',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: ChowColors.gray800,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                       ),
                     ),
@@ -410,7 +410,7 @@ class _HeaderState extends State<_Header> {
                       children: [
                         const Text(
                           '알림',
-                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontSize: 26, fontWeight: FontWeight.w500),
                         ),
                         const Spacer(),
                         IconButton(
@@ -466,7 +466,7 @@ class _HeaderState extends State<_Header> {
                                           item.title,
                                           style: const TextStyle(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.w600,
+                                            fontWeight: FontWeight.w500,
                                             color: ChowColors.gray800,
                                           ),
                                         ),
@@ -570,7 +570,7 @@ class _HeaderState extends State<_Header> {
                 '멍냥밥상',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: ChowCozy.secondary,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                     ),
               ),
               const Spacer(),
@@ -695,7 +695,7 @@ class _TrendingCard extends StatelessWidget {
                 children: [
                   Text(
                     recipe.recipeTitle,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
                   ),
                   if (tags.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -772,7 +772,7 @@ class _AiChefBanner extends StatelessWidget {
               const SizedBox(height: 12),
               const Text(
                 '우리 아이 맞춤 식단을\nAI가 추천해드려요',
-                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600, height: 1.3),
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500, height: 1.3),
               ),
               const SizedBox(height: 8),
               Text(
@@ -878,7 +878,7 @@ class _FeedingEntryRow extends StatelessWidget {
                       title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: ChowColors.gray800,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                     ),
                     const SizedBox(height: 2),
