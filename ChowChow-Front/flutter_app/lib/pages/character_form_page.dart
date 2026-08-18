@@ -32,7 +32,6 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
   // 이미 캐릭터가 있는 petId 목록
   Set<int> _characterizedPetIds = {};
 
-  int _coinBalance = 0;
   bool _loading = true;
   bool _saving = false;
   bool _generatingImage = false;
@@ -57,7 +56,6 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
     await Future.wait([
       _loadPets(),
       _loadCharacterizedPetIds(),
-      _loadCoin(),
       if (widget.isEdit) _loadCharacter(),
     ]);
     if (mounted) setState(() => _loading = false);
@@ -80,14 +78,6 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
       setState(() {
         _pets = res.map((e) => PetModel.fromJson(e as Map<String, dynamic>)).toList();
       });
-    } catch (_) {}
-  }
-
-  Future<void> _loadCoin() async {
-    try {
-      final res = await ApiClient.get('/api/coins/balance') as Map<String, dynamic>;
-      if (!mounted) return;
-      setState(() => _coinBalance = (res['balance'] as num?)?.toInt() ?? 0);
     } catch (_) {}
   }
 
@@ -191,36 +181,6 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isEdit ? '캐릭터 수정' : '새 캐릭터 생성'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: ChowCozy.stone100,
-                  borderRadius: BorderRadius.circular(99),
-                  border: Border.all(color: ChowCozy.stone300),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.monetization_on, color: ChowCozy.stone500, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_coinBalance',
-                      style: const TextStyle(
-                        color: ChowCozy.stone700,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: ChowCozy.stone500))
@@ -337,7 +297,7 @@ class _PetSelectionSection extends StatelessWidget {
           )
         else
           SizedBox(
-            height: 110,
+            height: 118,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: pets.length,
@@ -394,27 +354,30 @@ class _PetCard extends StatelessWidget {
             width: selected ? 2 : 1,
           ),
         ),
-        child: Stack(
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Opacity(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+          child: Column(
+            children: [
+              Expanded(
+                child: Opacity(
                   opacity: hasCharacter ? 0.4 : 1.0,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: SizedBox(
-                      width: 52,
-                      height: 52,
+                    child: SizedBox.expand(
                       child: ChowNetworkImage(url: pet.petProfileImg ?? placeholder),
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
+              ),
+              const SizedBox(height: 5),
+              SizedBox(
+                height: 16,
+                width: double.infinity,
+                child: Text(
                   pet.petName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -425,16 +388,23 @@ class _PetCard extends StatelessWidget {
                             : ChowColors.gray800,
                   ),
                 ),
-                Text(
+              ),
+              SizedBox(
+                height: 14,
+                width: double.infinity,
+                child: Text(
                   hasCharacter ? '이미 있음' : pet.displayType,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 10,
                     color: hasCharacter ? ChowColors.gray400 : ChowColors.gray500,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
