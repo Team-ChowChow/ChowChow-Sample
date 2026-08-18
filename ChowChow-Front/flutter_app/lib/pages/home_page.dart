@@ -569,7 +569,7 @@ class _HeaderState extends State<_Header> {
               Text(
                 '멍냥밥상',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: ChowCozy.stone500,
+                      color: ChowCozy.secondary,
                       fontWeight: FontWeight.bold,
                     ),
               ),
@@ -738,7 +738,7 @@ class _AiChefBanner extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [ChowCozy.stone300, ChowCozy.stone500],
+          colors: [ChowCozy.secondary, ChowCozy.primary],
         ),
         boxShadow: const [
           BoxShadow(blurRadius: 12, offset: Offset(0, 4), color: Color(0x33000000)),
@@ -784,7 +784,7 @@ class _AiChefBanner extends StatelessWidget {
                 onPressed: onTap,
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: ChowCozy.stone500,
+                  foregroundColor: ChowCozy.secondary,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                   shape: const StadiumBorder(),
@@ -864,10 +864,10 @@ class _FeedingEntryRow extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: ChowCozy.stone100,
+                  color: ChowCozy.primaryLight,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: ChowCozy.stone500),
+                child: Icon(icon, color: ChowCozy.secondary),
               ),
               const SizedBox(width: 12),
               Expanded(

@@ -19,7 +19,99 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
+class _DashedStadiumBorderPainter extends CustomPainter {
+  const _DashedStadiumBorderPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          Radius.circular(size.height / 2),
+        ),
+      );
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        canvas.drawPath(
+          metric.extractPath(
+            distance,
+            (distance + 5).clamp(0.0, metric.length).toDouble(),
+          ),
+          paint,
+        );
+        distance += 9;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedStadiumBorderPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 class _ProfilePageState extends State<ProfilePage> {
+  static const List<String> _healthFocusOptions = [
+    '피부/모질',
+    '뼈/관절',
+    '치아/구강',
+    '위장/소화',
+    '체중 관리',
+    '신장/비뇨기',
+    '심장/혈관',
+    '간 건강',
+    '눈 건강',
+    '귀 건강',
+    '면역력',
+    '노령 관리',
+  ];
+
+  static const List<String> _favoriteFoodOptions = [
+    '닭고기',
+    '소고기',
+    '돼지고기',
+    '오리고기',
+    '양고기',
+    '칠면조',
+    '연어',
+    '흰살생선',
+    '달걀',
+    '고구마',
+    '단호박',
+    '당근',
+    '브로콜리',
+    '치즈',
+  ];
+
+  static const List<String> _diseaseOptions = [
+    '신장 질환',
+    '비만',
+    '당뇨',
+    '관절염',
+    '피부 질환',
+    '심장 질환',
+    '췌장염',
+    '간 질환',
+    '구강 질환',
+    '갑상선 질환',
+    '염증성 장질환(IBD)',
+    '요로결석',
+    '식이 과민반응',
+    '빈혈',
+    '고혈압',
+    '저혈당증',
+    '암(종양)',
+    '노령 관리',
+  ];
+
   UserModel? _user;
   List<PetModel> _pets = [];
   bool _loading = true;
@@ -49,6 +141,11 @@ class _ProfilePageState extends State<ProfilePage> {
   final List<String> _foodTypes = [];
   final List<String> _healthFocusAreas = [];
   final List<String> _favoriteFoods = [];
+  final List<String> _diseases = [];
+  bool _noHealthFocus = false;
+  bool _noFavoriteFood = false;
+  bool _noAllergy = false;
+  bool _noDisease = false;
   final List<String> _priorities = [];
   final List<String> _livingSpaces = [];
   final List<String> _daytimeRoutines = [];
@@ -187,6 +284,11 @@ class _ProfilePageState extends State<ProfilePage> {
     _foodTypes.clear();
     _healthFocusAreas.clear();
     _favoriteFoods.clear();
+    _diseases.clear();
+    _noHealthFocus = false;
+    _noFavoriteFood = false;
+    _noAllergy = false;
+    _noDisease = false;
     _priorities.clear();
     _livingSpaces.clear();
     _daytimeRoutines.clear();
@@ -335,41 +437,21 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 18),
                             _buildPetWeightBcsField(updateForm),
                             const SizedBox(height: 18),
-                            _buildPetOptionGroup(
-                              label: '성별',
-                              options: const ['남아', '여아'],
-                              selected: _petGender == 'MALE' ? const ['남아'] : _petGender == 'FEMALE' ? const ['여아'] : const [],
-                              onChanged: (value) => updateForm(() => _petGender = value == '남아' ? 'MALE' : 'FEMALE'),
-                            ),
-                            CheckboxListTile(
-                              value: _isNeutered,
-                              contentPadding: EdgeInsets.zero,
-                              activeColor: ChowCozy.stone500,
-                              title: const Text('중성화 수술 완료', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                              onChanged: (value) => updateForm(() => _isNeutered = value ?? false),
-                            ),
-                            _buildPetOptionGroup(
-                              label: '하루 산책',
-                              options: const ['30분 미만', '30분–1시간', '1시간 이상'],
-                              selected: _activityLevel == 1 ? const ['30분 미만'] : _activityLevel == 3 ? const ['30분–1시간'] : _activityLevel == 5 ? const ['1시간 이상'] : const [],
-                              onChanged: (value) => updateForm(() => _activityLevel = const {'30분 미만': 1, '30분–1시간': 3, '1시간 이상': 5}[value]),
-                            ),
+                            _buildPetLifestyleFields(updateForm),
+                            const SizedBox(height: 24),
+                            const Divider(height: 10, thickness: 10, color: ChowColors.gray100),
+                            const SizedBox(height: 24),
+                            _buildPreferenceSections(updateForm),
+                            const SizedBox(height: 24),
+                            const Divider(height: 10, thickness: 10, color: ChowColors.gray100),
+                            const SizedBox(height: 24),
+                            _buildPetOptionGroup(label: '가장 중요한 우선순위', options: const ['균형 잡힌 식사', '체중 & 영양', '실시간 행동', '건강 추적'], selected: _priorities, onChanged: (value) => updateForm(() => _toggleSingle(_priorities, value))),
                             const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '주식 형태', options: const ['건식', '습식', '동결건조', '소프트 (반습식)', '자연식 (화식/생식)', '홈메이드'], selected: _foodTypes, onChanged: (value) => updateForm(() => _toggle(_foodTypes, value))),
+                            _buildPetOptionGroup(label: '주 생활 공간', options: const ['실내', '마당', '테라스 / 발코니'], selected: _livingSpaces, onChanged: (value) => updateForm(() => _toggleSingle(_livingSpaces, value))),
                             const SizedBox(height: 18),
-                            _buildAllergySelector(updateForm),
+                            _buildPetOptionGroup(label: '낮 시간을 보내는 방법', options: const ['집에 혼자 있어요', '유치원에 가요', '산책 도우미와 함께해요', '항상 가족과 함께해요'], selected: _daytimeRoutines, onChanged: (value) => updateForm(() => _toggleSingle(_daytimeRoutines, value))),
                             const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '건강 고민', options: const ['해당 없음', '피부/피모', '관절', '소화기', '체중 관리', '치아/구강'], selected: _healthFocusAreas, onChanged: (value) => updateForm(() => _toggle(_healthFocusAreas, value, limit: 3)), helper: '최대 3개까지 선택할 수 있어요.'),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '좋아하는 음식', options: const ['해당 없음', '닭고기', '소고기', '생선', '채소'], selected: _favoriteFoods, onChanged: (value) => updateForm(() => _toggle(_favoriteFoods, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '가장 중요한 우선순위', options: const ['균형 잡힌 식사', '체중 & 영양', '실시간 행동', '건강 추적'], selected: _priorities, onChanged: (value) => updateForm(() => _toggle(_priorities, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '주 생활 공간', options: const ['실내', '마당', '테라스 / 발코니'], selected: _livingSpaces, onChanged: (value) => updateForm(() => _toggle(_livingSpaces, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '낮 시간을 보내는 방법', options: const ['집에 혼자 있어요', '유치원에 가요', '산책 도우미와 함께해요', '항상 가족과 함께해요'], selected: _daytimeRoutines, onChanged: (value) => updateForm(() => _toggle(_daytimeRoutines, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '궁금하거나 걱정되는 행동', options: const ['분리 불안 / 짖음', '수면 / 휴식 패턴', '식이 / 음수 습관', '전반적 활동량'], selected: _behaviorConcerns, onChanged: (value) => updateForm(() => _toggle(_behaviorConcerns, value))),
+                            _buildPetOptionGroup(label: '궁금하거나 걱정되는 행동', options: const ['분리 불안 / 짖음', '수면 / 휴식 패턴', '식이 / 음수 습관', '전반적 활동량'], selected: _behaviorConcerns, onChanged: (value) => updateForm(() => _toggleSingle(_behaviorConcerns, value))),
                             const SizedBox(height: 28),
                             SizedBox(
                               width: double.infinity,
@@ -607,6 +689,86 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildPetLifestyleFields(void Function(VoidCallback) updateForm) {
+    const foodOptions = ['건식', '습식', '동결건조', '소프트 (반습식)', '자연식 (화식/생식)', '홈메이드'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPetLabel('성별', required: true),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildLargeChoiceButton(label: '남아', selected: _petGender == 'MALE', onTap: () => updateForm(() => _petGender = 'MALE'))),
+            const SizedBox(width: 12),
+            Expanded(child: _buildLargeChoiceButton(label: '여아', selected: _petGender == 'FEMALE', onTap: () => updateForm(() => _petGender = 'FEMALE'))),
+          ],
+        ),
+        const SizedBox(height: 8),
+        CheckboxListTile(
+          value: _isNeutered,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          activeColor: ChowCozy.stone700,
+          title: const Text('중성화 수술 완료', style: TextStyle(fontSize: 15, color: ChowColors.gray600)),
+          onChanged: (value) => updateForm(() => _isNeutered = value ?? false),
+        ),
+        const SizedBox(height: 18),
+        _buildPetLabel('하루 산책', required: true),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            for (final option in const [('30분 미만', 1), ('30분–1시간', 3), ('1시간 이상', 5)]) ...[
+              if (option.$2 != 1) const SizedBox(width: 8),
+              Expanded(child: _buildLargeChoiceButton(label: option.$1, selected: _activityLevel == option.$2, compact: true, onTap: () => updateForm(() => _activityLevel = option.$2))),
+            ],
+          ],
+        ),
+        const SizedBox(height: 22),
+        _buildPetLabel('주식 형태', required: true),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 10,
+          children: foodOptions.map((option) {
+            final selected = _foodTypes.contains(option);
+            return InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => updateForm(() => _toggle(_foodTypes, option)),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: selected ? ChowCozy.stone700 : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: selected ? ChowCozy.stone700 : ChowColors.gray300),
+                ),
+                child: Text(option, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: selected ? Colors.white : ChowColors.gray600)),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLargeChoiceButton({required String label, required bool selected, required VoidCallback onTap, bool compact = false}) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        height: compact ? 54 : 58,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? ChowCozy.stone700 : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: selected ? ChowCozy.stone700 : ChowColors.gray300),
+        ),
+        child: Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: compact ? 13 : 14, fontWeight: FontWeight.w400, color: selected ? Colors.white : ChowColors.gray800)),
+      ),
+    );
+  }
+
   void _toggle(List<String> values, String value, {int? limit}) {
     if (value == '해당 없음') {
       values
@@ -622,6 +784,16 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  void _toggleSingle(List<String> values, String value) {
+    if (values.length == 1 && values.first == value) {
+      values.clear();
+      return;
+    }
+    values
+      ..clear()
+      ..add(value);
+  }
+
   Widget _buildPetOptionGroup({
     required String label,
     required List<String> options,
@@ -632,31 +804,297 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildPetLabel(label, required: true),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options.map((option) {
-            final isSelected = selected.contains(option);
-            return ChoiceChip(
-              label: Text(option),
-              selected: isSelected,
-              selectedColor: ChowCozy.stone300,
-              side: BorderSide(color: isSelected ? ChowCozy.stone500 : ChowColors.gray300),
-              labelStyle: TextStyle(
-                color: isSelected ? ChowCozy.stone800 : ChowColors.gray700,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              ),
-              onSelected: (_) => onChanged(option),
+        _buildPetLabel(label, required: false),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const spacing = 10.0;
+            final itemWidth = (constraints.maxWidth - spacing) / 2;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: 10,
+              children: options.map((option) {
+                final isSelected = selected.contains(option);
+                return SizedBox(
+                  width: itemWidth,
+                  height: 58,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => onChanged(option),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 140),
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? ChowCozy.stone700 : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected ? ChowCozy.stone700 : ChowColors.gray300,
+                        ),
+                      ),
+                      child: Text(
+                        option,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          color: isSelected ? Colors.white : ChowColors.gray700,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
         ),
         if (helper != null) ...[
           const SizedBox(height: 6),
           Text(helper, style: const TextStyle(fontSize: 12, color: ChowColors.gray500)),
         ],
       ],
+    );
+  }
+
+  Widget _buildPreferenceSections(void Function(VoidCallback) updateForm) {
+    final allergyLabels = _selectedAllergyIds.map((id) {
+      for (final item in _allAllergies) {
+        if (item.allergyId == id) return item.allergyName;
+      }
+      return null;
+    }).whereType<String>().toList();
+    final allergyOptions = _allAllergies
+        .map((item) => item.allergyName)
+        .toSet()
+        .toList()
+      ..sort();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildAddableSection(
+          label: '건강 고민',
+          selected: _healthFocusAreas,
+          noneSelected: _noHealthFocus,
+          onNone: () => updateForm(() { _healthFocusAreas.clear(); _noHealthFocus = true; }),
+          onRemove: (value) => updateForm(() => _healthFocusAreas.remove(value)),
+          helper: '최대 3개까지 선택할 수 있어요.',
+          onAdd: () => _openSelectionSheet(
+            title: '건강 고민',
+            options: _healthFocusOptions,
+            selected: _healthFocusAreas,
+            maxSelections: 3,
+            onDone: (values) => updateForm(() { _healthFocusAreas..clear()..addAll(values); _noHealthFocus = false; }),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildAddableSection(
+          label: '좋아하는 음식',
+          selected: _favoriteFoods,
+          noneSelected: _noFavoriteFood,
+          onNone: () => updateForm(() { _favoriteFoods.clear(); _noFavoriteFood = true; }),
+          onRemove: (value) => updateForm(() => _favoriteFoods.remove(value)),
+          onAdd: () => _openSelectionSheet(
+            title: '좋아하는 음식',
+            options: _favoriteFoodOptions,
+            selected: _favoriteFoods,
+            onDone: (values) => updateForm(() { _favoriteFoods..clear()..addAll(values); _noFavoriteFood = false; }),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildAddableSection(
+          label: '알레르기',
+          selected: allergyLabels,
+          noneSelected: _noAllergy,
+          onNone: () => updateForm(() { _selectedAllergyIds = []; _noAllergy = true; }),
+          onRemove: (value) => updateForm(() {
+            _selectedAllergyIds.removeWhere((id) => _allAllergies.any((item) => item.allergyId == id && item.allergyName == value));
+          }),
+          onAdd: () => _openSelectionSheet(
+            title: '알레르기',
+            options: allergyOptions,
+            selected: allergyLabels,
+            onDone: (values) => updateForm(() {
+              _selectedAllergyIds = _allAllergies.where((item) => values.contains(item.allergyName)).map((item) => item.allergyId).toList();
+              _noAllergy = false;
+            }),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildAddableSection(
+          label: '질환',
+          selected: _diseases,
+          noneSelected: _noDisease,
+          onNone: () => updateForm(() { _diseases.clear(); _noDisease = true; }),
+          onRemove: (value) => updateForm(() => _diseases.remove(value)),
+          onAdd: () => _openSelectionSheet(
+            title: '질환',
+            options: _diseaseOptions,
+            selected: _diseases,
+            onDone: (values) => updateForm(() { _diseases..clear()..addAll(values.where((value) => value != '해당 없음')); _noDisease = false; }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddableSection({required String label, required List<String> selected, required bool noneSelected, required VoidCallback onAdd, required VoidCallback onNone, required ValueChanged<String> onRemove, String? helper}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPetLabel(label, required: true),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _noneSelectionButton(selected: noneSelected, onTap: onNone),
+            if (selected.isNotEmpty) ...selected.map((value) => _selectedSummaryChip(value, () => onRemove(value))),
+            InkWell(
+              onTap: onAdd,
+              borderRadius: BorderRadius.circular(999),
+              child: CustomPaint(
+                painter: const _DashedStadiumBorderPainter(color: ChowColors.gray300),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, size: 19, color: ChowCozy.stone800),
+                      SizedBox(width: 5),
+                      Text('추가', style: TextStyle(fontSize: 13, color: ChowCozy.stone800)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (helper != null) ...[
+          const SizedBox(height: 8),
+          Text(helper, style: const TextStyle(fontSize: 12, color: ChowColors.gray500)),
+        ],
+      ],
+    );
+  }
+
+  Widget _selectedSummaryChip(String value, VoidCallback onRemove) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+    decoration: BoxDecoration(color: ChowColors.gray100, borderRadius: BorderRadius.circular(999)),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value, style: const TextStyle(fontSize: 13, color: ChowColors.gray700)),
+        const SizedBox(width: 6),
+        InkWell(
+          onTap: onRemove,
+          customBorder: const CircleBorder(),
+          child: const Icon(Icons.close, size: 16, color: ChowColors.gray500),
+        ),
+      ],
+    ),
+  );
+
+  Widget _noneSelectionButton({required bool selected, required VoidCallback onTap}) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(999),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: selected ? ChowCozy.stone700 : Colors.white,
+        border: Border.all(color: selected ? ChowCozy.stone700 : ChowColors.gray300),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '해당 없음',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 13, color: selected ? Colors.white : ChowColors.gray600),
+      ),
+    ),
+  );
+
+  Future<void> _openSelectionSheet({required String title, required List<String> options, required List<String> selected, required ValueChanged<List<String>> onDone, int? maxSelections}) async {
+    final temporary = List<String>.from(selected);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => FractionallySizedBox(
+          heightFactor: 0.78,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(color: ChowColors.gray300, borderRadius: BorderRadius.circular(999)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 18),
+                  Expanded(
+                    child: options.isEmpty
+                        ? const Center(child: Text('선택할 수 있는 항목이 없습니다.', style: TextStyle(color: ChowColors.gray500)))
+                        : ListView.separated(
+                            itemCount: options.length,
+                            separatorBuilder: (_, _) => const Divider(height: 1, color: ChowColors.gray200),
+                            itemBuilder: (context, index) {
+                              final option = options[index];
+                              final checked = temporary.contains(option);
+                              return InkWell(
+                                onTap: () => setSheet(() {
+                                  if (checked) {
+                                    temporary.remove(option);
+                                  } else if (maxSelections == null || temporary.length < maxSelections) {
+                                    temporary.add(option);
+                                  }
+                                }),
+                                child: SizedBox(
+                                  height: 58,
+                                  child: Row(
+                                    children: [
+                                      Expanded(child: Text(option, style: const TextStyle(fontSize: 16, color: ChowColors.gray800))),
+                                      if (checked) const Icon(Icons.check, color: ChowCozy.stone700, size: 24),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: () {
+                        onDone(temporary);
+                        Navigator.pop(ctx);
+                      },
+                      style: FilledButton.styleFrom(backgroundColor: ChowCozy.stone700, foregroundColor: Colors.white),
+                      child: const Text('완료', style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -756,7 +1194,32 @@ class _ProfilePageState extends State<ProfilePage> {
       if (_isExactBirthdate)
         OutlinedButton.icon(
           onPressed: () async {
-            final date = await showDatePicker(context: context, initialDate: _petBirthdate ?? DateTime.now(), firstDate: DateTime(1990), lastDate: DateTime.now());
+            final date = await showDatePicker(
+              context: context,
+              initialDate: _petBirthdate ?? DateTime.now(),
+              firstDate: DateTime(1990),
+              lastDate: DateTime.now(),
+              builder: (context, child) {
+                final theme = Theme.of(context);
+                return Theme(
+                  data: theme.copyWith(
+                    colorScheme: theme.colorScheme.copyWith(
+                      primary: ChowColors.gray800,
+                      onPrimary: Colors.white,
+                      surface: Colors.white,
+                      onSurface: ChowColors.gray900,
+                    ),
+                    datePickerTheme: const DatePickerThemeData(
+                      backgroundColor: Colors.white,
+                      surfaceTintColor: Colors.transparent,
+                      headerBackgroundColor: Colors.white,
+                      headerForegroundColor: ChowColors.gray900,
+                    ),
+                  ),
+                  child: child!,
+                );
+              },
+            );
             if (date != null) updateForm(() => _petBirthdate = date);
           },
           icon: const Icon(Icons.calendar_today_outlined),
@@ -806,43 +1269,77 @@ class _ProfilePageState extends State<ProfilePage> {
     ],
   );
 
-  Widget _buildPetWeightBcsField(void Function(VoidCallback) updateForm) {
-    return InkWell(
-      onTap: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setSheet) => Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+  Future<void> _openPetWeightBcsSheet(void Function(VoidCallback) updateForm) async {
+    final weightController = TextEditingController(text: _petWeight);
+    var temporaryWeight = _petWeight;
+    var temporaryBcs = _bodyConditionScore;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final parsedWeight = _parseWeight(temporaryWeight);
+          final canSave = parsedWeight != null && parsedWeight > 0 && temporaryBcs != null;
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 const Text('체중 기록', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
                 const Text('체중 *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 TextField(
+                  controller: weightController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     hintText: '예) 4.5',
-                    suffixText: 'kg',
-                    suffixStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: ChowColors.gray800),
+                    filled: true,
+                    fillColor: Colors.white,
+                    suffixIcon: const Center(
+                      widthFactor: 1,
+                      child: Padding(
+                        padding: EdgeInsets.only(right: 20),
+                        child: Text(
+                          'kg',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: ChowColors.gray800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    suffixIconConstraints: const BoxConstraints(minWidth: 56),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: ChowColors.gray300)),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: ChowCozy.stone500, width: 2)),
                   ),
-                  onChanged: (value) => updateForm(() => _petWeight = value),
+                  onChanged: (value) => setSheet(() => temporaryWeight = value),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 const Text('신체충실지수 (BCS) *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(9, (index) {
-                    final selected = _bodyConditionScore == index + 1;
+                    final selected = temporaryBcs == index + 1;
                     return InkWell(
                       customBorder: const CircleBorder(),
-                      onTap: () { updateForm(() => _bodyConditionScore = index + 1); setSheet(() {}); },
+                      onTap: () => setSheet(() => temporaryBcs = index + 1),
                       child: Container(
                         width: 34, height: 34, alignment: Alignment.center,
                         decoration: BoxDecoration(shape: BoxShape.circle, color: selected ? ChowCozy.stone700 : Colors.white, border: Border.all(color: selected ? ChowCozy.stone700 : ChowColors.gray300)),
@@ -851,13 +1348,55 @@ class _ProfilePageState extends State<ProfilePage> {
                     );
                   }),
                 ),
-                const SizedBox(height: 12),
-                Image.asset('assets/images/bcs.png', fit: BoxFit.contain),
+                if (temporaryBcs != null) ...[
+                  const SizedBox(height: 16),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: Image.asset(
+                      'assets/images/BCS_$temporaryBcs.png',
+                      key: ValueKey(temporaryBcs),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: canSave
+                        ? () {
+                            updateForm(() {
+                              _petWeight = temporaryWeight.trim();
+                              _bodyConditionScore = temporaryBcs;
+                            });
+                            Navigator.of(ctx).pop();
+                          }
+                        : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: ChowCozy.stone700,
+                      disabledBackgroundColor: ChowColors.gray300,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text('저장', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
               ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
+    );
+    weightController.dispose();
+  }
+
+  Widget _buildPetWeightBcsField(void Function(VoidCallback) updateForm) {
+    return InkWell(
+      onTap: () => _openPetWeightBcsSheet(updateForm),
       child: IgnorePointer(
         child: _buildPetInputField(
           label: '체중 / BCS',
@@ -1783,7 +2322,7 @@ class _PetRowState extends State<_PetRow> {
 
   static const _activityLabels = ['매우 적음', '적음', '보통', '많음', '매우 많음'];
   static const _healthFocusOptions = [
-    '피부/피모', '관절', '소화기', '비뇨기', '치아/구강', '눈/귀', '체중 관리', '심장',
+    '피부/모질', '관절', '소화기', '비뇨기', '치아/구강', '눈/귀', '체중 관리', '심장',
   ];
 
   void _openEditCharacteristicsSheet(BuildContext context) {

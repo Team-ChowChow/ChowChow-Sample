@@ -181,7 +181,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? ChowCozy.stone600 : ChowCozy.mutedForeground;
+    final color = active ? ChowCozy.primary : ChowCozy.mutedForeground;
     return InkWell(
       onTap: onTap,
       child: Column(

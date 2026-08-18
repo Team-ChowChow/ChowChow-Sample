@@ -40,6 +40,7 @@ dependencies:
   url_launcher: ^6.3.1
   geolocator: ^14.0.2
   webview_flutter: ^4.8.0
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,63 @@ flutter:
     - assets/images/scenes/
     - assets/models/
     - assets/gifs/
+    - assets/gifs/group1/
+    - assets/gifs/group1/group1_idle/
+    - assets/gifs/group1/group1_petting/
+    - assets/gifs/group1/group1_exercise/
+    - assets/gifs/group1/group1_bath/
+    - assets/gifs/group2/
+    - assets/gifs/group2/group2_idle/
+    - assets/gifs/group2/group2_eating/
+    - assets/gifs/group2/group2_exercise/
+    - assets/gifs/group3/
+    - assets/gifs/group3/group3_idle/
+    - assets/gifs/group3/group3_eating/
+    - assets/gifs/group3/group3_petting/
+    - assets/gifs/group3/group3_exercise/
+    - assets/gifs/group3/group3_bath/
+    - assets/gifs/group4/
+    - assets/gifs/group4/group4_idle/
+    - assets/gifs/group4/group4_eating/
+    - assets/gifs/group4/group4_petting/
+    - assets/gifs/group4/group4_exercise/
+    - assets/gifs/group4/group4_bath/
+    - assets/gifs/group5/
+    - assets/gifs/group5/group5_idle/
+    - assets/gifs/group5/group5_eating/
+    - assets/gifs/group5/group5_petting/
+    - assets/gifs/group5/group5_exercise/
+    - assets/gifs/group5/group5_bath/
+    - assets/gifs/group6/
+    - assets/gifs/group6/group6_idle/
+    - assets/gifs/group6/group6_eating/
+    - assets/gifs/group6/group6_petting/
+    - assets/gifs/group6/group6_exercise/
+    - assets/gifs/group6/group6_bath/
+    - assets/gifs/group7/
+    - assets/gifs/group7/group7_idle/
+    - assets/gifs/group7/group7_eating/
+    - assets/gifs/group7/group7_petting/
+    - assets/gifs/group7/group7_exercise/
+    - assets/gifs/group7/group7_bath/
+    - assets/gifs/cat1_longhair/
+    - assets/gifs/cat1_longhair/cat1_longhair_idle/
+    - assets/gifs/cat1_longhair/cat1_longhair_eating/
+    - assets/gifs/cat1_longhair/cat1_longhair_petting/
+    - assets/gifs/cat1_longhair/cat1_longhair_exercise/
+    - assets/gifs/cat1_longhair/cat1_longhair_bath/
+    - assets/gifs/cat2_shorthair/
+    - assets/gifs/cat2_shorthair/cat2_shorthair_idle/
+    - assets/gifs/cat2_shorthair/cat2_shorthair_eating/
+    - assets/gifs/cat2_shorthair/cat2_shorthair_petting/
+    - assets/gifs/cat2_shorthair/cat2_shorthair_exercise/
+    - assets/gifs/cat2_shorthair/cat2_shorthair_bath/
+    - assets/gifs/cat3_hairless/
+    - assets/gifs/cat3_hairless/cat3_hairless_idle/
+    - assets/gifs/cat3_hairless/cat3_hairless_eating/
+    - assets/gifs/cat3_hairless/cat3_hairless_petting/
+    - assets/gifs/cat3_hairless/cat3_hairless_exercise/
+    - assets/gifs/cat3_hairless/cat3_hairless_bath/
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

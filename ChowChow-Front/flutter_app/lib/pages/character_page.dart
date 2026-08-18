@@ -37,7 +37,7 @@ class _CharacterPageState extends State<CharacterPage>
   String _petName = '';
   String _petType = 'DOG';
   String? _characterImageUrl;
-  String? _groupName;
+  String? _groupName; // 강아지 그룹(Toy, Terrier...) 또는 고양이 그룹(Longhair, Shorthair, Hairless)
   String _roomBackgroundKey = 'room_sunrise';
   Set<String> _equippedDecorKeys = {};
   bool _attendanceClaimedToday = false;
@@ -115,6 +115,18 @@ class _CharacterPageState extends State<CharacterPage>
 
   String _resolveImageUrl(String? url) {
     if (url == null || url.isEmpty) {
+      if (_petType == 'CAT') {
+        // 고양이는 groupName에 따라 기본 이미지 선택
+        if (_groupName == 'Longhair') {
+          return 'assets/images/characters/character_group_8.png';
+        } else if (_groupName == 'Shorthair') {
+          return 'assets/images/characters/character_group_9.png';
+        } else if (_groupName == 'Hairless') {
+          return 'assets/images/characters/character_group_10.png';
+        } else {
+          return 'assets/images/characters/character_group_8.png'; // 기본값
+        }
+      }
       return 'assets/images/characters/character_group_1.png';
     }
     // 파일명만 있는 경우 (예: "character_group_2")
@@ -137,12 +149,29 @@ class _CharacterPageState extends State<CharacterPage>
     return groupMap[_groupName] ?? 1;
   }
 
+  String _getCatGroupName() {
+    final catMap = {
+      'Longhair': 'cat1_longhair',
+      'Shorthair': 'cat2_shorthair',
+      'Hairless': 'cat3_hairless',
+    };
+    return catMap[_groupName] ?? 'cat1_longhair';
+  }
+
   String _getGifPath() {
-    final group = _getGroupNumber();
     final anim = _currentAnimation;
+    if (_petType == 'CAT') {
+      final catGroup = _getCatGroupName();
+      final path = 'assets/gifs/${catGroup}_$anim.gif';
+      debugPrint(
+        '🎯 [CharacterPage] CAT - group=$_groupName, catGroup=$catGroup, anim=$anim, path=$path',
+      );
+      return path;
+    }
+    final group = _getGroupNumber();
     final path = 'assets/gifs/group${group}_$anim.gif';
     debugPrint(
-      '🎯 [CharacterPage] groupName=$_groupName, group=$group, anim=$anim, path=$path',
+      '🎯 [CharacterPage] DOG - groupName=$_groupName, group=$group, anim=$anim, path=$path',
     );
     return path;
   }
@@ -196,13 +225,15 @@ class _CharacterPageState extends State<CharacterPage>
 
         // petId로 pet 정보 조회해서 groupName 얻기
         String? groupName = c['groupName'] as String?;
+        final petType = c['petType'] as String? ?? 'DOG';
         if (groupName == null && c['petId'] != null) {
           try {
             final pet =
                 await ApiClient.get('/api/pets/${c['petId']}')
                     as Map<String, dynamic>;
             debugPrint('📊 Pet API 응답: $pet');
-            groupName = pet['groupName'] as String?;
+            groupName =
+                pet['group_name'] as String? ?? pet['groupName'] as String?;
           } catch (e) {
             debugPrint('⚠️ Pet 조회 실패: $e');
           }
@@ -212,7 +243,7 @@ class _CharacterPageState extends State<CharacterPage>
         setState(() {
           _characterId = (c['characterId'] as num?)?.toInt();
           _petName = c['characterName'] as String? ?? '';
-          _petType = c['petType'] as String? ?? 'DOG';
+          _petType = petType;
           _characterImageUrl = c['characterImageUrl'] as String?;
           _groupName = groupName;
           level = (c['characterLevel'] as num?)?.toInt() ?? 1;
@@ -222,6 +253,8 @@ class _CharacterPageState extends State<CharacterPage>
           happiness = (c['happiness'] as num?)?.toInt() ?? 80;
           hunger = (c['hunger'] as num?)?.toInt() ?? 50;
         });
+
+        debugPrint('🎯 [CharacterPage] Loaded: type=$petType, group=$groupName');
       } else {
         final res = await ApiClient.get('/api/characters') as List<dynamic>;
         if (res.isEmpty || !mounted) return;

@@ -1,77 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// 웹 앱 tailwind 오렌지/그레이 팔레트에 맞춤 (구 팔레트 — 점진적으로 Cozy 팔레트로 대체 중)
+/// "멍냥밥상" 로고 리브랜딩 팔레트. 메인 색 = 로고의 '밥상' 그린, 서브 색 = '멍냥'의
+/// 딥그린. 구 오렌지/그레이 스케일 자리는 그대로 두고 값만 새 팔레트로 교체 —
+/// 참조하던 코드는 수정 없이 갱신됨.
 class ChowColors {
   ChowColors._();
 
-  static const orange500 = Color(0xFFF97316);
-  static const orange400 = Color(0xFFFB923C);
-  static const orange600 = Color(0xFFEA580C);
-  static const orange50 = Color(0xFFFFF7ED);
-  static const orange100 = Color(0xFFFFEDD5);
-  static const gray50 = Color(0xFFF9FAFB);
-  static const gray100 = Color(0xFFF3F4F6);
-  static const gray200 = Color(0xFFE5E7EB);
-  static const gray300 = Color(0xFFD1D5DB);
-  static const gray400 = Color(0xFF9CA3AF);
-  static const gray500 = Color(0xFF6B7280);
-  static const gray600 = Color(0xFF4B5563);
-  static const gray700 = Color(0xFF374151);
-  static const gray800 = Color(0xFF1F2937);
-  static const gray900 = Color(0xFF111827);
-  static const yellow400 = Color(0xFFFACC15);
-  static const yellow500 = Color(0xFFEAB308);
-  static const yellow600 = Color(0xFFCA8A04);
+  static const orange500 = Color(0xFF6BAE45); // 메인(밥상 그린)
+  static const orange400 = Color(0xFF8FC46B); // 메인 라이트
+  static const orange600 = Color(0xFF2E6B3E); // 서브(멍냥 딥그린)
+  static const orange50 = Color(0xFFEAF5E2);
+  static const orange100 = Color(0xFFDCEAD2);
+  static const gray50 = Color(0xFFFBF6EA); // 배경(로고 크림)
+  static const gray100 = Color(0xFFF1EDE1);
+  static const gray200 = Color(0xFFE4DFCF);
+  static const gray300 = Color(0xFFD3CDBB);
+  static const gray400 = Color(0xFFA8A192);
+  static const gray500 = Color(0xFF7A7468); // 보조 텍스트
+  static const gray600 = Color(0xFF5C5850);
+  static const gray700 = Color(0xFF403D38);
+  static const gray800 = Color(0xFF2A2823);
+  static const gray900 = Color(0xFF1B1B1B); // 본문(거의 검정)
+  static const yellow400 = Color(0xFFEFC670);
+  static const yellow500 = Color(0xFFE9B949);
+  static const yellow600 = Color(0xFFCA9B2E);
   static const kakaoYellow = Color(0xFFFEE500);
   static const kakaoYellowHover = Color(0xFFFDD835);
-  static const blue500 = Color(0xFF3B82F6);
+  static const blue500 = Color(0xFF4A90E2);
   static const purple500 = Color(0xFFA855F7);
-  static const red500 = Color(0xFFEF4444);
-  static const green500 = Color(0xFF22C55E);
+  static const red500 = Color(0xFFD9534F);
+  static const green500 = Color(0xFF6BAE45);
   static const pink500 = Color(0xFFEC4899);
 }
 
-/// Cozy Minimalism 팔레트 — 신규 Figma 디자인(샌디/스톤 톤) 기준.
-/// 새 페이지 리스킨은 전부 이 토큰을 사용한다.
+/// 앱 전체 디자인 토큰. 새 페이지는 전부 이 토큰을 사용한다.
 class ChowCozy {
   ChowCozy._();
 
-  static const stone50 = Color(0xFFFDFCF9);
-  static const stone100 = Color(0xFFF5F0E8);
-  static const stone200 = Color(0xFFEDE5D8);
-  static const stone300 = Color(0xFFE2D8C8);
-  static const stone400 = Color(0xFFD0C3B2); // 샌디 — 프라이머리 액센트
-  static const stone500 = Color(0xFFC0AFA0);
-  static const stone600 = Color(0xFFB09888);
-  static const stone700 = Color(0xFF927F7B); // 딥 액센트 전용
-  static const stone800 = Color(0xFF6E5C58);
-  static const stone900 = Color(0xFF3B3230);
-  static const stone950 = Color(0xFF241C1A);
+  static const stone50 = Color(0xFFFBF6EA); // 배경(로고 크림)
+  static const stone100 = Color(0xFFF1EDE1);
+  static const stone200 = Color(0xFFE4DFCF);
+  static const stone300 = Color(0xFFD3CDBB);
+  static const stone400 = Color(0xFFA8A192);
+  static const stone500 = Color(0xFF7A7468); // 보조 텍스트
+  static const stone600 = Color(0xFF5C5850);
+  static const stone700 = Color(0xFF403D38);
+  static const stone800 = Color(0xFF2A2823);
+  static const stone900 = Color(0xFF1B1B1B); // 본문(거의 검정)
+  static const stone950 = Color(0xFF121210);
 
-  static const background = Color(0xFFFAF8F4);
+  static const background = Color(0xFFFBF6EA);
   static const foreground = stone900;
-  static const card = Colors.white;
+  static const card = Color(0xFFFFFFFF);
   static const cardForeground = stone900;
-  static const primary = stone400;
-  static const primaryForeground = stone900;
-  static const secondary = stone200;
-  static const secondaryForeground = stone900;
-  static const muted = Color(0xFFE8E0D4);
-  static const mutedForeground = Color(0xFF9A8C88);
-  static const accent = stone400;
-  static const accentForeground = stone900;
-  static const destructive = Color(0xFFA85050);
+
+  // 메인 색 — 로고 '밥상' 그린
+  static const primary = Color(0xFF6BAE45);
+  static const primaryLight = Color(0xFFEAF5E2);
+  static const primaryForeground = Color(0xFFFFFFFF);
+
+  // 서브 색 — 로고 '멍냥' 딥그린
+  static const secondary = Color(0xFF2E6B3E);
+  static const secondaryForeground = Color(0xFFFFFFFF);
+
+  static const muted = primaryLight;
+  static const mutedForeground = stone500;
+  static const accent = secondary;
+  static const accentForeground = Color(0xFFFFFFFF);
+  static const destructive = Color(0xFFD9534F);
   static const destructiveForeground = Colors.white;
-  static const border = Color(0x38B4A294); // rgba(180,162,148,0.22)
+  static const warning = Color(0xFFE9B949);
+  static const info = Color(0xFF4A90E2);
+  static const border = Color(0xFFDCEAD2);
   static const inputBackground = stone200;
-  static const switchBackground = Color(0xFFC8BFB3);
+  static const switchBackground = stone400;
   static const radius = 10.0; // 0.625rem
 }
 
 ThemeData buildChowTheme() {
   const seed = ChowCozy.primary;
+  final baseTextTheme = GoogleFonts.juaTextTheme();
+
   return ThemeData(
     useMaterial3: true,
+    fontFamily: GoogleFonts.jua().fontFamily,
     colorScheme: ColorScheme.fromSeed(
       seedColor: seed,
       brightness: Brightness.light,
@@ -85,15 +98,14 @@ ThemeData buildChowTheme() {
       onError: ChowCozy.destructiveForeground,
     ),
     scaffoldBackgroundColor: ChowCozy.background,
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,
       backgroundColor: ChowCozy.background,
       foregroundColor: ChowCozy.foreground,
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.jua(
         color: ChowCozy.foreground,
-        fontSize: 17,
-        fontWeight: FontWeight.w600,
+        fontSize: 18,
       ),
     ),
     cardTheme: CardThemeData(
@@ -119,7 +131,7 @@ ThemeData buildChowTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(ChowCozy.radius),
-        borderSide: const BorderSide(color: ChowCozy.stone600, width: 2),
+        borderSide: const BorderSide(color: ChowCozy.primary, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
@@ -132,6 +144,7 @@ ThemeData buildChowTheme() {
         ),
         backgroundColor: ChowCozy.primary,
         foregroundColor: ChowCozy.primaryForeground,
+        textStyle: GoogleFonts.jua(fontSize: 16),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -142,14 +155,29 @@ ThemeData buildChowTheme() {
         ),
         side: const BorderSide(color: ChowCozy.border),
         foregroundColor: ChowCozy.foreground,
+        textStyle: GoogleFonts.jua(fontSize: 16),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(foregroundColor: ChowCozy.stone700),
+      style: TextButton.styleFrom(
+        foregroundColor: ChowCozy.secondary,
+        textStyle: GoogleFonts.jua(fontSize: 16),
+      ),
     ),
-    textTheme: const TextTheme(
-      bodyLarge: TextStyle(color: ChowCozy.foreground),
-      bodyMedium: TextStyle(color: ChowCozy.foreground),
-    ).apply(bodyColor: ChowCozy.foreground, displayColor: ChowCozy.foreground),
+    chipTheme: ChipThemeData(
+      backgroundColor: ChowCozy.card,
+      selectedColor: ChowCozy.primaryLight,
+      side: const BorderSide(color: ChowCozy.border),
+      labelStyle: GoogleFonts.jua(color: ChowCozy.foreground),
+      secondarySelectedColor: ChowCozy.primaryLight,
+      checkmarkColor: ChowCozy.secondary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+      ),
+    ),
+    textTheme: baseTextTheme.apply(
+      bodyColor: ChowCozy.foreground,
+      displayColor: ChowCozy.foreground,
+    ),
   );
 }
