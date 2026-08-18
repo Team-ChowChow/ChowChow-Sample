@@ -9,6 +9,7 @@ import com.petdiet.ai.diet.service.DietRecommendService.RecommendContext;
 import com.petdiet.ai.diet.service.DietRecipeSaveService;
 import com.petdiet.ai.image.service.ImageGenerateService;
 import com.petdiet.config.SupabasePrincipal;
+import com.petdiet.coin.service.CoinService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class DietRecommendController {
     private final DietRecommendService dietRecommendService;
     private final DietRecipeSaveService dietRecipeSaveService;
     private final ImageGenerateService imageGenerateService;
+    private final CoinService coinService;
 
     /**
      * 식단 추천만 반환 (레시피 저장 없음)
@@ -70,6 +72,7 @@ public class DietRecommendController {
         }
 
         Recipe saved = dietRecipeSaveService.saveAiRecipe(ctx.user(), ctx.pet(), ctx.response(), imageUrl, stepImages);
+        coinService.llmGenerateReward(principal.authUuid());
 
         return ResponseEntity.ok(DietGenerateResponse.from(saved, ctx.response()));
     }

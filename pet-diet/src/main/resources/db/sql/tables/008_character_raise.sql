@@ -8,6 +8,11 @@ ALTER TABLE "PetCharacters"
 ALTER TABLE "CharacterGrowthLogs" DROP CONSTRAINT IF EXISTS "CharacterGrowthLogs_activityType_check";
 
 ALTER TABLE "CharacterGrowthLogs"
+    ADD COLUMN IF NOT EXISTS "currentExp"   INT     NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS "currentLevel" INT     NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS "expGained"    INT     NOT NULL DEFAULT 0;
+
+ALTER TABLE "CharacterGrowthLogs"
     ADD CONSTRAINT "CharacterGrowthLogs_activityType_check"
         CHECK ("activityType" IN (
             'FEED', 'PET', 'EXERCISE', 'BATH', 'LEVEL_UP',

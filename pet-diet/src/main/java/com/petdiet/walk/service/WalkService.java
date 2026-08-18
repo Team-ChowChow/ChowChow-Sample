@@ -3,6 +3,7 @@ package com.petdiet.walk.service;
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
 import com.petdiet.coin.service.CoinService;
+import com.petdiet.coin.dto.DailyMissionSummaryResponse;
 import com.petdiet.walk.dto.*;
 import com.petdiet.walk.entity.WalkRecord;
 import com.petdiet.walk.repository.WalkRecordRepository;
@@ -81,6 +82,8 @@ public class WalkService {
         int balance = earnedCoins > 0
                 ? coinService.earnCoins(authUuid, earnedCoins, "산책 로드맵 달성")
                 : coinService.getBalance(authUuid);
+        DailyMissionSummaryResponse missions = coinService.getDailyMissions(authUuid);
+        balance = missions.balance();
 
         return new WalkFinishResponse(
                 WalkRecordResponse.from(saved),

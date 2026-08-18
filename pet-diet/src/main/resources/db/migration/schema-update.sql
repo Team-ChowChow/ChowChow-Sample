@@ -90,3 +90,12 @@ CREATE TABLE IF NOT EXISTS "CommercialFoods" (
 
 -- 식단 기록이 레시피뿐 아니라 상용 사료(CommercialFoods)도 급여 소스로 참조할 수 있도록
 ALTER TABLE "MealRecords" ADD COLUMN IF NOT EXISTS "commercialFoodId" INTEGER REFERENCES "CommercialFoods"("foodId") ON DELETE SET NULL;
+
+-- 국내 시판 사료의 장점/특징 설명 (큐레이션 데이터용)
+ALTER TABLE "CommercialFoods" ADD COLUMN IF NOT EXISTS "features" TEXT;
+
+-- 데이터 출처 구분 (OPFF/CURATED_KR)
+ALTER TABLE "CommercialFoods" ADD COLUMN IF NOT EXISTS "source" VARCHAR(30);
+ALTER TABLE "CommercialFoods" DROP COLUMN IF EXISTS "lowestPriceWon";
+UPDATE "CommercialFoods" SET "source" = 'CURATED_KR' WHERE "source" IS NULL AND "features" IS NOT NULL;
+UPDATE "CommercialFoods" SET "source" = 'OPFF' WHERE "source" IS NULL;

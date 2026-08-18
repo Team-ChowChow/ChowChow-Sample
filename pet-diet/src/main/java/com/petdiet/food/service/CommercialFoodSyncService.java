@@ -40,6 +40,7 @@ public class CommercialFoodSyncService {
                         .carbohydrateG(r.carbs())
                         .ingredientsText(r.ingredientsText())
                         .imageUrl(r.imageUrl())
+                        .source("OPFF")
                         .build());
                 saved++;
             }

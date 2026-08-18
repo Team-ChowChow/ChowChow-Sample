@@ -81,6 +81,7 @@ public class RecipeV1Controller {
             @RequestParam(required = false) List<Integer> allergyIds,
             @RequestParam(required = false) List<Integer> diseaseIds,
             @RequestParam(defaultValue = "false") Boolean useMyPetFilter,
+            @RequestParam(defaultValue = "popular") String sort,
             Pageable pageable) {
 
         // 키워드 + 태그 + petType 복합 검색
@@ -106,7 +107,10 @@ public class RecipeV1Controller {
             sql.append(" AND m.\"petType\" = ?");
             params.add(petType.trim());
         }
-        sql.append(" GROUP BY r.\"recipeId\" ORDER BY r.\"recipeId\" DESC LIMIT 50");
+        String normalizedSort = normalizeSearchSort(sort);
+        sql.append(" GROUP BY r.\"recipeId\"")
+                .append(searchOrderBy(normalizedSort))
+                .append(" LIMIT 50");
 
         List<Integer> ids = jdbc.queryForList(sql.toString(), Integer.class, params.toArray());
         // N+1 방지: 한 번에 조회 후 ID 순서대로 정렬
@@ -124,8 +128,21 @@ public class RecipeV1Controller {
                 "keyword", keyword == null ? "" : keyword,
                 "tag", tag == null ? "" : tag,
                 "petType", petType == null ? "" : petType,
+                "sortType", normalizedSort,
                 "data", results
         ));
+    }
+
+    static String normalizeSearchSort(String sort) {
+        return "latest".equalsIgnoreCase(sort) ? "latest" : "popular";
+    }
+
+    static String searchOrderBy(String normalizedSort) {
+        if ("latest".equals(normalizedSort)) {
+            return " ORDER BY r.\"createdAt\" DESC, r.\"recipeId\" DESC";
+        }
+        return " ORDER BY COALESCE(r.\"likeCount\", 0) DESC, " +
+                "r.\"createdAt\" DESC, r.\"recipeId\" DESC";
     }
 
     @PostMapping("/recipes/{recipeId}/like")

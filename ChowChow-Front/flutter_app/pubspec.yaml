@@ -66,6 +66,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/characters/
+    - assets/images/scenes/
     - assets/models/
     - assets/gifs/
     - assets/gifs/group1/

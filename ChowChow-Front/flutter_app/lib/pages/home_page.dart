@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
-import '../services/walk_service.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
 
@@ -28,29 +27,12 @@ class _HomePageState extends State<HomePage> {
   String _tipText = '';
   String _tipDetail = '';
 
-  WalkSummaryModel? _walkSummary;
-  bool _walkLoading = true;
-
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
     _loadRecipes();
     _loadTip();
-    _loadWalkSummary();
-  }
-
-  Future<void> _loadWalkSummary() async {
-    try {
-      final summary = await WalkService.fetchToday();
-      if (!mounted) return;
-      setState(() {
-        _walkSummary = summary;
-        _walkLoading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _walkLoading = false);
-    }
   }
 
   Future<void> _loadTip() async {
@@ -135,18 +117,6 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _TodayWalkCard(
-                        summary: _walkSummary,
-                        loading: _walkLoading,
-                        onTap: () async {
-                          await context.push('/walk');
-                          await _loadWalkSummary();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
@@ -255,8 +225,47 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 32),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _FeedingCalculatorEntry(
-                        onTap: () => context.push('/feeding-guideline'),
+                      child: Text(
+                        '급여',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: ChowColors.gray800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          _FeedingEntryRow(
+                            icon: Icons.calculate_outlined,
+                            title: '급여량 계산기',
+                            subtitle: '먹는 사료를 고르고 오늘의 식단을 기록해보세요',
+                            onTap: () => context.push('/feeding-guideline'),
+                          ),
+                          const SizedBox(height: 10),
+                          _FeedingEntryRow(
+                            icon: Icons.inventory_2_outlined,
+                            title: '사료 정보',
+                            subtitle: '사료별 칼로리·영양 성분을 검색해보세요',
+                            onTap: () => context.push('/food-info'),
+                          ),
+                          const SizedBox(height: 10),
+                          _FeedingEntryRow(
+                            icon: Icons.sync_alt,
+                            title: '사료 교체 가이드',
+                            subtitle: 'AI가 두 사료의 배합 비율을 단계별로 추천해드려요',
+                            onTap: () => context.push('/food-transition-guide'),
+                          ),
+                          const SizedBox(height: 10),
+                          _FeedingEntryRow(
+                            icon: Icons.menu_book_outlined,
+                            title: '식단 기록',
+                            subtitle: '직접 만든 식단과 레시피를 모아보세요',
+                            onTap: () => context.push('/diet-log'),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -715,157 +724,6 @@ class _TrendingCard extends StatelessWidget {
   }
 }
 
-class _TodayWalkCard extends StatelessWidget {
-  const _TodayWalkCard({
-    required this.summary,
-    required this.loading,
-    required this.onTap,
-  });
-
-  final WalkSummaryModel? summary;
-  final bool loading;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final distanceMeters = summary?.todayDistanceMeters ?? 0;
-    final next = summary?.nextMilestone;
-    final targetMeters = next?.targetMeters ?? 5000;
-    final progress = (distanceMeters / targetMeters).clamp(0.0, 1.0);
-    final remainingMeters = (targetMeters - distanceMeters).clamp(
-      0,
-      targetMeters,
-    );
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [ChowCozy.stone100, ChowCozy.stone300],
-            ),
-            border: Border.all(color: ChowCozy.stone300),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.directions_walk_rounded,
-                      color: ChowCozy.stone500,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '오늘의 산책',
-                          style: TextStyle(
-                            color: ChowColors.gray800,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          '함께 걷고 코인을 모아보세요',
-                          style: TextStyle(
-                            color: ChowColors.gray500,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: ChowColors.gray500,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              if (loading)
-                const LinearProgressIndicator(minHeight: 7)
-              else ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      (distanceMeters / 1000).toStringAsFixed(2),
-                      style: const TextStyle(
-                        color: ChowColors.gray900,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4, bottom: 2),
-                      child: Text(
-                        'km',
-                        style: TextStyle(
-                          color: ChowColors.gray600,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${summary?.todayRewardCoins ?? 0} 코인 획득',
-                      style: const TextStyle(
-                        color: ChowCozy.stone700,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 9,
-                    backgroundColor: Colors.white,
-                    color: ChowCozy.stone500,
-                  ),
-                ),
-                const SizedBox(height: 9),
-                Text(
-                  next == null
-                      ? '오늘의 모든 보상을 받았어요!'
-                      : '다음 보상까지 ${(remainingMeters / 1000).toStringAsFixed(2)}km · +${next.rewardCoins}코인',
-                  style: const TextStyle(
-                    color: ChowColors.gray600,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _AiChefBanner extends StatelessWidget {
   const _AiChefBanner({required this.onTap});
 
@@ -973,8 +831,17 @@ class _HeaderNotice {
   }
 }
 
-class _FeedingCalculatorEntry extends StatelessWidget {
-  const _FeedingCalculatorEntry({required this.onTap});
+class _FeedingEntryRow extends StatelessWidget {
+  const _FeedingEntryRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
@@ -1000,7 +867,7 @@ class _FeedingCalculatorEntry extends StatelessWidget {
                   color: ChowCozy.stone100,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.calculate_outlined, color: ChowCozy.stone500),
+                child: Icon(icon, color: ChowCozy.stone500),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1008,16 +875,16 @@ class _FeedingCalculatorEntry extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '급여량 계산기',
+                      title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: ChowColors.gray800,
                             fontWeight: FontWeight.w600,
                           ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      '먹는 사료를 고르고 오늘의 식단을 기록해보세요',
-                      style: TextStyle(fontSize: 13, color: ChowColors.gray500),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
                     ),
                   ],
                 ),
