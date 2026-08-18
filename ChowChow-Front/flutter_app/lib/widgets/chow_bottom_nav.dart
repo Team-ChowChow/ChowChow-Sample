@@ -136,8 +136,8 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              ChowCozy.stone300,
-                              ChowCozy.stone400,
+                              ChowCozy.primary,
+                              ChowCozy.secondary,
                             ],
                           ),
                           border: Border.all(color: Colors.white, width: 4),
@@ -154,7 +154,7 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                           'assets/images/paw.png',
                           width: 30,
                           height: 30,
-                          color: ChowCozy.stone900,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -191,7 +191,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? ChowCozy.stone600 : ChowCozy.mutedForeground;
+    final color = active ? ChowCozy.primary : ChowCozy.mutedForeground;
     return InkWell(
       onTap: onTap,
       child: Column(
