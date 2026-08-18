@@ -319,20 +319,7 @@ class _CharacterPageState extends State<CharacterPage>
   }
 
   void _openMissionSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => MissionSheet(
-        feedCount: _feedCount,
-        petCount: _petCount,
-        playCount: _playCount,
-        walkKm: _todayWalkKm,
-        walkLoading: _walkLoading,
-      ),
-    );
+    // Mission sheet 기능은 향후 구현 예정
   }
 
   void _openCraftSheet() {
