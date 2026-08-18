@@ -111,6 +111,7 @@ class _SearchPageState extends State<SearchPage> {
       final query = <String, String>{
         'size': '30',
         'page': '0',
+        'sort': _sort.name,
       };
 
       if (_selectedTag != null) {
@@ -182,10 +183,26 @@ class _SearchPageState extends State<SearchPage> {
 
   List<RecipeModel> get _sortedResults {
     final sorted = List<RecipeModel>.of(_results);
-    if (_sort == _SearchSort.latest) {
-      sorted.sort((a, b) => b.recipeId.compareTo(a.recipeId));
-    }
+    sorted.sort((a, b) {
+      if (_sort == _SearchSort.popular) {
+        final likeComparison = b.likeCount.compareTo(a.likeCount);
+        if (likeComparison != 0) return likeComparison;
+      }
+
+      final dateComparison = _compareCreatedAtDescending(a, b);
+      if (dateComparison != 0) return dateComparison;
+      return b.recipeId.compareTo(a.recipeId);
+    });
     return sorted;
+  }
+
+  int _compareCreatedAtDescending(RecipeModel a, RecipeModel b) {
+    final aCreatedAt = a.createdAt;
+    final bCreatedAt = b.createdAt;
+    if (aCreatedAt == null && bCreatedAt == null) return 0;
+    if (aCreatedAt == null) return 1;
+    if (bCreatedAt == null) return -1;
+    return bCreatedAt.compareTo(aCreatedAt);
   }
 
   void _selectKeyword(String keyword) {
@@ -202,7 +219,7 @@ class _SearchPageState extends State<SearchPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.45),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (context) {
         return _FilterBottomSheet(
           petType: _petTypeFilter,
@@ -439,6 +456,7 @@ class _SearchPageState extends State<SearchPage> {
               sort: _sort,
               onSortChanged: (sort) {
                 setState(() => _sort = sort);
+                _search();
               },
             ),
           ),

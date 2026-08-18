@@ -1,6 +1,58 @@
 import 'api_client.dart';
 import 'models.dart';
 
+class DailyMissionModel {
+  const DailyMissionModel({
+    required this.key,
+    required this.label,
+    required this.progress,
+    required this.target,
+    required this.rewardCoins,
+    required this.completed,
+    required this.claimed,
+  });
+
+  final String key;
+  final String label;
+  final int progress;
+  final int target;
+  final int rewardCoins;
+  final bool completed;
+  final bool claimed;
+
+  factory DailyMissionModel.fromJson(Map<String, dynamic> json) {
+    return DailyMissionModel(
+      key: json['key'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      progress: (json['progress'] as num?)?.toInt() ?? 0,
+      target: (json['target'] as num?)?.toInt() ?? 0,
+      rewardCoins: (json['rewardCoins'] as num?)?.toInt() ?? 0,
+      completed: json['completed'] as bool? ?? false,
+      claimed: json['claimed'] as bool? ?? false,
+    );
+  }
+}
+
+class DailyMissionSummaryModel {
+  const DailyMissionSummaryModel({
+    required this.balance,
+    required this.missions,
+  });
+
+  final int balance;
+  final List<DailyMissionModel> missions;
+
+  factory DailyMissionSummaryModel.fromJson(Map<String, dynamic> json) {
+    final missions = json['missions'] as List<dynamic>? ?? [];
+    return DailyMissionSummaryModel(
+      balance: (json['balance'] as num?)?.toInt() ?? 0,
+      missions: missions
+          .map((item) => DailyMissionModel.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
 class CharacterService {
   static Future<List<CharacterModel>> fetchCharacters() async {
     final res = await ApiClient.get('/api/characters') as List<dynamic>;
@@ -23,10 +75,10 @@ class CharacterService {
     final res = await ApiClient.post('/api/characters', {
       'characterName': characterName,
       'petType': petType,
-      if (breedId != null) 'breedId': breedId,
-      if (characterImageUrl != null) 'characterImageUrl': characterImageUrl,
-      if (description != null) 'description': description,
-      if (petId != null) 'petId': petId,
+      'breedId': ?breedId,
+      'characterImageUrl': ?characterImageUrl,
+      'description': ?description,
+      'petId': ?petId,
     }) as Map<String, dynamic>;
     return CharacterModel.fromJson(res);
   }
@@ -39,10 +91,10 @@ class CharacterService {
     String? description,
   }) async {
     final res = await ApiClient.patch('/api/characters/$characterId', {
-      if (characterName != null) 'characterName': characterName,
-      if (breedId != null) 'breedId': breedId,
-      if (characterImageUrl != null) 'characterImageUrl': characterImageUrl,
-      if (description != null) 'description': description,
+      'characterName': ?characterName,
+      'breedId': ?breedId,
+      'characterImageUrl': ?characterImageUrl,
+      'description': ?description,
     }) as Map<String, dynamic>;
     return CharacterModel.fromJson(res);
   }
@@ -56,6 +108,12 @@ class CharacterService {
       'activityType': activityType,
     }) as Map<String, dynamic>;
     return CharacterModel.fromJson(res);
+  }
+
+  static Future<DailyMissionSummaryModel> fetchDailyMissions() async {
+    final res = await ApiClient.get('/api/coins/missions/today')
+        as Map<String, dynamic>;
+    return DailyMissionSummaryModel.fromJson(res);
   }
 
   static Future<List<GrowthLogModel>> fetchGrowthLogs(

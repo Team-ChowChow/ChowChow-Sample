@@ -108,9 +108,15 @@ class _CharacterListPageState extends State<CharacterListPage> {
                               '캐릭터 관리',
                               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray700),
                             ),
-                            Text(
-                              '내 캐릭터 ${_characters.length}마리',
-                              style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '내 캐릭터 ${_characters.length}마리',
+                                maxLines: 1,
+                                softWrap: false,
+                                style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
+                              ),
                             ),
                           ],
                         ),
@@ -119,6 +125,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
                         onPressed: _loading ? null : _load,
                         icon: const Icon(Icons.refresh, color: ChowColors.gray600),
                         tooltip: '새로고침',
+                        visualDensity: VisualDensity.compact,
                       ),
                       FilledButton.icon(
                         onPressed: () async {
@@ -126,10 +133,11 @@ class _CharacterListPageState extends State<CharacterListPage> {
                           if (created == true) _load();
                         },
                         icon: const Icon(Icons.add, size: 18),
-                        label: const Text('새 캐릭터 생성'),
+                        label: const Text('새 캐릭터 생성', maxLines: 1, softWrap: false),
                         style: FilledButton.styleFrom(
                           backgroundColor: ChowCozy.stone500,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
                     ],
@@ -331,17 +339,36 @@ class _CharacterCard extends StatelessWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: onRaise,
-                      style: FilledButton.styleFrom(backgroundColor: ChowCozy.stone500),
-                      child: const Text('키우기'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: ChowCozy.stone500,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 44),
+                      ),
+                      child: const Text('키우기', maxLines: 1, softWrap: false),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  OutlinedButton(onPressed: onEdit, child: const Text('수정')),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onEdit,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 44),
+                      ),
+                      child: const Text('수정', maxLines: 1, softWrap: false),
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: onDelete,
-                    style: OutlinedButton.styleFrom(foregroundColor: ChowColors.red500),
-                    child: const Text('삭제'),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onDelete,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ChowColors.red500,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 44),
+                      ),
+                      child: const Text('삭제', maxLines: 1, softWrap: false),
+                    ),
                   ),
                 ],
               ),

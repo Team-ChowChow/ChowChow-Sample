@@ -148,14 +148,13 @@ class _WalkPageState extends State<WalkPage> {
       distanceFilter: 3,
     );
     _positionSubscription?.cancel();
-    _positionSubscription = Geolocator.getPositionStream(
-      locationSettings: settings,
-    ).listen(
-      _handlePosition,
-      onError: (_) {
-        if (mounted) _showMessage('GPS 신호를 확인하고 있어요.');
-      },
-    );
+    _positionSubscription =
+        Geolocator.getPositionStream(locationSettings: settings).listen(
+          _handlePosition,
+          onError: (_) {
+            if (mounted) _showMessage('GPS 신호를 확인하고 있어요.');
+          },
+        );
   }
 
   void _handlePosition(Position position) {
@@ -223,6 +222,17 @@ class _WalkPageState extends State<WalkPage> {
     _positionSubscription = null;
   }
 
+  void _resetWalkSession() {
+    _status = _WalkStatus.idle;
+    _sessionId = null;
+    _startedAt = null;
+    _lastPosition = null;
+    _lastPositionAt = null;
+    _distanceMeters = 0;
+    _durationSeconds = 0;
+    _ignoredGpsPoints = 0;
+  }
+
   Future<void> _finishWalk() async {
     if (!_isWalking || _startedAt == null || _sessionId == null) return;
 
@@ -250,6 +260,16 @@ class _WalkPageState extends State<WalkPage> {
     if (shouldFinish != true || !mounted) return;
 
     await _stopTracking();
+    if (!mounted) return;
+
+    // GPS 좌표가 한 번도 유효하게 잡히지 않은 산책은 서버 저장이나
+    // 코인 계산이 필요 없다. 세션만 정리해 사용자가 확실히 종료할 수 있게 한다.
+    if (_distanceMeters.round() == 0) {
+      setState(_resetWalkSession);
+      _showMessage('이동 거리가 없어 기록 없이 산책을 종료했어요.');
+      return;
+    }
+
     setState(() => _status = _WalkStatus.saving);
 
     try {
@@ -263,11 +283,7 @@ class _WalkPageState extends State<WalkPage> {
       if (!mounted) return;
       setState(() {
         _summary = result.today;
-        _status = _WalkStatus.idle;
-        _sessionId = null;
-        _startedAt = null;
-        _distanceMeters = 0;
-        _durationSeconds = 0;
+        _resetWalkSession();
       });
       await _showResult(result);
       await _loadWalkData();
@@ -275,9 +291,7 @@ class _WalkPageState extends State<WalkPage> {
       if (!mounted) return;
       setState(() => _status = _WalkStatus.paused);
       _showMessage(
-        error.statusCode == 403
-            ? '로그인 정보가 없어 저장하지 못했어요.'
-            : error.message,
+        error.statusCode == 403 ? '로그인 정보가 없어 저장하지 못했어요.' : error.message,
       );
     } catch (_) {
       if (!mounted) return;
@@ -313,6 +327,14 @@ class _WalkPageState extends State<WalkPage> {
                   ? '로드맵 달성으로 ${result.earnedCoins}코인을 받았어요.'
                   : '다음 거리 목표를 향해 계속 걸어보세요.',
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '현재 보유 ${result.today.balance}코인',
+              style: const TextStyle(
+                color: ChowCozy.mutedForeground,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -386,20 +408,30 @@ class _WalkPageState extends State<WalkPage> {
                       children: [
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back, color: ChowCozy.stone700),
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: ChowCozy.stone700,
+                          ),
                         ),
                         const Expanded(
                           child: Text(
                             '🚶 산책',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ChowCozy.stone900),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: ChowCozy.stone900,
+                            ),
                           ),
                         ),
                         if (!_isWalking && _status != _WalkStatus.saving)
                           IconButton(
                             onPressed: _loadWalkData,
                             tooltip: '새로고침',
-                            icon: const Icon(Icons.refresh, color: ChowCozy.stone700),
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: ChowCozy.stone700,
+                            ),
                           )
                         else
                           const SizedBox(width: 48),
@@ -415,23 +447,41 @@ class _WalkPageState extends State<WalkPage> {
                         ),
                         child: Text(
                           _loadMessage!,
-                          style: const TextStyle(color: ChowCozy.stone700, fontSize: 12),
+                          style: const TextStyle(
+                            color: ChowCozy.stone700,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
 
                     // 오늘의 기록
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
-                        boxShadow: const [BoxShadow(blurRadius: 12, offset: Offset(0, 4), color: Color(0x0F000000))],
+                        boxShadow: const [
+                          BoxShadow(
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                            color: Color(0x0F000000),
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
                           const Align(
                             alignment: Alignment.centerLeft,
-                            child: Text('오늘의 기록', style: TextStyle(fontSize: 12, color: ChowCozy.mutedForeground)),
+                            child: Text(
+                              '오늘의 기록',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: ChowCozy.mutedForeground,
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 10),
                           IntrinsicHeight(
@@ -441,14 +491,25 @@ class _WalkPageState extends State<WalkPage> {
                                   child: _WalkMetric(
                                     icon: '📍',
                                     label: 'km',
-                                    value: (previewTodayMeters / 1000).toStringAsFixed(2),
+                                    value: (previewTodayMeters / 1000)
+                                        .toStringAsFixed(2),
                                   ),
                                 ),
-                                const VerticalDivider(color: ChowCozy.stone100, thickness: 1),
-                                Expanded(
-                                  child: _WalkMetric(icon: '👣', label: '걸음', value: steps.toString()),
+                                const VerticalDivider(
+                                  color: ChowCozy.stone100,
+                                  thickness: 1,
                                 ),
-                                const VerticalDivider(color: ChowCozy.stone100, thickness: 1),
+                                Expanded(
+                                  child: _WalkMetric(
+                                    icon: '👣',
+                                    label: '걸음',
+                                    value: steps.toString(),
+                                  ),
+                                ),
+                                const VerticalDivider(
+                                  color: ChowCozy.stone100,
+                                  thickness: 1,
+                                ),
                                 Expanded(
                                   child: _WalkMetric(
                                     icon: '⏱️',
@@ -467,13 +528,23 @@ class _WalkPageState extends State<WalkPage> {
                               children: [
                                 const _PulsingDot(),
                                 const SizedBox(width: 6),
-                                const Text('GPS 측정 중', style: TextStyle(fontSize: 12, color: ChowColors.green500, fontWeight: FontWeight.w600)),
+                                const Text(
+                                  'GPS 측정 중',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: ChowColors.green500,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                                 const Spacer(),
                                 Text(
                                   _durationSeconds > 0 && _distanceMeters > 0
                                       ? '페이스 ${(_durationSeconds / 60 / (_distanceMeters / 1000)).toStringAsFixed(1)}분/km'
                                       : '페이스 --',
-                                  style: const TextStyle(fontSize: 12, color: ChowCozy.mutedForeground),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: ChowCozy.mutedForeground,
+                                  ),
                                 ),
                               ],
                             ),
@@ -482,7 +553,10 @@ class _WalkPageState extends State<WalkPage> {
                             const SizedBox(height: 8),
                             Text(
                               '정확하지 않은 GPS 신호 $_ignoredGpsPoints건 제외',
-                              style: const TextStyle(color: ChowCozy.mutedForeground, fontSize: 11),
+                              style: const TextStyle(
+                                color: ChowCozy.mutedForeground,
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         ],
@@ -491,7 +565,15 @@ class _WalkPageState extends State<WalkPage> {
                     const SizedBox(height: 18),
 
                     // 시작/종료 버튼
-                    Center(child: _WalkActionButton(status: _status, onStart: _startWalk, onPause: _pauseWalk, onResume: _resumeWalk, onFinish: _finishWalk)),
+                    Center(
+                      child: _WalkActionButton(
+                        status: _status,
+                        onStart: _startWalk,
+                        onPause: _pauseWalk,
+                        onResume: _resumeWalk,
+                        onFinish: _finishWalk,
+                      ),
+                    ),
                     const SizedBox(height: 20),
 
                     _TodayRoadmap(
@@ -504,7 +586,10 @@ class _WalkPageState extends State<WalkPage> {
 
                     // 코인 안내 배너
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       decoration: BoxDecoration(
                         color: ChowCozy.stone800,
                         borderRadius: BorderRadius.circular(20),
@@ -515,17 +600,50 @@ class _WalkPageState extends State<WalkPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('🪙 거리별 코인 적립', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                                Text(
+                                  '🪙 거리별 코인 적립',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 SizedBox(height: 2),
-                                Text('하루 최대 50코인까지 받을 수 있어요', style: TextStyle(color: Color(0xFFC0AFA0), fontSize: 11)),
+                                Text(
+                                  '하루 최대 50코인까지 받을 수 있어요',
+                                  style: TextStyle(
+                                    color: Color(0xFFC0AFA0),
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('${_summary?.todayRewardCoins ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
-                              const Text('오늘 적립', style: TextStyle(color: Color(0xFFC0AFA0), fontSize: 11)),
+                              Text(
+                                '${_summary?.todayRewardCoins ?? 0}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const Text(
+                                '오늘 적립',
+                                style: TextStyle(
+                                  color: Color(0xFFC0AFA0),
+                                  fontSize: 11,
+                                ),
+                              ),
+                              Text(
+                                '보유 ${_summary?.balance ?? 0}코인',
+                                style: const TextStyle(
+                                  color: Color(0xFFC0AFA0),
+                                  fontSize: 11,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -589,9 +707,10 @@ class _PulsingDotState extends State<_PulsingDot>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: Tween<double>(begin: 0.4, end: 1.0).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-      ),
+      opacity: Tween<double>(
+        begin: 0.4,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
       child: Container(
         width: 8,
         height: 8,
@@ -680,7 +799,14 @@ class _WalkActionButton extends StatelessWidget {
             children: [
               Icon(icon, color: Colors.white, size: 20),
               const SizedBox(width: 10),
-              Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
         ),
@@ -690,7 +816,11 @@ class _WalkActionButton extends StatelessWidget {
 }
 
 class _WalkMetric extends StatelessWidget {
-  const _WalkMetric({required this.icon, required this.label, required this.value});
+  const _WalkMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   final String icon;
   final String label;
@@ -704,10 +834,17 @@ class _WalkMetric extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(color: ChowCozy.stone900, fontSize: 17, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            color: ChowCozy.stone900,
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         const SizedBox(height: 1),
-        Text(label, style: const TextStyle(color: ChowCozy.mutedForeground, fontSize: 11)),
+        Text(
+          label,
+          style: const TextStyle(color: ChowCozy.mutedForeground, fontSize: 11),
+        ),
       ],
     );
   }
@@ -742,7 +879,9 @@ class _TodayRoadmap extends StatelessWidget {
     final maxTarget = milestones.isEmpty ? 1 : milestones.last.targetMeters;
     final trackFrac = (savedMeters / maxTarget).clamp(0.0, 1.0);
 
-    final nextIndex = milestones.indexWhere((m) => savedMeters < m.targetMeters);
+    final nextIndex = milestones.indexWhere(
+      (m) => savedMeters < m.targetMeters,
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -759,13 +898,20 @@ class _TodayRoadmap extends StatelessWidget {
               const Expanded(
                 child: Text(
                   '🗺️ 산책 로드맵',
-                  style: TextStyle(color: ChowCozy.stone900, fontSize: 15, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: ChowCozy.stone900,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               if (nextIndex >= 0)
                 Text(
                   '다음 목표 ${_formatDistanceTarget(milestones[nextIndex].targetMeters)}',
-                  style: const TextStyle(color: ChowCozy.mutedForeground, fontSize: 12),
+                  style: const TextStyle(
+                    color: ChowCozy.mutedForeground,
+                    fontSize: 12,
+                  ),
                 ),
             ],
           ),
@@ -776,41 +922,68 @@ class _TodayRoadmap extends StatelessWidget {
             // 경로 + 마일스톤 노드
             LayoutBuilder(
               builder: (context, constraints) {
-                return Stack(
-                  children: [
-                    Positioned(
-                      top: 20,
-                      left: 20,
-                      right: 20,
-                      child: Container(height: 4, decoration: BoxDecoration(color: ChowCozy.stone100, borderRadius: BorderRadius.circular(999))),
-                    ),
-                    Positioned(
-                      top: 20,
-                      left: 20,
-                      child: Container(
-                        height: 4,
-                        width: (constraints.maxWidth - 40) * trackFrac,
-                        decoration: BoxDecoration(color: ChowCozy.stone400, borderRadius: BorderRadius.circular(999)),
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                final roadmapWidth = max(
+                  constraints.maxWidth,
+                  (milestones.length + 1) * 48.0,
+                );
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: roadmapWidth,
+                    child: Stack(
                       children: [
-                        const _MilestoneNode(emoji: null, label: '출발', achieved: true, isStart: true),
-                        ...milestones.map((m) {
-                          final achieved = savedMeters >= m.targetMeters;
-                          final preview = !achieved && isWalking && previewDistanceMeters >= m.targetMeters;
-                          return _MilestoneNode(
-                            emoji: '🎁',
-                            label: _formatDistanceTarget(m.targetMeters),
-                            reward: '+${m.rewardCoins}',
-                            achieved: achieved,
-                            preview: preview,
-                          );
-                        }),
+                        Positioned(
+                          top: 20,
+                          left: 20,
+                          right: 20,
+                          child: Container(
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: ChowCozy.stone100,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 20,
+                          left: 20,
+                          child: Container(
+                            height: 4,
+                            width: (roadmapWidth - 40) * trackFrac,
+                            decoration: BoxDecoration(
+                              color: ChowCozy.stone400,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const _MilestoneNode(
+                              emoji: null,
+                              label: '출발',
+                              achieved: true,
+                              isStart: true,
+                            ),
+                            ...milestones.map((m) {
+                              final achieved = savedMeters >= m.targetMeters;
+                              final preview =
+                                  !achieved &&
+                                  isWalking &&
+                                  previewDistanceMeters >= m.targetMeters;
+                              return _MilestoneNode(
+                                emoji: '🎁',
+                                label: _formatDistanceTarget(m.targetMeters),
+                                reward: '+${m.rewardCoins}',
+                                achieved: achieved,
+                                preview: preview,
+                              );
+                            }),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 );
               },
             ),
@@ -819,10 +992,20 @@ class _TodayRoadmap extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('다음 보상까지', style: TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
+                  const Text(
+                    '다음 보상까지',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: ChowCozy.mutedForeground,
+                    ),
+                  ),
                   Text(
                     '🎁 +${milestones[nextIndex].rewardCoins}코인',
-                    style: const TextStyle(fontSize: 11, color: ChowCozy.stone700, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: ChowCozy.stone700,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -836,13 +1019,23 @@ class _TodayRoadmap extends StatelessWidget {
                       Container(color: ChowCozy.stone100),
                       FractionallySizedBox(
                         widthFactor: () {
-                          final prevTarget = nextIndex == 0 ? 0 : milestones[nextIndex - 1].targetMeters;
-                          final span = milestones[nextIndex].targetMeters - prevTarget;
+                          final prevTarget = nextIndex == 0
+                              ? 0
+                              : milestones[nextIndex - 1].targetMeters;
+                          final span =
+                              milestones[nextIndex].targetMeters - prevTarget;
                           if (span <= 0) return 1.0;
-                          return ((savedMeters - prevTarget) / span).clamp(0.0, 1.0);
+                          return ((savedMeters - prevTarget) / span).clamp(
+                            0.0,
+                            1.0,
+                          );
                         }(),
                         child: Container(
-                          decoration: const BoxDecoration(gradient: LinearGradient(colors: [ChowCozy.stone400, ChowCozy.stone700])),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [ChowCozy.stone400, ChowCozy.stone700],
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -853,7 +1046,14 @@ class _TodayRoadmap extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Center(
-                  child: Text('🎉 모든 미션 완료! 대단해요!', style: TextStyle(color: ChowCozy.stone700, fontWeight: FontWeight.w700, fontSize: 13)),
+                  child: Text(
+                    '🎉 모든 미션 완료! 대단해요!',
+                    style: TextStyle(
+                      color: ChowCozy.stone700,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -896,13 +1096,21 @@ class _MilestoneNode extends StatelessWidget {
                 ? ChowCozy.stone600
                 : Colors.white,
             shape: BoxShape.circle,
-            border: Border.all(color: active ? ChowCozy.stone600 : ChowCozy.stone200, width: 2),
-            boxShadow: active ? const [BoxShadow(blurRadius: 6, color: Color(0x1F000000))] : null,
+            border: Border.all(
+              color: active ? ChowCozy.stone600 : ChowCozy.stone200,
+              width: 2,
+            ),
+            boxShadow: active
+                ? const [BoxShadow(blurRadius: 6, color: Color(0x1F000000))]
+                : null,
           ),
           alignment: Alignment.center,
           child: isStart
               ? const Icon(Icons.location_on, color: Colors.white, size: 16)
-              : Text(achieved ? '✅' : emoji ?? '🎁', style: const TextStyle(fontSize: 16)),
+              : Text(
+                  achieved ? '✅' : emoji ?? '🎁',
+                  style: const TextStyle(fontSize: 16),
+                ),
         ),
         const SizedBox(height: 4),
         Text(
@@ -910,11 +1118,21 @@ class _MilestoneNode extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: achieved ? ChowCozy.stone700 : preview ? ChowCozy.stone700 : ChowCozy.mutedForeground,
+            color: achieved
+                ? ChowCozy.stone700
+                : preview
+                ? ChowCozy.stone700
+                : ChowCozy.mutedForeground,
           ),
         ),
         if (reward != null)
-          Text(reward!, style: const TextStyle(fontSize: 9, color: ChowCozy.mutedForeground)),
+          Text(
+            reward!,
+            style: const TextStyle(
+              fontSize: 9,
+              color: ChowCozy.mutedForeground,
+            ),
+          ),
       ],
     );
   }
@@ -1005,16 +1223,9 @@ class _EmptyWalkHistory extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Icon(
-            Icons.route_outlined,
-            color: ChowColors.gray400,
-            size: 36,
-          ),
+          Icon(Icons.route_outlined, color: ChowColors.gray400, size: 36),
           SizedBox(height: 10),
-          Text(
-            '아직 저장된 산책이 없어요.',
-            style: TextStyle(color: ChowColors.gray600),
-          ),
+          Text('아직 저장된 산책이 없어요.', style: TextStyle(color: ChowColors.gray600)),
           SizedBox(height: 4),
           Text(
             '첫 산책을 시작해 기록을 남겨보세요.',

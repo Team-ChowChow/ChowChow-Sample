@@ -208,9 +208,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setStringList('post_${created.id}_tags', tagsFormatted);
 
-        // 커뮤니티 글쓰기 코인 적립
-        ApiClient.post('/api/coins/earn', {'amount': 10, 'reason': '커뮤니티 글쓰기'}).ignore();
-
         if (mounted) context.pop(postWithTags); // post를 반환해서 부모에서 처리
       }
     } catch (_) {

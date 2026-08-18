@@ -27,31 +27,19 @@ public class CoinController {
 
     @PostMapping("/daily-login")
     public ResponseEntity<?> dailyLogin(@AuthenticationPrincipal SupabasePrincipal principal) {
+        int previousBalance = coinService.getBalance(principal.authUuid());
         int balance = coinService.dailyLoginReward(principal.authUuid());
-        return ResponseEntity.ok(Map.of("balance", balance, "reward", CoinService.DAILY_LOGIN_REWARD));
+        int reward = Math.max(0, balance - previousBalance);
+        return ResponseEntity.ok(Map.of(
+                "balance", balance,
+                "reward", reward,
+                "awarded", reward > 0));
     }
 
-    @PostMapping("/earn")
-    public ResponseEntity<?> earn(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @RequestBody Map<String, Object> body) {
-        String reason = (String) body.getOrDefault("reason", "활동");
-        int amount = ((Number) body.getOrDefault("amount", 0)).intValue();
-        if (amount <= 0) return ResponseEntity.badRequest().body(Map.of("error", "amount must be > 0"));
-        int balance = coinService.earnCoins(principal.authUuid(), amount, reason);
-        return ResponseEntity.ok(Map.of("balance", balance));
-    }
-
-    @PostMapping("/spend")
-    public ResponseEntity<?> spend(
-            @AuthenticationPrincipal SupabasePrincipal principal,
-            @RequestBody Map<String, Object> body) {
-        String reason = (String) body.getOrDefault("reason", "활동");
-        int amount = ((Number) body.getOrDefault("amount", 0)).intValue();
-        boolean success = coinService.spendCoins(principal.authUuid(), amount, reason);
-        if (!success) return ResponseEntity.badRequest().body(Map.of("error", "코인이 부족합니다."));
-        int balance = coinService.getBalance(principal.authUuid());
-        return ResponseEntity.ok(Map.of("balance", balance, "success", true));
+    @GetMapping("/missions/today")
+    public ResponseEntity<?> getDailyMissions(
+            @AuthenticationPrincipal SupabasePrincipal principal) {
+        return ResponseEntity.ok(coinService.getDailyMissions(principal.authUuid()));
     }
 
     @GetMapping("/logs")

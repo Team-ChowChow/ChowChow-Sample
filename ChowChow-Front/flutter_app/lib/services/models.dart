@@ -13,6 +13,7 @@ class RecipeModel {
   final int reviewCount;
   final int likeCount;
   final String authorNickname;
+  final DateTime? createdAt;
 
   RecipeModel({
     required this.recipeId,
@@ -29,6 +30,7 @@ class RecipeModel {
     this.reviewCount = 0,
     this.likeCount = 0,
     this.authorNickname = '관리자',
+    this.createdAt,
   });
 
   factory RecipeModel.fromJson(Map<String, dynamic> j) => RecipeModel(
@@ -46,6 +48,7 @@ class RecipeModel {
         reviewCount: (j['reviewCount'] as num?)?.toInt() ?? 0,
         likeCount: (j['likeCount'] as num?)?.toInt() ?? 0,
         authorNickname: j['authorNickname'] as String? ?? '관리자',
+        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
       );
 }
 
