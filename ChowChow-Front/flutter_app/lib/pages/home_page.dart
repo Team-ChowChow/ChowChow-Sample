@@ -225,8 +225,47 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 32),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _FeedingCalculatorEntry(
-                        onTap: () => context.push('/feeding-guideline'),
+                      child: Text(
+                        '급여',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: ChowColors.gray800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          _FeedingEntryRow(
+                            icon: Icons.calculate_outlined,
+                            title: '급여량 계산기',
+                            subtitle: '먹는 사료를 고르고 오늘의 식단을 기록해보세요',
+                            onTap: () => context.push('/feeding-guideline'),
+                          ),
+                          const SizedBox(height: 10),
+                          _FeedingEntryRow(
+                            icon: Icons.inventory_2_outlined,
+                            title: '사료 정보',
+                            subtitle: '사료별 칼로리·영양 성분을 검색해보세요',
+                            onTap: () => context.push('/food-info'),
+                          ),
+                          const SizedBox(height: 10),
+                          _FeedingEntryRow(
+                            icon: Icons.sync_alt,
+                            title: '사료 교체 가이드',
+                            subtitle: 'AI가 두 사료의 배합 비율을 단계별로 추천해드려요',
+                            onTap: () => context.push('/food-transition-guide'),
+                          ),
+                          const SizedBox(height: 10),
+                          _FeedingEntryRow(
+                            icon: Icons.menu_book_outlined,
+                            title: '식단 기록',
+                            subtitle: '직접 만든 식단과 레시피를 모아보세요',
+                            onTap: () => context.push('/diet-log'),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -792,8 +831,17 @@ class _HeaderNotice {
   }
 }
 
-class _FeedingCalculatorEntry extends StatelessWidget {
-  const _FeedingCalculatorEntry({required this.onTap});
+class _FeedingEntryRow extends StatelessWidget {
+  const _FeedingEntryRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
@@ -819,7 +867,7 @@ class _FeedingCalculatorEntry extends StatelessWidget {
                   color: ChowCozy.stone100,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.calculate_outlined, color: ChowCozy.stone500),
+                child: Icon(icon, color: ChowCozy.stone500),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -827,16 +875,16 @@ class _FeedingCalculatorEntry extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '급여량 계산기',
+                      title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: ChowColors.gray800,
                             fontWeight: FontWeight.w600,
                           ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      '먹는 사료를 고르고 오늘의 식단을 기록해보세요',
-                      style: TextStyle(fontSize: 13, color: ChowColors.gray500),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
                     ),
                   ],
                 ),
