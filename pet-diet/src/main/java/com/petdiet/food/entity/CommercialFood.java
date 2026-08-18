@@ -49,6 +49,14 @@ public class CommercialFood {
     @Column(name = "\"ingredientsText\"", columnDefinition = "TEXT")
     private String ingredientsText;
 
+    @Column(name = "\"features\"", columnDefinition = "TEXT")
+    private String features;
+
+    // OPFF / CURATED_KR
+    @Column(name = "\"source\"", length = 30)
+    private String source;
+
+    @Setter
     @Column(name = "\"imageUrl\"")
     private String imageUrl;
 
