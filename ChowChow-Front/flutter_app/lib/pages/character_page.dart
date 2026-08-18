@@ -55,6 +55,9 @@ class _CharacterPageState extends State<CharacterPage>
   final _random = Random();
   String _currentAnimation = 'idle';
 
+  // 활동별 배경 전환(놀아주기/밥주기/목욕하기/쓰다듬기) — 다른 활동을 누르기 전까지 유지
+  _Scene _scene = _Scene.none;
+
   late final AnimationController _idleCtrl;
   late final AnimationController _interactCtrl;
   late final AnimationController _decorCtrl;
@@ -148,15 +151,15 @@ class _CharacterPageState extends State<CharacterPage>
   Widget _buildCharacterImage(String url) {
     final fallback = Text(
       _petType == 'CAT' ? '🐱' : '🐶',
-      style: const TextStyle(fontSize: 96),
+      style: const TextStyle(fontSize: 165),
     );
 
     // GIF 로드 시도
     return Image.asset(
       _getGifPath(),
       fit: BoxFit.contain,
-      width: 220,
-      height: 220,
+      width: 380,
+      height: 380,
       errorBuilder: (context, error, stackTrace) {
         debugPrint('❌ [CharacterPage] GIF 로드 실패: ${_getGifPath()} - $error');
         // GIF 실패 시 기존 이미지 로드
@@ -165,16 +168,16 @@ class _CharacterPageState extends State<CharacterPage>
           return Image.asset(
             resolvedUrl,
             fit: BoxFit.contain,
-            width: 220,
-            height: 220,
+            width: 380,
+            height: 380,
             errorBuilder: (_, _, _) => fallback,
           );
         } else {
           return Image.network(
             resolvedUrl,
             fit: BoxFit.contain,
-            width: 220,
-            height: 220,
+            width: 380,
+            height: 380,
             errorBuilder: (_, _, _) => fallback,
           );
         }
@@ -389,6 +392,11 @@ class _CharacterPageState extends State<CharacterPage>
     super.dispose();
   }
 
+  /// 활동에 맞는 배경으로 전환한다. 다른 활동을 누르기 전까지 그대로 유지된다.
+  void _switchScene(_Scene scene) {
+    setState(() => _scene = scene);
+  }
+
   double get _expFrac => exp / maxExp;
 
   ({double dy, double scale, double rotate}) _interactTransform(double t) {
@@ -453,6 +461,7 @@ class _CharacterPageState extends State<CharacterPage>
     switch (activity.label) {
       case '밥주기':
         gifAnimation = 'eating';
+        _switchScene(_Scene.feed);
         await _runInteract(
           _InteractAnim.wiggle,
           duration: const Duration(milliseconds: 500),
@@ -465,6 +474,7 @@ class _CharacterPageState extends State<CharacterPage>
         );
       case '쓰다듬기':
         gifAnimation = 'petting';
+        _switchScene(_Scene.pet);
         await _runInteract(
           _InteractAnim.scale,
           duration: const Duration(milliseconds: 400),
@@ -476,6 +486,7 @@ class _CharacterPageState extends State<CharacterPage>
         );
       case '운동하기':
         gifAnimation = 'exercise';
+        _switchScene(_Scene.play);
         await _runInteract(
           _InteractAnim.shake,
           duration: const Duration(milliseconds: 1000),
@@ -488,6 +499,7 @@ class _CharacterPageState extends State<CharacterPage>
         );
       case '목욕시키기':
         gifAnimation = 'bath';
+        _switchScene(_Scene.bath);
         await _runInteract(
           _InteractAnim.wiggle,
           duration: const Duration(milliseconds: 800),
@@ -547,30 +559,73 @@ class _CharacterPageState extends State<CharacterPage>
   @override
   Widget build(BuildContext context) {
     final roomStyle = roomVisualFor(_roomBackgroundKey);
+    final sceneAsset = _sceneAssetFor(_scene);
 
     return Scaffold(
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              roomStyle.wallColors.first,
-              roomStyle.wallColors.last,
-              roomStyle.floorColor,
-            ],
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 기본 방 배경(코인 상점에서 고른 색상) — 항상 깔려 있고, 씬 이미지가 그 위를 덮는다.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  roomStyle.wallColors.first,
+                  roomStyle.wallColors.last,
+                  roomStyle.floorColor,
+                ],
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(),
-              _buildShortcuts(),
-              Expanded(child: _buildCharacterStage(roomStyle)),
-              _buildBottomPanel(),
-            ],
+          // 활동에 맞는 배경 — 놀아주기/밥주기/목욕하기/쓰다듬기 시 5초간 페이드 전환
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: sceneAsset == null ? 0 : 1,
+              duration: const Duration(milliseconds: 550),
+              curve: Curves.easeInOut,
+              child: sceneAsset == null
+                  ? const SizedBox.shrink()
+                  : Image.asset(
+                      sceneAsset,
+                      key: ValueKey(sceneAsset),
+                      fit: BoxFit.cover,
+                      alignment: Alignment.bottomCenter,
+                    ),
+            ),
           ),
-        ),
+          // 씬 이미지 위 은은한 그림자 오버레이(상단 UI 가독성 유지)
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: sceneAsset == null ? 0 : 1,
+              duration: const Duration(milliseconds: 400),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.08),
+                      Colors.black.withValues(alpha: 0.02),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildTopBar(),
+                _buildShortcuts(),
+                Expanded(child: _buildCharacterStage(roomStyle)),
+                _buildBottomPanel(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -634,7 +689,7 @@ class _CharacterPageState extends State<CharacterPage>
       _ShortcutData('🪄', '제작소', false, _openCraftSheet),
     ];
     return SizedBox(
-      height: 64,
+      height: 72,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -660,38 +715,47 @@ class _CharacterPageState extends State<CharacterPage>
       alignment: Alignment.center,
       clipBehavior: Clip.none,
       children: [
-        // 꾸미기에서 모자를 장착했으면 착용 뱃지, 아니면 방 이름 뱃지
+        // 활동 중엔 씬 뱃지("🛁 목욕 중" 등), 아니면 모자 착용 뱃지, 그마저 없으면 방 이름 뱃지
         Positioned(
           top: 4,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(999),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Container(
+              key: ValueKey(_sceneLabelFor(_scene) ?? _equippedHatName ?? roomStyle.label),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: _sceneLabelFor(_scene) != null
+                  ? Text(
+                      _sceneLabelFor(_scene)!,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
+                    )
+                  : _equippedHatName != null
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🎩', style: TextStyle(fontSize: 13)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_equippedHatName 착용중',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.person_pin_circle_outlined, size: 14, color: ChowCozy.stone700),
+                            const SizedBox(width: 4),
+                            Text(
+                              roomStyle.label,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
+                            ),
+                          ],
+                        ),
             ),
-            child: _equippedHatName != null
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('🎩', style: TextStyle(fontSize: 13)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$_equippedHatName 착용중',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.person_pin_circle_outlined, size: 14, color: ChowCozy.stone700),
-                      const SizedBox(width: 4),
-                      Text(
-                        roomStyle.label,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
-                      ),
-                    ],
-                  ),
           ),
         ),
 
@@ -719,40 +783,48 @@ class _CharacterPageState extends State<CharacterPage>
         if (_equippedDecorKeys.contains('decor_cushion'))
           _FloatingDeco('🧸', bottom: 0.02, right: 0.32, dy: 0, width: stageWidth, height: stageHeight),
 
-        // 캐릭터
-        AnimatedBuilder(
-          animation: Listenable.merge([_idleCtrl, _interactCtrl]),
-          builder: (context, child) {
-            final t = _interactCtrl.value;
-            final usingInteract = _isInteracting || t > 0;
-            final tr = usingInteract
-                ? _interactTransform(t)
-                : (dy: 0.0, scale: _idleScale.value, rotate: _idleRotate.value);
-            var dx = 0.0;
-            if (usingInteract && _interactAnim == _InteractAnim.shake) {
-              dx = 20 * sin(t * pi * 8);
-            }
-            return Transform.translate(
-              offset: Offset(dx, tr.dy),
-              child: Transform.rotate(
-                angle: tr.rotate,
-                child: Transform.scale(scale: tr.scale, child: child),
-              ),
-            );
-          },
-          child: GestureDetector(
-            onTap: _handlePetClick,
-            child: SizedBox(
-              width: 220,
-              height: 220,
-              child: _characterImageUrl != null
-                  ? _buildCharacterImage(_characterImageUrl!)
-                  : Center(
-                      child: Text(
-                        _petType == 'CAT' ? '🐱' : '🐶',
-                        style: const TextStyle(fontSize: 96),
+        // 캐릭터 — 배경(바닥선)에 맞춰 무대 중앙보다 살짝 아래에 배치.
+        // 밥주기 씬에서는 밥그릇 쪽(우측 하단 대각선)으로 이동.
+        AnimatedAlign(
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeInOut,
+          alignment: _scene == _Scene.feed
+              ? const Alignment(0.55, 0.95)
+              : const Alignment(0, 0.95),
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_idleCtrl, _interactCtrl]),
+            builder: (context, child) {
+              final t = _interactCtrl.value;
+              final usingInteract = _isInteracting || t > 0;
+              final tr = usingInteract
+                  ? _interactTransform(t)
+                  : (dy: 0.0, scale: _idleScale.value, rotate: _idleRotate.value);
+              var dx = 0.0;
+              if (usingInteract && _interactAnim == _InteractAnim.shake) {
+                dx = 20 * sin(t * pi * 8);
+              }
+              return Transform.translate(
+                offset: Offset(dx, tr.dy),
+                child: Transform.rotate(
+                  angle: tr.rotate,
+                  child: Transform.scale(scale: tr.scale, child: child),
+                ),
+              );
+            },
+            child: GestureDetector(
+              onTap: _handlePetClick,
+              child: SizedBox(
+                width: 380,
+                height: 380,
+                child: _characterImageUrl != null
+                    ? _buildCharacterImage(_characterImageUrl!)
+                    : Center(
+                        child: Text(
+                          _petType == 'CAT' ? '🐱' : '🐶',
+                          style: const TextStyle(fontSize: 165),
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ),
@@ -969,6 +1041,25 @@ class _FloatingDeco extends StatelessWidget {
 
 
 enum _InteractAnim { bounce, shake, scale, wiggle }
+
+/// 활동별 전환 배경. none이면 코인 상점에서 고른 기본 방 배경을 그대로 보여준다.
+enum _Scene { none, play, feed, bath, pet }
+
+String? _sceneAssetFor(_Scene scene) => switch (scene) {
+  _Scene.play => 'assets/images/scenes/scene_play.png',
+  _Scene.feed => 'assets/images/scenes/scene_feed.png',
+  _Scene.bath => 'assets/images/scenes/scene_bath.png',
+  _Scene.pet => 'assets/images/scenes/scene_pet.png',
+  _Scene.none => null,
+};
+
+String? _sceneLabelFor(_Scene scene) => switch (scene) {
+  _Scene.play => '🛝 놀이터',
+  _Scene.feed => '🍽️ 식사 시간',
+  _Scene.bath => '🛁 목욕 중',
+  _Scene.pet => '🏠 아늑한 시간',
+  _Scene.none => null,
+};
 
 class _ActivityData {
   const _ActivityData(this.icon, this.label, this.cost, this.color, this.emoji);
