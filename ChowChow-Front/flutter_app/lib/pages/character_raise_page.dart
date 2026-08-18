@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../services/character_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
-import '../widgets/chow_network_image.dart';
 
 class CharacterRaisePage extends StatefulWidget {
   const CharacterRaisePage({super.key, required this.characterId});
@@ -22,10 +21,10 @@ class _CharacterRaisePageState extends State<CharacterRaisePage> {
   bool _acting = false;
 
   static const _activities = [
-    _Act('FEED', Icons.restaurant, '밥주기', '+20 EXP', ChowCozy.stone500),
-    _Act('PET', Icons.favorite, '쓰다듬기', '+5 EXP', ChowColors.pink500),
-    _Act('EXERCISE', Icons.fitness_center, '운동하기', '+10 EXP', Color(0xFF3B82F6)),
-    _Act('BATH', Icons.shower, '목욕시키기', '+15 EXP', ChowColors.purple500),
+    _Act('FEED', Icons.restaurant, '밥주기', '+20 EXP · 무료', ChowCozy.stone500),
+    _Act('PET', Icons.favorite, '쓰다듬기', '+5 EXP · 무료', ChowColors.pink500),
+    _Act('EXERCISE', Icons.fitness_center, '운동하기', '+10 EXP · 🪙50', Color(0xFF3B82F6)),
+    _Act('BATH', Icons.shower, '목욕시키기', '+15 EXP · 🪙100', ChowColors.purple500),
   ];
 
   @override

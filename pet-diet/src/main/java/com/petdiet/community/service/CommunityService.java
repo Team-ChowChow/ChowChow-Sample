@@ -2,6 +2,7 @@ package com.petdiet.community.service;
 
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
+import com.petdiet.coin.service.CoinService;
 import com.petdiet.community.dto.CommentRequest;
 import com.petdiet.community.dto.CommentResponse;
 import com.petdiet.community.dto.PostRequest;
@@ -29,6 +30,7 @@ public class CommunityService {
     private final CommunityCommentRepository commentRepository;
     private final CommunityLikeRepository likeRepository;
     private final UserRepository userRepository;
+    private final CoinService coinService;
 
     @Transactional(readOnly = true)
     public Page<PostResponse> getPosts(UUID authUuid, String category, String petType, Pageable pageable) {
@@ -80,6 +82,10 @@ public class CommunityService {
                 .postCategory(req.getPostCategory())
                 .build();
         postRepository.save(post);
+        coinService.earnCoinsOnce(
+                authUuid,
+                CoinService.COMMUNITY_POST_REWARD,
+                "커뮤니티 글쓰기 #" + post.getPostId());
         return PostResponse.from(post, 0, false);
     }
 
@@ -117,6 +123,10 @@ public class CommunityService {
                 () -> {
                     likeRepository.save(CommunityLike.builder().post(post).user(user).build());
                     post.incrementLikeCount();
+                    coinService.earnCoinsOnce(
+                            authUuid,
+                            CoinService.COMMUNITY_LIKE_REWARD,
+                            "커뮤니티 좋아요 #" + postId);
                 }
         );
     }
@@ -142,6 +152,10 @@ public class CommunityService {
                 .build();
         commentRepository.save(comment);
         post.incrementCommentCount();
+        coinService.earnCoinsOnce(
+                authUuid,
+                CoinService.COMMUNITY_COMMENT_REWARD,
+                "커뮤니티 댓글 #" + comment.getCommentId());
         return CommentResponse.from(comment, true);
     }
 

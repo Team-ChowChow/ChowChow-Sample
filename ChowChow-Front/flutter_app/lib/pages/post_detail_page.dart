@@ -154,9 +154,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
     setState(() => _isLiked = !_isLiked);
     try {
       await CommunityService.toggleLike(widget.postId);
-      if (_isLiked) {
-        ApiClient.post('/api/coins/earn', {'amount': 2, 'reason': '커뮤니티 좋아요'}).ignore();
-      }
     } catch (_) {
       if (mounted) setState(() => _isLiked = !_isLiked);
     }
@@ -168,7 +165,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
     _commentController.clear();
     try {
       final created = await CommunityService.createComment(widget.postId, text);
-      ApiClient.post('/api/coins/earn', {'amount': 5, 'reason': '커뮤니티 댓글'}).ignore();
       if (!mounted) return;
       setState(() => _comments.add(_PostComment.fromApiComment(created)));
     } catch (_) {

@@ -33,8 +33,18 @@ public class CharacterGrowthLog {
     @Column(name = "\"expAmount\"", nullable = false)
     private Integer expAmount = 0;
 
+    @Builder.Default
+    @Column(name = "\"expGained\"", nullable = false)
+    private Integer expGained = 0;
+
     @Column(name = "\"activityDescription\"")
     private String activityDescription;
+
+    @Column(name = "\"currentExp\"", nullable = false)
+    private Integer currentExp;
+
+    @Column(name = "\"currentLevel\"", nullable = false)
+    private Integer currentLevel;
 
     @CreationTimestamp
     @Column(name = "\"createdAt\"", nullable = false, updatable = false)
@@ -47,7 +57,10 @@ public class CharacterGrowthLog {
                 .userId(userId)
                 .activityType(activityType)
                 .expAmount(expAmount)
+                .expGained(expAmount)
                 .activityDescription(description)
+                .currentExp(character.getCurrentExp())
+                .currentLevel(character.getCharacterLevel())
                 .build();
     }
 }

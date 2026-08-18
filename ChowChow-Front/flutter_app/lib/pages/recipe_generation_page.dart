@@ -185,8 +185,6 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
         _result = DietGenerateModel.fromJson(res);
         _apiDone = true;
       });
-      // LLM 식단 생성 코인 적립 (1일 1회)
-      ApiClient.post('/api/coins/earn', {'amount': 20, 'reason': 'LLM 식단 생성'}).ignore();
     } catch (e) {
       if (!mounted) return;
       navigateHomeAndShowRecipeGenerationFailed(context);

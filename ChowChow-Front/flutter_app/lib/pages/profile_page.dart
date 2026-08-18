@@ -35,9 +35,24 @@ class _ProfilePageState extends State<ProfilePage> {
   List<BreedModel> _availableBreeds = [];
   String _petName = '';
   String _petAge = '';
+  bool _isExactBirthdate = true;
+  DateTime? _petBirthdate;
+  int _petAgeYears = 0;
+  int _petAgeMonths = 0;
   String _petWeight = '';
   List<AllergyModel> _allAllergies = [];
   List<int> _selectedAllergyIds = [];
+  String? _petGender;
+  bool _isNeutered = false;
+  int? _bodyConditionScore;
+  int? _activityLevel;
+  final List<String> _foodTypes = [];
+  final List<String> _healthFocusAreas = [];
+  final List<String> _favoriteFoods = [];
+  final List<String> _priorities = [];
+  final List<String> _livingSpaces = [];
+  final List<String> _daytimeRoutines = [];
+  final List<String> _behaviorConcerns = [];
 
   List<_ProfileNotice> _notifications = [];
 
@@ -159,8 +174,23 @@ class _ProfilePageState extends State<ProfilePage> {
     _availableBreeds = [];
     _petName = '';
     _petAge = '';
+    _isExactBirthdate = true;
+    _petBirthdate = null;
+    _petAgeYears = 0;
+    _petAgeMonths = 0;
     _petWeight = '';
     _selectedAllergyIds = [];
+    _petGender = null;
+    _isNeutered = false;
+    _bodyConditionScore = null;
+    _activityLevel = null;
+    _foodTypes.clear();
+    _healthFocusAreas.clear();
+    _favoriteFoods.clear();
+    _priorities.clear();
+    _livingSpaces.clear();
+    _daytimeRoutines.clear();
+    _behaviorConcerns.clear();
   }
 
   double? _parseWeight(String value) {
@@ -196,9 +226,16 @@ class _ProfilePageState extends State<ProfilePage> {
       if (_breedId != null) 'breedId': _breedId,
       if (_parseWeight(_petWeight) != null)
         'petWeight': _parseWeight(_petWeight),
-      if (_petAge.trim().isNotEmpty)
-        'petBirthdate': _ageToBirthdate(_petAge.trim()),
+      if (_isExactBirthdate && _petBirthdate != null)
+        'petBirthdate': _formatBirthdate(_petBirthdate!)
+      else if (!_isExactBirthdate)
+        'petBirthdate': _approximateBirthdate(),
       if (_selectedAllergyIds.isNotEmpty) 'allergyIds': _selectedAllergyIds,
+      if (_petGender != null) 'petGender': _petGender,
+      'isNeutered': _isNeutered,
+      if (_bodyConditionScore != null) 'petBodyConditionScore': _bodyConditionScore,
+      if (_activityLevel != null) 'petActivityLevel': _activityLevel,
+      if (_healthFocusAreas.isNotEmpty) 'healthFocusAreas': _healthFocusAreas,
     };
 
     try {
@@ -294,26 +331,45 @@ class _ProfilePageState extends State<ProfilePage> {
                               },
                             ),
                             const SizedBox(height: 18),
-                            _buildPetInputField(
-                              label: '나이',
-                              required: true,
-                              hintText: '예: 3살',
-                              onChanged: (value) {
-                                updateForm(() => _petAge = value);
-                              },
+                            _buildBirthdateSelector(updateForm),
+                            const SizedBox(height: 18),
+                            _buildPetWeightBcsField(updateForm),
+                            const SizedBox(height: 18),
+                            _buildPetOptionGroup(
+                              label: '성별',
+                              options: const ['남아', '여아'],
+                              selected: _petGender == 'MALE' ? const ['남아'] : _petGender == 'FEMALE' ? const ['여아'] : const [],
+                              onChanged: (value) => updateForm(() => _petGender = value == '남아' ? 'MALE' : 'FEMALE'),
+                            ),
+                            CheckboxListTile(
+                              value: _isNeutered,
+                              contentPadding: EdgeInsets.zero,
+                              activeColor: ChowCozy.stone500,
+                              title: const Text('중성화 수술 완료', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              onChanged: (value) => updateForm(() => _isNeutered = value ?? false),
+                            ),
+                            _buildPetOptionGroup(
+                              label: '하루 산책',
+                              options: const ['30분 미만', '30분–1시간', '1시간 이상'],
+                              selected: _activityLevel == 1 ? const ['30분 미만'] : _activityLevel == 3 ? const ['30분–1시간'] : _activityLevel == 5 ? const ['1시간 이상'] : const [],
+                              onChanged: (value) => updateForm(() => _activityLevel = const {'30분 미만': 1, '30분–1시간': 3, '1시간 이상': 5}[value]),
                             ),
                             const SizedBox(height: 18),
-                            _buildPetInputField(
-                              label: '체중',
-                              required: true,
-                              hintText: '예: 5kg',
-                              keyboardType: TextInputType.number,
-                              onChanged: (value) {
-                                updateForm(() => _petWeight = value);
-                              },
-                            ),
+                            _buildPetOptionGroup(label: '주식 형태', options: const ['건식', '습식', '동결건조', '소프트 (반습식)', '자연식 (화식/생식)', '홈메이드'], selected: _foodTypes, onChanged: (value) => updateForm(() => _toggle(_foodTypes, value))),
                             const SizedBox(height: 18),
                             _buildAllergySelector(updateForm),
+                            const SizedBox(height: 18),
+                            _buildPetOptionGroup(label: '건강 고민', options: const ['해당 없음', '피부/피모', '관절', '소화기', '체중 관리', '치아/구강'], selected: _healthFocusAreas, onChanged: (value) => updateForm(() => _toggle(_healthFocusAreas, value, limit: 3)), helper: '최대 3개까지 선택할 수 있어요.'),
+                            const SizedBox(height: 18),
+                            _buildPetOptionGroup(label: '좋아하는 음식', options: const ['해당 없음', '닭고기', '소고기', '생선', '채소'], selected: _favoriteFoods, onChanged: (value) => updateForm(() => _toggle(_favoriteFoods, value))),
+                            const SizedBox(height: 18),
+                            _buildPetOptionGroup(label: '가장 중요한 우선순위', options: const ['균형 잡힌 식사', '체중 & 영양', '실시간 행동', '건강 추적'], selected: _priorities, onChanged: (value) => updateForm(() => _toggle(_priorities, value))),
+                            const SizedBox(height: 18),
+                            _buildPetOptionGroup(label: '주 생활 공간', options: const ['실내', '마당', '테라스 / 발코니'], selected: _livingSpaces, onChanged: (value) => updateForm(() => _toggle(_livingSpaces, value))),
+                            const SizedBox(height: 18),
+                            _buildPetOptionGroup(label: '낮 시간을 보내는 방법', options: const ['집에 혼자 있어요', '유치원에 가요', '산책 도우미와 함께해요', '항상 가족과 함께해요'], selected: _daytimeRoutines, onChanged: (value) => updateForm(() => _toggle(_daytimeRoutines, value))),
+                            const SizedBox(height: 18),
+                            _buildPetOptionGroup(label: '궁금하거나 걱정되는 행동', options: const ['분리 불안 / 짖음', '수면 / 휴식 패턴', '식이 / 음수 습관', '전반적 활동량'], selected: _behaviorConcerns, onChanged: (value) => updateForm(() => _toggle(_behaviorConcerns, value))),
                             const SizedBox(height: 28),
                             SizedBox(
                               width: double.infinity,
@@ -551,6 +607,59 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _toggle(List<String> values, String value, {int? limit}) {
+    if (value == '해당 없음') {
+      values
+        ..clear()
+        ..add(value);
+      return;
+    }
+    values.remove('해당 없음');
+    if (values.contains(value)) {
+      values.remove(value);
+    } else if (limit == null || values.length < limit) {
+      values.add(value);
+    }
+  }
+
+  Widget _buildPetOptionGroup({
+    required String label,
+    required List<String> options,
+    required List<String> selected,
+    required ValueChanged<String> onChanged,
+    String? helper,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPetLabel(label, required: true),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final isSelected = selected.contains(option);
+            return ChoiceChip(
+              label: Text(option),
+              selected: isSelected,
+              selectedColor: ChowCozy.stone300,
+              side: BorderSide(color: isSelected ? ChowCozy.stone500 : ChowColors.gray300),
+              labelStyle: TextStyle(
+                color: isSelected ? ChowCozy.stone800 : ChowColors.gray700,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+              onSelected: (_) => onChanged(option),
+            );
+          }).toList(),
+        ),
+        if (helper != null) ...[
+          const SizedBox(height: 6),
+          Text(helper, style: const TextStyle(fontSize: 12, color: ChowColors.gray500)),
+        ],
+      ],
+    );
+  }
+
   Widget _buildAllergySelector(void Function(VoidCallback) updateForm) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -615,6 +724,148 @@ class _ProfilePageState extends State<ProfilePage> {
             }).toList(),
           ),
       ],
+    );
+  }
+
+  String _formatBirthdate(DateTime value) =>
+      '${value.year}.${value.month.toString().padLeft(2, '0')}.${value.day.toString().padLeft(2, '0')}';
+
+  String _approximateBirthdate() {
+    final today = DateTime.now();
+    return _formatBirthdate(DateTime(today.year - _petAgeYears, today.month - _petAgeMonths, today.day));
+  }
+
+  Widget _buildBirthdateSelector(void Function(VoidCallback) updateForm) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _buildPetLabel('생년월일', required: true),
+      const SizedBox(height: 8),
+      Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(color: ChowColors.gray100, borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          for (final exact in [true, false]) Expanded(child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => updateForm(() => _isExactBirthdate = exact),
+            child: AnimatedContainer(duration: const Duration(milliseconds: 150), padding: const EdgeInsets.symmetric(vertical: 13),
+              decoration: BoxDecoration(color: _isExactBirthdate == exact ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(10), boxShadow: _isExactBirthdate == exact ? const [BoxShadow(color: Colors.black12, blurRadius: 4)] : null),
+              child: Text(exact ? '정확한 날짜' : '대략', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: _isExactBirthdate == exact ? ChowColors.gray900 : ChowColors.gray500))),
+          )),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      if (_isExactBirthdate)
+        OutlinedButton.icon(
+          onPressed: () async {
+            final date = await showDatePicker(context: context, initialDate: _petBirthdate ?? DateTime.now(), firstDate: DateTime(1990), lastDate: DateTime.now());
+            if (date != null) updateForm(() => _petBirthdate = date);
+          },
+          icon: const Icon(Icons.calendar_today_outlined),
+          label: Align(alignment: Alignment.centerLeft, child: Text(_petBirthdate == null ? '생년월일 선택' : _formatBirthdate(_petBirthdate!))),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 52), alignment: Alignment.centerLeft, side: const BorderSide(color: ChowColors.gray300), foregroundColor: ChowColors.gray700),
+        )
+      else
+        Row(children: [
+          Expanded(child: _buildAgeStepper('년', _petAgeYears, 30, (v) => updateForm(() => _petAgeYears = v))),
+          const SizedBox(width: 12),
+          Expanded(child: _buildAgeStepper('개월', _petAgeMonths, 11, (v) => updateForm(() => _petAgeMonths = v))),
+        ]),
+    ]);
+  }
+
+  Widget _buildAgeStepper(
+    String label,
+    int value,
+    int max,
+    ValueChanged<int> onChanged,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: ChowColors.gray700)),
+      const SizedBox(height: 6),
+      Container(
+        height: 64,
+        decoration: BoxDecoration(
+          border: Border.all(color: ChowColors.gray300),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              onPressed: value > 0 ? () => onChanged(value - 1) : null,
+              icon: const Icon(Icons.remove),
+            ),
+            Text('$value', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            IconButton(
+              onPressed: value < max ? () => onChanged(value + 1) : null,
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildPetWeightBcsField(void Function(VoidCallback) updateForm) {
+    return InkWell(
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setSheet) => Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('체중 기록', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                const Text('체중 *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                TextField(
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    hintText: '예) 4.5',
+                    suffixText: 'kg',
+                    suffixStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: ChowColors.gray800),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: ChowColors.gray300)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: ChowCozy.stone500, width: 2)),
+                  ),
+                  onChanged: (value) => updateForm(() => _petWeight = value),
+                ),
+                const SizedBox(height: 18),
+                const Text('신체충실지수 (BCS) *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(9, (index) {
+                    final selected = _bodyConditionScore == index + 1;
+                    return InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () { updateForm(() => _bodyConditionScore = index + 1); setSheet(() {}); },
+                      child: Container(
+                        width: 34, height: 34, alignment: Alignment.center,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: selected ? ChowCozy.stone700 : Colors.white, border: Border.all(color: selected ? ChowCozy.stone700 : ChowColors.gray300)),
+                        child: Text('${index + 1}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: selected ? Colors.white : ChowColors.gray600)),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                Image.asset('assets/images/bcs.png', fit: BoxFit.contain),
+              ],
+            ),
+          ),
+        ),
+      ),
+      child: IgnorePointer(
+        child: _buildPetInputField(
+          label: '체중 / BCS',
+          required: true,
+          hintText: _petWeight.isEmpty ? '체중 & BCS 설정' : '${_petWeight}kg · BCS ${_bodyConditionScore ?? '-'}',
+          onChanged: (_) {},
+        ),
+      ),
     );
   }
 

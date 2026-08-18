@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../services/character_service.dart';
 import '../theme/chow_theme.dart';
 
 /// 캐릭터 키우기 화면의 하단 팝업(바텀시트) 4종:
@@ -71,16 +72,12 @@ class AttendanceSheet extends StatefulWidget {
 
 class _AttendanceSheetState extends State<AttendanceSheet> {
   static const _labels = ['월', '화', '수', '목', '금', '토', '일'];
-  static const _rewards = ['🍖', '🪙', '🎾', '🪙', '🍖', '✨', '🎁'];
-  static const _rewardLabels = ['사료x2', '50코인', '장난감x1', '200코인', '사료x5', '스페셜', '스크래처'];
-
-  bool _giftDrawn = false;
-  String? _giftResult;
+  static const _rewards = ['🪙', '🪙', '🪙', '🪙', '🪙', '🪙', '🪙'];
 
   @override
   Widget build(BuildContext context) {
     final todayWeekday = DateTime.now().weekday; // 1=월 ... 7=일
-    final streak = todayWeekday - 1 + (widget.claimedToday ? 1 : 0);
+    final streak = widget.claimedToday ? 1 : 0;
 
     return SafeArea(
       child: Padding(
@@ -113,9 +110,8 @@ class _AttendanceSheetState extends State<AttendanceSheet> {
             Row(
               children: List.generate(7, (i) {
                 final day = i + 1;
-                final isPast = day < todayWeekday;
                 final isToday = day == todayWeekday;
-                final checked = isPast || (isToday && widget.claimedToday);
+                final checked = isToday && widget.claimedToday;
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -123,49 +119,17 @@ class _AttendanceSheetState extends State<AttendanceSheet> {
                       checked: checked,
                       isToday: isToday,
                       emoji: _rewards[i],
-                      label: checked ? '완료' : _rewardLabels[i],
+                      label: checked ? '+5 완료' : '매일 +5',
                     ),
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(color: ChowCozy.stone50, borderRadius: BorderRadius.circular(18)),
-              child: Row(
-                children: [
-                  const Text('🎁', style: TextStyle(fontSize: 26)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('오늘의 선물 뽑기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ChowCozy.stone800)),
-                        Text(
-                          _giftResult ?? '하루 1번 랜덤 선물',
-                          style: const TextStyle(fontSize: 11, color: ChowCozy.mutedForeground),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Material(
-                    color: _giftDrawn ? ChowCozy.stone200 : ChowCozy.stone700,
-                    borderRadius: BorderRadius.circular(999),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: _giftDrawn ? null : _drawGift,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                        child: Text(
-                          _giftDrawn ? '완료' : '뽑기',
-                          style: TextStyle(color: _giftDrawn ? ChowCozy.mutedForeground : Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 12),
+            const Text(
+              '출석 보상은 하루 한 번 자동으로 5코인 지급됩니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, color: ChowCozy.mutedForeground),
             ),
           ],
         ),
@@ -173,13 +137,6 @@ class _AttendanceSheetState extends State<AttendanceSheet> {
     );
   }
 
-  void _drawGift() {
-    const prizes = ['🍖 사료 x1', '🪙 코인 +20', '🎾 장난감 x1', '✨ 경험치 +10'];
-    setState(() {
-      _giftDrawn = true;
-      _giftResult = '${prizes[DateTime.now().millisecond % prizes.length]} 획득!';
-    });
-  }
 }
 
 class _DayBox extends StatelessWidget {
@@ -218,28 +175,15 @@ class _DayBox extends StatelessWidget {
 class MissionSheet extends StatelessWidget {
   const MissionSheet({
     super.key,
-    required this.feedCount,
-    required this.petCount,
-    required this.playCount,
-    required this.walkKm,
-    required this.walkLoading,
+    required this.missions,
+    required this.loading,
   });
 
-  final int feedCount;
-  final int petCount;
-  final int playCount;
-  final double walkKm;
-  final bool walkLoading;
+  final List<DailyMissionModel> missions;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final missions = [
-      _Mission('🍽️', '밥주기 3회', '오늘 사료를 3번 줘요', feedCount, 3, '🪙 150P'),
-      _Mission('💗', '쓰다듬기 5회', '애정을 듬뿍 표현해요', petCount, 5, '🪙 100P'),
-      _Mission('🎾', '놀아주기 2회', '장난감으로 신나게 놀아요', playCount, 2, '🎾 장난감x1'),
-      _Mission('🐕', '산책 1km', '반려견과 함께 걸어요', (walkKm * 10).round(), 10, '🪙 100P'),
-    ];
-
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -252,7 +196,7 @@ class MissionSheet extends StatelessWidget {
             const SizedBox(height: 16),
             ...missions.map((m) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: _MissionRow(mission: m, loading: m.label == '산책 1km' && walkLoading),
+                  child: _MissionRow(mission: m, loading: loading),
                 )),
           ],
         ),
@@ -261,25 +205,28 @@ class MissionSheet extends StatelessWidget {
   }
 }
 
-class _Mission {
-  const _Mission(this.emoji, this.label, this.sub, this.progress, this.total, this.reward);
-  final String emoji;
-  final String label;
-  final String sub;
-  final int progress;
-  final int total;
-  final String reward;
-}
-
 class _MissionRow extends StatelessWidget {
   const _MissionRow({required this.mission, this.loading = false});
-  final _Mission mission;
+  final DailyMissionModel mission;
   final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final done = mission.progress >= mission.total;
-    final frac = mission.total == 0 ? 0.0 : (mission.progress / mission.total).clamp(0.0, 1.0);
+    final done = mission.claimed;
+    final frac = mission.target == 0 ? 0.0 : (mission.progress / mission.target).clamp(0.0, 1.0);
+    final isWalk = mission.key == 'walk_1km';
+    final emoji = switch (mission.key) {
+      'feed_3' => '🍽️',
+      'pet_5' => '💗',
+      'walk_1km' => '🐕',
+      _ => '🎯',
+    };
+    final sub = switch (mission.key) {
+      'feed_3' => '오늘 사료를 3번 줘요',
+      'pet_5' => '애정을 듬뿍 표현해요',
+      'walk_1km' => '반려견과 함께 걸어요',
+      _ => '오늘의 미션을 완료해요',
+    };
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: done ? ChowCozy.stone50.withValues(alpha: 0.6) : ChowCozy.stone50, borderRadius: BorderRadius.circular(18)),
@@ -289,14 +236,14 @@ class _MissionRow extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(mission.emoji, style: const TextStyle(fontSize: 22)),
+              Text(emoji, style: const TextStyle(fontSize: 22)),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(mission.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ChowCozy.stone800)),
-                    Text(mission.sub, style: const TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
+                    Text(sub, style: const TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
                   ],
                 ),
               ),
@@ -307,7 +254,7 @@ class _MissionRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  done ? '완료' : mission.reward,
+                  done ? '지급 완료' : '🪙 ${mission.rewardCoins}P',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: done ? Colors.white : ChowCozy.stone700),
                 ),
               ),
@@ -333,7 +280,12 @@ class _MissionRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text('${mission.progress}/${mission.total}회', style: const TextStyle(fontSize: 10, color: ChowCozy.mutedForeground)),
+              Text(
+                isWalk
+                    ? '${(mission.progress / 1000).toStringAsFixed(1)}/${(mission.target / 1000).toStringAsFixed(1)}km'
+                    : '${mission.progress}/${mission.target}회',
+                style: const TextStyle(fontSize: 10, color: ChowCozy.mutedForeground),
+              ),
             ],
           ),
         ],

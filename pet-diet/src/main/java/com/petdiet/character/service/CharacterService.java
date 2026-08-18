@@ -9,6 +9,7 @@ import com.petdiet.character.entity.CharacterGrowthLog;
 import com.petdiet.character.entity.PetCharacter;
 import com.petdiet.character.repository.CharacterGrowthLogRepository;
 import com.petdiet.character.repository.PetCharacterRepository;
+import com.petdiet.coin.service.CoinService;
 import com.petdiet.master.entity.Breed;
 import com.petdiet.master.repository.BreedRepository;
 import com.petdiet.pet.entity.UserPet;
@@ -29,6 +30,7 @@ public class CharacterService {
     private final UserPetRepository userPetRepository;
     private final UserRepository userRepository;
     private final BreedRepository breedRepository;
+    private final CoinService coinService;
 
     @Transactional(readOnly = true)
     public CharacterResponse getCharacter(UUID authUuid, Integer petId) {
@@ -113,22 +115,39 @@ public class CharacterService {
     @Transactional
     public CharacterResponse gainExp(UUID authUuid, Integer petId, String activityType) {
         UserPet pet = findPet(petId, findUser(authUuid));
-        return performActivityOnCharacter(findByPet(pet), findUser(authUuid), activityType);
+        return performActivityOnCharacter(
+                authUuid, findByPet(pet), findUser(authUuid), activityType);
     }
 
     @Transactional
     public CharacterResponse performActivity(UUID authUuid, Integer characterId, String activityType) {
-        return performActivityOnCharacter(findCharacter(characterId, authUuid), findUser(authUuid), activityType);
+        return performActivityOnCharacter(
+                authUuid, findCharacter(characterId, authUuid), findUser(authUuid), activityType);
     }
 
-    private CharacterResponse performActivityOnCharacter(PetCharacter character, User user, String activityType) {
+    private CharacterResponse performActivityOnCharacter(
+            UUID authUuid, PetCharacter character, User user, String activityType) {
         RaisingActivity activity = RaisingActivity.from(activityType);
+        int coinCost = switch (activity) {
+            case EXERCISE -> CoinService.ACTIVITY_EXERCISE_COST;
+            case BATH -> CoinService.ACTIVITY_BATH_COST;
+            default -> 0;
+        };
+        if (coinCost > 0 && !coinService.spendCoins(
+                authUuid, coinCost, activity.getLabel() + " 활동")) {
+            throw new IllegalStateException("코인이 부족합니다.");
+        }
+
         int levelBefore = character.getCharacterLevel();
         String statusChanges = character.formatStatChanges(activity);
         boolean leveled = character.applyActivity(activity);
 
         growthLogRepository.save(CharacterGrowthLog.activity(
-                character, user.getUserId(), activity.name(), activity.getExpGain(), statusChanges));
+                character,
+                user.getUserId(),
+                activity.name(),
+                activity.getExpGain(),
+                statusChanges));
 
         if (leveled) {
             growthLogRepository.save(CharacterGrowthLog.activity(
@@ -140,6 +159,7 @@ public class CharacterService {
         }
 
         characterRepository.save(character);
+        coinService.getDailyMissions(authUuid);
         return toResponse(character);
     }
 
