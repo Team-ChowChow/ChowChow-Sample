@@ -130,18 +130,9 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                       child: Container(
                         width: 64,
                         height: 64,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              ChowCozy.stone300,
-                              ChowCozy.stone400,
-                            ],
-                          ),
-                          border: Border.all(color: Colors.white, width: 4),
-                          boxShadow: const [
+                          boxShadow: [
                             BoxShadow(
                               blurRadius: 12,
                               offset: Offset(0, 4),
@@ -149,12 +140,11 @@ class _ChowBottomNavState extends State<ChowBottomNav>
                             ),
                           ],
                         ),
-                        alignment: Alignment.center,
-                        child: Image.asset(
-                          'assets/images/paw.png',
-                          width: 30,
-                          height: 30,
-                          color: ChowCozy.stone900,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/pet_home_icon.png',
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),

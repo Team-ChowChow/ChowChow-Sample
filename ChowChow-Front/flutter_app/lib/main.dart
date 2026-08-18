@@ -30,7 +30,7 @@ class ChowChowApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = createAppRouter(initialLocation: initialLocation);
     return MaterialApp.router(
-      title: '펫푸드 레시피',
+      title: '멍냥밥상',
       debugShowCheckedModeBanner: false,
       theme: buildChowTheme(),
       routerConfig: router,

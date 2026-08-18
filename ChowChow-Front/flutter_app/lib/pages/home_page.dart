@@ -567,7 +567,7 @@ class _HeaderState extends State<_Header> {
           child: Row(
             children: [
               Text(
-                '펫푸드 레시피',
+                '멍냥밥상',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: ChowCozy.stone500,
                       fontWeight: FontWeight.bold,

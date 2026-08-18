@@ -468,7 +468,7 @@ class AuthCopyright extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Text(
-      '© 2026 펫푸드 레시피. All rights reserved.',
+      '© 2026 멍냥밥상. All rights reserved.',
       textAlign: TextAlign.center,
       style: TextStyle(fontSize: 12, color: ChowColors.gray400),
     );

@@ -43,7 +43,7 @@ class _NoticesPageState extends State<NoticesPage> {
       date: '2026.05.28',
       isNew: true,
       preview: '보다 나은 서비스 제공을 위한 시스템 점검이 진행됩니다.',
-      content: '''안녕하세요, 펫푸드 레시피입니다.
+      content: '''안녕하세요, 멍냥밥상입니다.
 
 보다 안정적인 서비스 제공을 위해 시스템 점검을 진행하고자 합니다.
 
@@ -64,7 +64,7 @@ class _NoticesPageState extends State<NoticesPage> {
       preview: '지금 가입하고 프리미엄 레시피를 무료로 받아보세요!',
       content: '''🎉 신규 회원 가입 이벤트 🎉
 
-펫푸드 레시피에 가입하고 특별한 혜택을 받아가세요!
+멍냥밥상에 가입하고 특별한 혜택을 받아가세요!
 
 ▶ 이벤트 기간: 2026년 5월 25일 ~ 6월 25일
 ▶ 이벤트 내용:

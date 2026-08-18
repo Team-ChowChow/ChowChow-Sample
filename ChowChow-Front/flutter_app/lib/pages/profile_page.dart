@@ -1424,7 +1424,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Column(
                       children: [
                         const Text(
-                          '펫푸드 레시피 v1.0.0',
+                          '멍냥밥상 v1.0.0',
                           style: TextStyle(
                             fontSize: 13,
                             color: ChowColors.gray500,

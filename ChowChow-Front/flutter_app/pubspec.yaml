@@ -1,5 +1,5 @@
 name: chowchow
-description: "펫푸드 레시피 — ChowChow Flutter (웹 앱과 동일 UI/동작)"
+description: "멍냥밥상 — ChowChow Flutter (웹 앱과 동일 UI/동작)"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

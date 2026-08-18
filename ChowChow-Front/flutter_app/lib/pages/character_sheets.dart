@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/character_service.dart';
+import '../services/shop_service.dart';
 import '../theme/chow_theme.dart';
+import '../theme/shop_visuals.dart';
 
 /// 캐릭터 키우기 화면의 하단 팝업(바텀시트) 4종:
 /// 출석체크 / 성장미션 / 꾸미기 상점 / 제작소.
@@ -23,7 +25,11 @@ class SheetHeader extends StatelessWidget {
         Expanded(
           child: Text(
             '$emoji $title',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ChowCozy.stone900),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: ChowCozy.stone900,
+            ),
           ),
         ),
         Material(
@@ -53,7 +59,10 @@ class SheetHandle extends StatelessWidget {
         width: 40,
         height: 4,
         margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(color: ChowCozy.stone200, borderRadius: BorderRadius.circular(999)),
+        decoration: BoxDecoration(
+          color: ChowCozy.stone200,
+          borderRadius: BorderRadius.circular(999),
+        ),
       ),
     );
   }
@@ -93,7 +102,14 @@ class _AttendanceSheetState extends State<AttendanceSheet> {
               children: [
                 const Text('🔥', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
-                Text('$streak일 연속 출석 중', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ChowCozy.stone800)),
+                Text(
+                  '$streak일 연속 출석 중',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: ChowCozy.stone800,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -101,7 +117,13 @@ class _AttendanceSheetState extends State<AttendanceSheet> {
               children: List.generate(7, (i) {
                 return Expanded(
                   child: Center(
-                    child: Text(_labels[i], style: const TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
+                    child: Text(
+                      _labels[i],
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: ChowCozy.mutedForeground,
+                      ),
+                    ),
                   ),
                 );
               }),
@@ -136,11 +158,15 @@ class _AttendanceSheetState extends State<AttendanceSheet> {
       ),
     );
   }
-
 }
 
 class _DayBox extends StatelessWidget {
-  const _DayBox({required this.checked, required this.isToday, required this.emoji, required this.label});
+  const _DayBox({
+    required this.checked,
+    required this.isToday,
+    required this.emoji,
+    required this.label,
+  });
   final bool checked;
   final bool isToday;
   final String emoji;
@@ -153,7 +179,9 @@ class _DayBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: checked ? ChowCozy.stone600 : ChowCozy.stone50,
         borderRadius: BorderRadius.circular(16),
-        border: isToday && !checked ? Border.all(color: ChowCozy.stone400, width: 2) : null,
+        border: isToday && !checked
+            ? Border.all(color: ChowCozy.stone400, width: 2)
+            : null,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -163,7 +191,11 @@ class _DayBox extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 8, color: checked ? Colors.white : ChowCozy.mutedForeground, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 8,
+              color: checked ? Colors.white : ChowCozy.mutedForeground,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -194,10 +226,12 @@ class MissionSheet extends StatelessWidget {
             const SheetHandle(),
             const SheetHeader(emoji: '🎯', title: '성장미션'),
             const SizedBox(height: 16),
-            ...missions.map((m) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _MissionRow(mission: m, loading: loading),
-                )),
+            ...missions.map(
+              (m) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _MissionRow(mission: m, loading: loading),
+              ),
+            ),
           ],
         ),
       ),
@@ -213,7 +247,9 @@ class _MissionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final done = mission.claimed;
-    final frac = mission.target == 0 ? 0.0 : (mission.progress / mission.target).clamp(0.0, 1.0);
+    final frac = mission.target == 0
+        ? 0.0
+        : (mission.progress / mission.target).clamp(0.0, 1.0);
     final isWalk = mission.key == 'walk_1km';
     final emoji = switch (mission.key) {
       'feed_3' => '🍽️',
@@ -229,7 +265,12 @@ class _MissionRow extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: done ? ChowCozy.stone50.withValues(alpha: 0.6) : ChowCozy.stone50, borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(
+        color: done
+            ? ChowCozy.stone50.withValues(alpha: 0.6)
+            : ChowCozy.stone50,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -242,8 +283,21 @@ class _MissionRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(mission.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ChowCozy.stone800)),
-                    Text(sub, style: const TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
+                    Text(
+                      mission.label,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: ChowCozy.stone800,
+                      ),
+                    ),
+                    Text(
+                      sub,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: ChowCozy.mutedForeground,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -255,7 +309,11 @@ class _MissionRow extends StatelessWidget {
                 ),
                 child: Text(
                   done ? '지급 완료' : '🪙 ${mission.rewardCoins}P',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: done ? Colors.white : ChowCozy.stone700),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: done ? Colors.white : ChowCozy.stone700,
+                  ),
                 ),
               ),
             ],
@@ -269,11 +327,17 @@ class _MissionRow extends StatelessWidget {
                   child: SizedBox(
                     height: 6,
                     child: loading
-                        ? const LinearProgressIndicator(backgroundColor: ChowCozy.stone200, color: ChowCozy.stone400)
+                        ? const LinearProgressIndicator(
+                            backgroundColor: ChowCozy.stone200,
+                            color: ChowCozy.stone400,
+                          )
                         : Stack(
                             children: [
                               Container(color: ChowCozy.stone200),
-                              FractionallySizedBox(widthFactor: frac, child: Container(color: ChowCozy.stone500)),
+                              FractionallySizedBox(
+                                widthFactor: frac,
+                                child: Container(color: ChowCozy.stone500),
+                              ),
                             ],
                           ),
                   ),
@@ -284,7 +348,10 @@ class _MissionRow extends StatelessWidget {
                 isWalk
                     ? '${(mission.progress / 1000).toStringAsFixed(1)}/${(mission.target / 1000).toStringAsFixed(1)}km'
                     : '${mission.progress}/${mission.target}회',
-                style: const TextStyle(fontSize: 10, color: ChowCozy.mutedForeground),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: ChowCozy.mutedForeground,
+                ),
               ),
             ],
           ),
@@ -294,66 +361,67 @@ class _MissionRow extends StatelessWidget {
   }
 }
 
-/// ─────────────────────────────── 꾸미기 상점 ───────────────────────────────
-/// 백엔드에 모자/얼굴/옷/배경 아이템 체계가 없어서(코인 상점은 방/프로필 전용),
-/// 이 화면은 로컬 미리보기로 동작한다 — 실제 코인 차감 없이 장착 상태만 바꾼다.
-class DecorateSheet extends StatefulWidget {
-  const DecorateSheet({super.key, required this.coins, this.equippedHat, this.onHatChanged});
+/// ─────────────────────────────── 꾸미기(테마) ───────────────────────────────
+/// 모자/얼굴/옷/배경 4개 로컬 미리보기 탭 대신, 실제 코인 상점 백엔드(ShopService)의
+/// 방 배경 테마 하나만 남긴다 — 여기서 구매/장착하면 캐릭터 화면 배경에 바로 반영된다.
+class ThemeSheet extends StatefulWidget {
+  const ThemeSheet({super.key, required this.onChanged});
 
-  final int coins;
-  final String? equippedHat;
-  final ValueChanged<String?>? onHatChanged;
+  /// 테마 구매/장착이 성공할 때마다 최신 카탈로그(코인 잔액 포함)를 부모로 올려준다.
+  final ValueChanged<ShopCatalogModel> onChanged;
 
   @override
-  State<DecorateSheet> createState() => _DecorateSheetState();
+  State<ThemeSheet> createState() => _ThemeSheetState();
 }
 
-class _CosmeticItem {
-  _CosmeticItem(this.emoji, this.name, this.price, {this.owned = false});
-  final String emoji;
-  final String name;
-  final int price;
-  bool owned;
-}
+class _ThemeSheetState extends State<ThemeSheet> {
+  ShopCatalogModel? _catalog;
+  String? _busyKey;
+  String? _error;
 
-class _DecorateSheetState extends State<DecorateSheet> {
-  int _tab = 0;
-  static const _tabs = ['모자', '얼굴', '옷', '배경'];
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
-  late final Map<int, List<_CosmeticItem>> _catalog = {
-    0: [
-      _CosmeticItem('🎩', '탑햇', 0, owned: true),
-      _CosmeticItem('🪖', '군모', 400),
-      _CosmeticItem('👒', '밀짚모자', 400),
-      _CosmeticItem('🎓', '졸업모', 800),
-      _CosmeticItem('👑', '왕관', 1200),
-      _CosmeticItem('🎅', '산타모', 800, owned: true),
-    ],
-    1: [
-      _CosmeticItem('🕶️', '선글라스', 400),
-      _CosmeticItem('👓', '안경', 600, owned: true),
-      _CosmeticItem('🥽', '수경', 600),
-      _CosmeticItem('🌸', '꽃장식', 600),
-    ],
-    2: [
-      _CosmeticItem('🦺', '조끼', 600),
-      _CosmeticItem('👗', '드레스', 800),
-      _CosmeticItem('🏃', '운동복', 1000, owned: true),
-      _CosmeticItem('🧥', '코트', 1000),
-    ],
-    3: [
-      _CosmeticItem('🏖️', '해변', 400),
-      _CosmeticItem('🌲', '숲속', 800, owned: true),
-      _CosmeticItem('🌸', '벚꽃', 800),
-      _CosmeticItem('🌈', '무지개', 1200),
-    ],
-  };
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final catalog = await ShopService.fetchCatalog();
+      if (!mounted) return;
+      setState(() => _catalog = catalog);
+    } catch (_) {
+      if (mounted) setState(() => _error = '테마 정보를 불러오지 못했습니다.');
+    }
+  }
 
-  late String? _equippedName = widget.equippedHat;
+  Future<void> _handleTap(ShopItemModel item) async {
+    if (_busyKey != null || item.equipped) return;
+    setState(() => _busyKey = item.itemKey);
+    try {
+      final catalog = item.owned
+          ? await ShopService.equip(item.itemKey)
+          : await ShopService.purchase(item.itemKey);
+      if (!mounted) return;
+      setState(() => _catalog = catalog);
+      widget.onChanged(catalog);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('처리하지 못했습니다: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busyKey = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final items = _catalog[_tab]!;
+    final items = (_catalog?.items ?? const <ShopItemModel>[])
+        .where((item) => item.type == ShopItemType.roomBackground)
+        .toList();
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -362,94 +430,91 @@ class _DecorateSheetState extends State<DecorateSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SheetHandle(),
-            const SheetHeader(emoji: '✨', title: '꾸미기 상점'),
+            const SheetHeader(emoji: '🎨', title: '테마'),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                const Text('보유 코인', style: TextStyle(fontSize: 12, color: ChowCozy.mutedForeground)),
-                const Spacer(),
-                const Text('🪙', style: TextStyle(fontSize: 13)),
-                const SizedBox(width: 4),
-                Text('${widget.coins}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ChowCozy.stone800)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 34,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _tabs.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final selected = i == _tab;
-                  return GestureDetector(
-                    onTap: () => setState(() => _tab = i),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: selected ? ChowCozy.stone800 : ChowCozy.stone50,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        _tabs[i],
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? Colors.white : ChowCozy.mutedForeground),
-                      ),
+            if (_catalog != null)
+              Row(
+                children: [
+                  const Text(
+                    '보유 코인',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: ChowCozy.mutedForeground,
                     ),
-                  );
-                },
+                  ),
+                  const Spacer(),
+                  const Text('🪙', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_catalog!.balance}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: ChowCozy.stone800,
+                    ),
+                  ),
+                ],
               ),
-            ),
             const SizedBox(height: 14),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: items.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 0.85,
+            if (_catalog == null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Center(
+                  child: _error != null
+                      ? Text(
+                          _error!,
+                          style: const TextStyle(
+                            color: ChowCozy.mutedForeground,
+                          ),
+                        )
+                      : const CircularProgressIndicator(
+                          color: ChowCozy.stone500,
+                        ),
+                ),
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: items.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.85,
+                ),
+                itemBuilder: (context, i) => _ThemeTile(
+                  item: items[i],
+                  busy: _busyKey == items[i].itemKey,
+                  onTap: () => _handleTap(items[i]),
+                ),
               ),
-              itemBuilder: (context, i) => _CosmeticTile(
-                item: items[i],
-                equipped: _tab == 0 && items[i].name == _equippedName,
-                onTap: () => _handleTap(items[i]),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
-
-  void _handleTap(_CosmeticItem item) {
-    setState(() {
-      if (!item.owned) {
-        item.owned = true; // 로컬 미리보기 — 실제 코인 차감 없음
-      }
-      if (_tab == 0) {
-        _equippedName = _equippedName == item.name ? null : item.name;
-        widget.onHatChanged?.call(_equippedName);
-      }
-    });
-  }
 }
 
-class _CosmeticTile extends StatelessWidget {
-  const _CosmeticTile({required this.item, required this.equipped, required this.onTap});
-  final _CosmeticItem item;
-  final bool equipped;
+class _ThemeTile extends StatelessWidget {
+  const _ThemeTile({
+    required this.item,
+    required this.busy,
+    required this.onTap,
+  });
+  final ShopItemModel item;
+  final bool busy;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final style = roomVisualFor(item.itemKey);
     return Material(
-      color: equipped ? ChowCozy.stone100 : ChowCozy.stone50,
+      color: item.equipped ? ChowCozy.stone100 : ChowCozy.stone50,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
+        onTap: busy ? null : onTap,
         child: Stack(
           children: [
             Padding(
@@ -457,30 +522,85 @@ class _CosmeticTile extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(item.emoji, style: const TextStyle(fontSize: 26)),
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: style.wallColors,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      item.emoji,
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(item.name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ChowCozy.stone800)),
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: ChowCozy.stone800,
+                    ),
+                  ),
                   const SizedBox(height: 3),
-                  if (equipped)
-                    const Text('착용중', style: TextStyle(fontSize: 9, color: ChowCozy.stone600, fontWeight: FontWeight.w700))
+                  if (busy)
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: ChowCozy.stone500,
+                      ),
+                    )
+                  else if (item.equipped)
+                    const Text(
+                      '적용중',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: ChowCozy.stone600,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
                   else if (item.owned)
-                    const Text('보유', style: TextStyle(fontSize: 9, color: ChowCozy.mutedForeground))
+                    const Text(
+                      '보유',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: ChowCozy.mutedForeground,
+                      ),
+                    )
                   else
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text('🪙', style: TextStyle(fontSize: 9)),
-                        Text(' ${item.price}', style: const TextStyle(fontSize: 9, color: ChowCozy.mutedForeground)),
+                        Text(
+                          ' ${item.price}',
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: ChowCozy.mutedForeground,
+                          ),
+                        ),
                       ],
                     ),
                 ],
               ),
             ),
-            if (equipped)
+            if (item.equipped)
               const Positioned(
                 top: 4,
                 right: 4,
-                child: Icon(Icons.check_circle, size: 14, color: ChowCozy.stone600),
+                child: Icon(
+                  Icons.check_circle,
+                  size: 14,
+                  color: ChowCozy.stone600,
+                ),
               ),
           ],
         ),
@@ -553,15 +673,30 @@ class _CraftSheetState extends State<CraftSheet> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 22),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [ChowCozy.stone200, ChowCozy.stone400]),
+                gradient: const LinearGradient(
+                  colors: [ChowCozy.stone200, ChowCozy.stone400],
+                ),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
-                    child: const Text('24H', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ChowCozy.stone800)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '24H',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: ChowCozy.stone800,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   const Text('🏪', style: TextStyle(fontSize: 40)),
@@ -584,80 +719,151 @@ class _CraftSheetState extends State<CraftSheet> {
             const SizedBox(height: 16),
             Row(
               children: const [
-                Text('제작 중인 아이템', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ChowCozy.stone800)),
+                Text(
+                  '제작 중인 아이템',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: ChowCozy.stone800,
+                  ),
+                ),
                 Spacer(),
-                Icon(Icons.info_outline, size: 13, color: ChowCozy.mutedForeground),
+                Icon(
+                  Icons.info_outline,
+                  size: 13,
+                  color: ChowCozy.mutedForeground,
+                ),
                 SizedBox(width: 3),
-                Text('안내', style: TextStyle(fontSize: 11, color: ChowCozy.mutedForeground)),
+                Text(
+                  '안내',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: ChowCozy.mutedForeground,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
-            ..._items.map((item) => Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: ChowCozy.stone50, borderRadius: BorderRadius.circular(16)),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
-                        alignment: Alignment.center,
-                        child: Text(item.emoji, style: const TextStyle(fontSize: 20)),
+            ..._items.map(
+              (item) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: ChowCozy.stone50,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(child: Text(item.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ChowCozy.stone800))),
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(999),
-                                    onTap: item.remainSec <= 0
-                                        ? null
-                                        : () => setState(() => item.remainSec = (item.remainSec - 3600).clamp(0, item.totalSec)),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(border: Border.all(color: ChowCozy.stone300), borderRadius: BorderRadius.circular(999)),
-                                      child: const Text('1시간 줄이기', style: TextStyle(fontSize: 9, color: ChowCozy.stone700)),
+                      alignment: Alignment.center,
+                      child: Text(
+                        item.emoji,
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: ChowCozy.stone800,
+                                  ),
+                                ),
+                              ),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(999),
+                                  onTap: item.remainSec <= 0
+                                      ? null
+                                      : () => setState(
+                                          () => item.remainSec =
+                                              (item.remainSec - 3600).clamp(
+                                                0,
+                                                item.totalSec,
+                                              ),
+                                        ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: ChowCozy.stone300,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      '1시간 줄이기',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: ChowCozy.stone700,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: SizedBox(
-                                height: 5,
-                                child: Stack(
-                                  children: [
-                                    Container(color: ChowCozy.stone200),
-                                    FractionallySizedBox(
-                                      widthFactor: (1 - item.remainSec / item.totalSec).clamp(0.0, 1.0),
-                                      child: Container(
-                                        decoration: const BoxDecoration(gradient: LinearGradient(colors: [ChowCozy.stone400, ChowCozy.stone700])),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: SizedBox(
+                              height: 5,
+                              child: Stack(
+                                children: [
+                                  Container(color: ChowCozy.stone200),
+                                  FractionallySizedBox(
+                                    widthFactor:
+                                        (1 - item.remainSec / item.totalSec)
+                                            .clamp(0.0, 1.0),
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            ChowCozy.stone400,
+                                            ChowCozy.stone700,
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              item.remainSec <= 0 ? '완료!' : '${_fmt(item.remainSec)} 남음',
-                              style: const TextStyle(fontSize: 10, color: ChowCozy.mutedForeground),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            item.remainSec <= 0
+                                ? '완료!'
+                                : '${_fmt(item.remainSec)} 남음',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: ChowCozy.mutedForeground,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

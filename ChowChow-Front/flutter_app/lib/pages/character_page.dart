@@ -45,7 +45,6 @@ class _CharacterPageState extends State<CharacterPage>
   int? _characterId;
   List<DailyMissionModel> _missions = [];
   bool _missionsLoading = true;
-  String? _equippedHatName;
 
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
@@ -258,18 +257,34 @@ class _CharacterPageState extends State<CharacterPage>
     try {
       final catalog = await ShopService.fetchCatalog();
       if (!mounted) return;
-      setState(() {
-        _coins = catalog.balance;
-        _roomBackgroundKey = catalog.equippedBackgroundKey;
-        _equippedDecorKeys = catalog.equippedDecorKeys;
-      });
+      _applyShopCatalog(catalog);
     } catch (_) {}
+  }
+
+  void _applyShopCatalog(ShopCatalogModel catalog) {
+    setState(() {
+      _coins = catalog.balance;
+      _roomBackgroundKey = catalog.equippedBackgroundKey;
+      _equippedDecorKeys = catalog.equippedDecorKeys;
+    });
   }
 
   Future<void> _openCoinShop() async {
     await context.push('/coin-shop');
     if (!mounted) return;
     await _loadShopStyle();
+  }
+
+  /// "꾸미기" 숏컷 — 방 배경 테마 하나만 고를 수 있는 시트.
+  void _openThemeSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => ThemeSheet(onChanged: _applyShopCatalog),
+    );
   }
 
   Future<void> _openWalk() async {
@@ -288,10 +303,8 @@ class _CharacterPageState extends State<CharacterPage>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => MissionSheet(
-        missions: _missions,
-        loading: _missionsLoading,
-      ),
+      builder: (_) =>
+          MissionSheet(missions: _missions, loading: _missionsLoading),
     );
   }
 
@@ -420,17 +433,15 @@ class _CharacterPageState extends State<CharacterPage>
   Future<void> _handleActivity(_ActivityData activity) async {
     final characterId = _characterId;
     if (characterId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('캐릭터 정보를 불러온 뒤 다시 시도해주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('캐릭터 정보를 불러온 뒤 다시 시도해주세요.')));
       return;
     }
     if (activity.cost > _coins) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '코인이 부족합니다. (보유: $_coins / 필요: ${activity.cost})',
-          ),
+          content: Text('코인이 부족합니다. (보유: $_coins / 필요: ${activity.cost})'),
         ),
       );
       return;
@@ -460,9 +471,7 @@ class _CharacterPageState extends State<CharacterPage>
       try {
         missionSummary = await CharacterService.fetchDailyMissions();
       } on ApiException catch (error) {
-        debugPrint(
-          '⚠️ 성장미션 새로고침 실패 (${error.statusCode}): ${error.message}',
-        );
+        debugPrint('⚠️ 성장미션 새로고침 실패 (${error.statusCode}): ${error.message}');
       }
       if (!mounted) return;
       setState(() {
@@ -514,26 +523,26 @@ class _CharacterPageState extends State<CharacterPage>
           ? 0
           : missionSummary.balance - expectedAfterCost;
       if (earnedCoins > 0 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🎯 성장미션 완료! +$earnedCoins 코인')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('🎯 성장미션 완료! +$earnedCoins 코인')));
       }
       if (updated.level > previousLevel && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🎉 레벨 업! Lv.${updated.level}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('🎉 레벨 업! Lv.${updated.level}')));
       }
     } on ApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
       return;
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('활동 처리에 실패했습니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('활동 처리에 실패했습니다.')));
       return;
     }
 
@@ -710,7 +719,7 @@ class _CharacterPageState extends State<CharacterPage>
       _ShortcutData('📅', '출석체크', true, _openAttendanceSheet),
       _ShortcutData('🎯', '성장미션', true, _openMissionSheet),
       _ShortcutData('🚶', '산책', false, _openWalk),
-      _ShortcutData('✨', '꾸미기', false, _openCoinShop),
+      _ShortcutData('✨', '꾸미기', false, _openThemeSheet),
       _ShortcutData('🪄', '제작소', false, _openCraftSheet),
     ];
     return SizedBox(
@@ -744,13 +753,13 @@ class _CharacterPageState extends State<CharacterPage>
       alignment: Alignment.center,
       clipBehavior: Clip.none,
       children: [
-        // 활동 중엔 씬 뱃지("🛁 목욕 중" 등), 아니면 모자 착용 뱃지, 그마저 없으면 방 이름 뱃지
+        // 활동 중엔 씬 뱃지("🛁 목욕 중" 등), 아니면 방 이름(테마) 뱃지
         Positioned(
           top: 4,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: Container(
-              key: ValueKey(_sceneLabelFor(_scene) ?? _equippedHatName ?? roomStyle.label),
+              key: ValueKey(_sceneLabelFor(_scene) ?? roomStyle.label),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.7),
@@ -759,31 +768,31 @@ class _CharacterPageState extends State<CharacterPage>
               child: _sceneLabelFor(_scene) != null
                   ? Text(
                       _sceneLabelFor(_scene)!,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: ChowCozy.stone700,
+                      ),
                     )
-                  : _equippedHatName != null
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('🎩', style: TextStyle(fontSize: 13)),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_equippedHatName 착용중',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.person_pin_circle_outlined, size: 14, color: ChowCozy.stone700),
-                            const SizedBox(width: 4),
-                            Text(
-                              roomStyle.label,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ChowCozy.stone700),
-                            ),
-                          ],
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.person_pin_circle_outlined,
+                          size: 14,
+                          color: ChowCozy.stone700,
                         ),
+                        const SizedBox(width: 4),
+                        Text(
+                          roomStyle.label,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: ChowCozy.stone700,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ),
@@ -878,7 +887,11 @@ class _CharacterPageState extends State<CharacterPage>
               final usingInteract = _isInteracting || t > 0;
               final tr = usingInteract
                   ? _interactTransform(t)
-                  : (dy: 0.0, scale: _idleScale.value, rotate: _idleRotate.value);
+                  : (
+                      dy: 0.0,
+                      scale: _idleScale.value,
+                      rotate: _idleRotate.value,
+                    );
               var dx = 0.0;
               if (usingInteract && _interactAnim == _InteractAnim.shake) {
                 dx = 20 * sin(t * pi * 8);

@@ -63,7 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
       static_cast<unsigned int>(outer.width / scale + 0.5),
       static_cast<unsigned int>(outer.height / scale + 0.5));
 
-  if (!window.Create(L"펫푸드 레시피", origin, create_size)) {
+  if (!window.Create(L"멍냥밥상", origin, create_size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
