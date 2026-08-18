@@ -347,6 +347,10 @@ class CommercialFoodModel {
   final String productName;
   final String? petType;
   final double? caloriesPer100g;
+  final double? proteinG;
+  final double? fatG;
+  final double? carbohydrateG;
+  final String? features;
   final String? imageUrl;
 
   CommercialFoodModel({
@@ -355,6 +359,10 @@ class CommercialFoodModel {
     required this.productName,
     this.petType,
     this.caloriesPer100g,
+    this.proteinG,
+    this.fatG,
+    this.carbohydrateG,
+    this.features,
     this.imageUrl,
   });
 
@@ -364,7 +372,55 @@ class CommercialFoodModel {
         productName: j['productName'] as String,
         petType: j['petType'] as String?,
         caloriesPer100g: (j['caloriesPer100g'] as num?)?.toDouble(),
+        proteinG: (j['proteinG'] as num?)?.toDouble(),
+        fatG: (j['fatG'] as num?)?.toDouble(),
+        carbohydrateG: (j['carbohydrateG'] as num?)?.toDouble(),
+        features: j['features'] as String?,
         imageUrl: j['imageUrl'] as String?,
+      );
+}
+
+class FoodTransitionStepModel {
+  final String dayRange;
+  final int currentFoodPercent;
+  final int newFoodPercent;
+  final String? note;
+
+  FoodTransitionStepModel({
+    required this.dayRange,
+    required this.currentFoodPercent,
+    required this.newFoodPercent,
+    this.note,
+  });
+
+  factory FoodTransitionStepModel.fromJson(Map<String, dynamic> j) => FoodTransitionStepModel(
+        dayRange: j['dayRange'] as String? ?? '',
+        currentFoodPercent: (j['currentFoodPercent'] as num?)?.toInt() ?? 0,
+        newFoodPercent: (j['newFoodPercent'] as num?)?.toInt() ?? 0,
+        note: j['note'] as String?,
+      );
+}
+
+class FoodTransitionModel {
+  final String summary;
+  final int? totalDays;
+  final List<FoodTransitionStepModel> schedule;
+  final List<String> warnings;
+
+  FoodTransitionModel({
+    required this.summary,
+    this.totalDays,
+    required this.schedule,
+    required this.warnings,
+  });
+
+  factory FoodTransitionModel.fromJson(Map<String, dynamic> j) => FoodTransitionModel(
+        summary: j['summary'] as String? ?? '',
+        totalDays: (j['totalDays'] as num?)?.toInt(),
+        schedule: (j['schedule'] as List<dynamic>? ?? [])
+            .map((e) => FoodTransitionStepModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        warnings: (j['warnings'] as List<dynamic>? ?? []).map((e) => e as String).toList(),
       );
 }
 

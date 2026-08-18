@@ -32,7 +32,10 @@ import '../pages/create_post.dart';
 import '../pages/tip_detail_page.dart';
 import '../pages/my_posts_page.dart';
 import '../pages/walk_page.dart';
+import '../pages/diet_log_page.dart';
 import '../pages/feeding_guideline_page.dart';
+import '../pages/food_info_page.dart';
+import '../pages/food_transition_guide_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
@@ -105,6 +108,21 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/feeding-guideline',
         builder: (context, state) => const FeedingGuidelinePage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/food-info',
+        builder: (context, state) => const FoodInfoPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/food-transition-guide',
+        builder: (context, state) => const FoodTransitionGuidePage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/diet-log',
+        builder: (context, state) => const DietLogPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

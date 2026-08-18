@@ -16,9 +16,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 네이버 데이터랩 검색어트렌드 API 클라이언트 - 키워드 그룹별 최근 검색 관심도 변화를 조회한다.
- * https://developers.naver.com/docs/serviceapi/datalab/search/search.md
- * naver-search.* 설정(NaverShoppingClient와 동일한 앱/키)을 그대로 사용한다.
+ * 네이버 검색어트렌드 API 클라이언트 - 키워드 그룹별 최근 검색 관심도 변화를 조회한다.
+ * 기존 데이터랩 검색 API(openapi.naver.com/v1/datalab/search)는 2026-07-31 NAVER API HUB로
+ * 이관되어 도메인/인증 헤더가 바뀌었다(요청·응답 바디 형식은 동일).
+ * https://naverapihub.apigw.ntruss.com/search-trend/v1/search
  */
 @Slf4j
 @Component
@@ -34,7 +35,7 @@ public class NaverTrendClient {
     private final ObjectMapper objectMapper;
 
     public NaverTrendClient(
-            @Value("${naver-search.base-url}") String baseUrl,
+            @Value("${naver-search.hub-base-url:https://naverapihub.apigw.ntruss.com}") String baseUrl,
             @Value("${naver-search.client-id:}") String clientId,
             @Value("${naver-search.client-secret:}") String clientSecret,
             ObjectMapper objectMapper) {
@@ -78,9 +79,9 @@ public class NaverTrendClient {
             );
 
             String response = webClient.post()
-                    .uri("/v1/datalab/search")
-                    .header("X-Naver-Client-Id", clientId)
-                    .header("X-Naver-Client-Secret", clientSecret)
+                    .uri("/search-trend/v1/search")
+                    .header("X-NCP-APIGW-API-KEY-ID", clientId)
+                    .header("X-NCP-APIGW-API-KEY", clientSecret)
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(String.class)
