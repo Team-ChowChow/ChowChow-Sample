@@ -696,26 +696,24 @@ class _CharacterPageState extends State<CharacterPage>
               ),
             ),
           ),
-          // 활동에 맞는 배경 — 놀아주기/밥주기/목욕하기/쓰다듬기 시 5초간 페이드 전환
+          // 기본 배경과 활동별 배경 — 활동 시 해당 씬으로 페이드 전환
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: sceneAsset == null ? 0 : 1,
+              opacity: 1,
               duration: const Duration(milliseconds: 550),
               curve: Curves.easeInOut,
-              child: sceneAsset == null
-                  ? const SizedBox.shrink()
-                  : Image.asset(
-                      sceneAsset,
-                      key: ValueKey(sceneAsset),
-                      fit: BoxFit.cover,
-                      alignment: const Alignment(0, -2.2),
-                    ),
+              child: Image.asset(
+                sceneAsset,
+                key: ValueKey(sceneAsset),
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -2.2),
+              ),
             ),
           ),
           // 씬 이미지 위 은은한 그림자 오버레이(상단 UI 가독성 유지)
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: sceneAsset == null ? 0 : 1,
+              opacity: 1,
               duration: const Duration(milliseconds: 400),
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -816,15 +814,34 @@ class _CharacterPageState extends State<CharacterPage>
       _ShortcutData('✨', '꾸미기', false, _openThemeSheet),
       _ShortcutData('🪄', '제작소', false, _openCraftSheet),
     ];
-    return SizedBox(
-      height: 80,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        itemCount: shortcuts.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => _ShortcutChip(data: shortcuts[i]),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const horizontalPadding = 16.0;
+        const spacing = 8.0;
+        final side = ((constraints.maxWidth - (horizontalPadding * 2) -
+                    (spacing * (shortcuts.length - 1))) /
+                shortcuts.length)
+            .clamp(0.0, 68.0)
+            .toDouble();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 4),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < shortcuts.length; i++) ...[
+                  SizedBox.square(
+                    dimension: side,
+                    child: _ShortcutChip(data: shortcuts[i]),
+                  ),
+                  if (i < shortcuts.length - 1) const SizedBox(width: spacing),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1216,50 +1233,60 @@ class _ShortcutChip extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: data.onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(data.emoji, style: const TextStyle(fontSize: 20)),
-                  const SizedBox(height: 2),
-                  Text(
-                    data.label,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: ChowCozy.stone800,
+                  Expanded(
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(data.emoji, style: const TextStyle(fontSize: 28)),
+                      ),
+                    ),
+                  ),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      data.label,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: ChowCozy.stone800,
+                      ),
                     ),
                   ),
                 ],
               ),
-              if (data.badge)
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: const BoxDecoration(
-                      color: ChowColors.red500,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '!',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
+            ),
+            if (data.badge)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: const BoxDecoration(
+                    color: ChowColors.red500,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    '!',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -1311,15 +1338,15 @@ class _FloatingDeco extends StatelessWidget {
 
 enum _InteractAnim { bounce, shake, scale, wiggle }
 
-/// 활동별 전환 배경. none이면 코인 상점에서 고른 기본 방 배경을 그대로 보여준다.
+/// 기본 및 활동별 전환 배경.
 enum _Scene { none, play, feed, bath, pet }
 
-String? _sceneAssetFor(_Scene scene) => switch (scene) {
+String _sceneAssetFor(_Scene scene) => switch (scene) {
   _Scene.play => 'assets/images/scenes/scene_play.png',
   _Scene.feed => 'assets/images/scenes/scene_feed.png',
   _Scene.bath => 'assets/images/scenes/scene_bath.png',
   _Scene.pet => 'assets/images/scenes/scene_pet.png',
-  _Scene.none => null,
+  _Scene.none => 'assets/images/scenes/scene_pet.png',
 };
 
 String? _sceneLabelFor(_Scene scene) => switch (scene) {
