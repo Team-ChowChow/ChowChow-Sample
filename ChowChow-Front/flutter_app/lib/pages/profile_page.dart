@@ -329,7 +329,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (_parseWeight(_petWeight) != null)
         'petWeight': _parseWeight(_petWeight),
       if (_isExactBirthdate && _petBirthdate != null)
-        'petBirthdate': _formatBirthdate(_petBirthdate!)
+        'petBirthdate': _formatBirthdateForApi(_petBirthdate!)
       else if (!_isExactBirthdate)
         'petBirthdate': _approximateBirthdate(),
       if (_selectedAllergyIds.isNotEmpty) 'allergyIds': _selectedAllergyIds,
@@ -1168,9 +1168,14 @@ class _ProfilePageState extends State<ProfilePage> {
   String _formatBirthdate(DateTime value) =>
       '${value.year}.${value.month.toString().padLeft(2, '0')}.${value.day.toString().padLeft(2, '0')}';
 
+  String _formatBirthdateForApi(DateTime value) =>
+      '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
   String _approximateBirthdate() {
     final today = DateTime.now();
-    return _formatBirthdate(DateTime(today.year - _petAgeYears, today.month - _petAgeMonths, today.day));
+    return _formatBirthdateForApi(
+      DateTime(today.year - _petAgeYears, today.month - _petAgeMonths, today.day),
+    );
   }
 
   Widget _buildBirthdateSelector(void Function(VoidCallback) updateForm) {
