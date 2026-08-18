@@ -154,6 +154,8 @@ class _CharacterPageState extends State<CharacterPage>
       style: const TextStyle(fontSize: 165),
     );
 
+    final resolvedUrl = _resolveImageUrl(url);
+
     // GIF 로드 시도
     return Image.asset(
       _getGifPath(),
@@ -163,7 +165,6 @@ class _CharacterPageState extends State<CharacterPage>
       errorBuilder: (context, error, stackTrace) {
         debugPrint('❌ [CharacterPage] GIF 로드 실패: ${_getGifPath()} - $error');
         // GIF 실패 시 기존 이미지 로드
-        final resolvedUrl = _resolveImageUrl(url);
         if (resolvedUrl.startsWith('assets/')) {
           return Image.asset(
             resolvedUrl,
@@ -689,7 +690,7 @@ class _CharacterPageState extends State<CharacterPage>
       _ShortcutData('🪄', '제작소', false, _openCraftSheet),
     ];
     return SizedBox(
-      height: 72,
+      height: 80,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
