@@ -316,13 +316,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                     onTap: () => setState(() => _selectedPetType = '고양이'),
                                   ),
                                   const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _PetTypeOption(
-                                      label: '선택안함',
-                                      emoji: '',
-                                      selected: _selectedPetType == null,
-                                      onTap: () => setState(() => _selectedPetType = null),
-                                    ),
+                                  _PetTypeOption(
+                                    label: '선택안함',
+                                    emoji: '',
+                                    selected: _selectedPetType == null,
+                                    onTap: () => setState(() => _selectedPetType = null),
                                   ),
                                 ],
                               ),

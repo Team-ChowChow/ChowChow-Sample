@@ -343,12 +343,7 @@ class _SearchPageState extends State<SearchPage> {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(10),
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFFFF8A00),
-                              Color(0xFFFF6B00),
-                            ],
-                          ),
+                          color: ChowCozy.stone500,
                         ),
                         child: Material(
                           color: Colors.transparent,
@@ -1258,7 +1253,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       child: ElevatedButton(
                         onPressed: _apply,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B00),
+                          backgroundColor: ChowCozy.stone500,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
