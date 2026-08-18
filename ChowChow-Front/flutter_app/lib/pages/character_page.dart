@@ -592,7 +592,7 @@ class _CharacterPageState extends State<CharacterPage>
                       sceneAsset,
                       key: ValueKey(sceneAsset),
                       fit: BoxFit.cover,
-                      alignment: Alignment.bottomCenter,
+                      alignment: const Alignment(0, -2.2),
                     ),
             ),
           ),
