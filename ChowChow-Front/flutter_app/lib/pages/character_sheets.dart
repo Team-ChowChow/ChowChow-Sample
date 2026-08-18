@@ -226,6 +226,20 @@ class MissionSheet extends StatelessWidget {
             const SheetHandle(),
             const SheetHeader(emoji: '🎯', title: '성장미션'),
             const SizedBox(height: 16),
+            if (loading && missions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (missions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  '성장미션을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: ChowCozy.mutedForeground),
+                ),
+              ),
             ...missions.map(
               (m) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -45,6 +46,8 @@ class _CharacterPageState extends State<CharacterPage>
   int? _characterId;
   List<DailyMissionModel> _missions = [];
   bool _missionsLoading = true;
+  final Map<String, DateTime> _cooldownUntil = {};
+  Timer? _cooldownTimer;
 
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
@@ -97,6 +100,9 @@ class _CharacterPageState extends State<CharacterPage>
     _loadShopStyle();
     _claimDailyLogin();
     _loadDailyMissions();
+    _cooldownTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted && _cooldownUntil.isNotEmpty) setState(() {});
+    });
   }
 
   Future<void> _loadDailyMissions() async {
@@ -111,6 +117,29 @@ class _CharacterPageState extends State<CharacterPage>
     } catch (_) {
       if (mounted) setState(() => _missionsLoading = false);
     }
+  }
+
+  Future<void> _loadActivityCooldowns(int characterId) async {
+    try {
+      final logs = await CharacterService.fetchGrowthLogs(characterId);
+      final next = <String, DateTime>{};
+      for (final type in ['FEED', 'PET']) {
+        final matching = logs.where(
+          (log) => log.activityType == type && log.createdAt != null,
+        );
+        if (matching.isEmpty) continue;
+        final availableAt = matching.first.createdAt!
+            .toLocal()
+            .add(const Duration(hours: 3));
+        if (availableAt.isAfter(DateTime.now())) next[type] = availableAt;
+      }
+      if (!mounted) return;
+      setState(() {
+        _cooldownUntil
+          ..clear()
+          ..addAll(next);
+      });
+    } catch (_) {}
   }
 
   String _resolveImageUrl(String? url) {
@@ -254,6 +283,9 @@ class _CharacterPageState extends State<CharacterPage>
           hunger = (c['hunger'] as num?)?.toInt() ?? 50;
         });
 
+        final characterId = _characterId;
+        if (characterId != null) await _loadActivityCooldowns(characterId);
+
         debugPrint('🎯 [CharacterPage] Loaded: type=$petType, group=$groupName');
       } else {
         final res = await ApiClient.get('/api/characters') as List<dynamic>;
@@ -273,6 +305,8 @@ class _CharacterPageState extends State<CharacterPage>
           happiness = (c['happiness'] as num?)?.toInt() ?? 80;
           hunger = (c['hunger'] as num?)?.toInt() ?? 50;
         });
+        final characterId = _characterId;
+        if (characterId != null) await _loadActivityCooldowns(characterId);
       }
     } catch (_) {}
   }
@@ -399,6 +433,7 @@ class _CharacterPageState extends State<CharacterPage>
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _idleCtrl.dispose();
     _interactCtrl.dispose();
     _decorCtrl.dispose();
@@ -463,12 +498,39 @@ class _CharacterPageState extends State<CharacterPage>
     setState(() {});
   }
 
+  String _activityTypeFor(_ActivityData activity) => switch (activity.label) {
+    '밥주기' => 'FEED',
+    '쓰다듬기' => 'PET',
+    '운동하기' => 'EXERCISE',
+    '목욕시키기' => 'BATH',
+    _ => throw StateError('지원하지 않는 활동입니다.'),
+  };
+
+  String? _cooldownLabel(String activityType) {
+    final until = _cooldownUntil[activityType];
+    if (until == null) return null;
+    final remaining = until.difference(DateTime.now());
+    if (remaining.isNegative) return null;
+    final roundedMinutes = (remaining.inSeconds / 60).ceil();
+    final hours = roundedMinutes ~/ 60;
+    final minutes = roundedMinutes % 60;
+    return hours > 0 ? '$hours시간 $minutes분' : '$minutes분';
+  }
+
   Future<void> _handleActivity(_ActivityData activity) async {
     final characterId = _characterId;
     if (characterId == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('캐릭터 정보를 불러온 뒤 다시 시도해주세요.')));
+      return;
+    }
+    final activityType = _activityTypeFor(activity);
+    final cooldown = _cooldownLabel(activityType);
+    if (cooldown != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${activity.label}는 $cooldown 후 다시 할 수 있습니다.')),
+      );
       return;
     }
     if (activity.cost > _coins) {
@@ -480,13 +542,6 @@ class _CharacterPageState extends State<CharacterPage>
       return;
     }
 
-    final activityType = switch (activity.label) {
-      '밥주기' => 'FEED',
-      '쓰다듬기' => 'PET',
-      '운동하기' => 'EXERCISE',
-      '목욕시키기' => 'BATH',
-      _ => throw StateError('지원하지 않는 활동입니다.'),
-    };
     final previousBalance = _coins;
     final previousLevel = level;
 
@@ -517,6 +572,11 @@ class _CharacterPageState extends State<CharacterPage>
         if (missionSummary != null) {
           _coins = missionSummary.balance;
           _missions = missionSummary.missions;
+        }
+        if (activityType == 'FEED' || activityType == 'PET') {
+          _cooldownUntil[activityType] = DateTime.now().add(
+            const Duration(hours: 3),
+          );
         }
       });
 
@@ -570,6 +630,7 @@ class _CharacterPageState extends State<CharacterPage>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
+      await _loadActivityCooldowns(characterId);
       return;
     } catch (_) {
       if (!mounted) return;
@@ -1111,14 +1172,21 @@ class _CharacterPageState extends State<CharacterPage>
             const SizedBox(height: 14),
             Row(
               children: _activities
-                  .map(
-                    (a) => Expanded(
+                  .map((a) {
+                    final type = _activityTypeFor(a);
+                    final cooldown = _cooldownLabel(type);
+                    final usesCooldown = type == 'FEED' || type == 'PET';
+                    return Expanded(
                       child: _ActionButton(
                         activity: a,
+                        statusLabel: usesCooldown
+                            ? (cooldown ?? '3시간마다')
+                            : null,
+                        enabled: cooldown == null,
                         onTap: () => _handleActivity(a),
                       ),
-                    ),
-                  )
+                    );
+                  })
                   .toList(),
             ),
           ],
@@ -1395,19 +1463,26 @@ class _StatRow extends StatelessWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.activity, required this.onTap});
+  const _ActionButton({
+    required this.activity,
+    required this.onTap,
+    required this.enabled,
+    this.statusLabel,
+  });
   final _ActivityData activity;
   final VoidCallback onTap;
+  final bool enabled;
+  final String? statusLabel;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
-        color: ChowCozy.stone50,
+        color: enabled ? ChowCozy.stone50 : ChowCozy.stone100,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: onTap,
+          onTap: enabled ? onTap : null,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1427,12 +1502,16 @@ class _ActionButton extends StatelessWidget {
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  activity.cost > 0 ? '🪙-${activity.cost}' : '무료',
+                  statusLabel ?? (activity.cost > 0 ? '🪙-${activity.cost}' : '무료'),
                   style: TextStyle(
                     fontSize: 10,
-                    color: activity.cost > 0
-                        ? ChowCozy.mutedForeground
-                        : ChowColors.green500,
+                    color: !enabled
+                        ? ChowCozy.stone500
+                        : statusLabel != null
+                            ? ChowColors.green500
+                            : activity.cost > 0
+                                ? ChowCozy.mutedForeground
+                                : ChowColors.green500,
                   ),
                 ),
               ],
