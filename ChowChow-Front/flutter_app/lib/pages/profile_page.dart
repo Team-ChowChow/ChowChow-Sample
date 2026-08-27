@@ -625,48 +625,26 @@ class _ProfilePageState extends State<ProfilePage> {
             borderRadius: BorderRadius.circular(14),
             onTap: _availableBreeds.isEmpty
                 ? null
-                : () {
-                    showModalBottomSheet<void>(
+                : () async {
+                    final breed = await showModalBottomSheet<BreedModel>(
                       context: context,
+                      isScrollControlled: true,
                       backgroundColor: Colors.white,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(
                           top: Radius.circular(24),
                         ),
                       ),
-                      builder: (context) {
-                        return SafeArea(
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            itemCount: _availableBreeds.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final breed = _availableBreeds[index];
-                              return ListTile(
-                                title: Text(
-                                  breed.displayName,
-                                  style: const TextStyle(fontSize: 15),
-                                ),
-                                trailing: _breedId == breed.breedId
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: ChowCozy.stone500,
-                                      )
-                                    : null,
-                                onTap: () {
-                                  updateForm(() {
-                                    _breedId = breed.breedId;
-                                    _breedDisplayName = breed.displayName;
-                                  });
-                                  Navigator.of(context).pop();
-                                },
-                              );
-                            },
-                          ),
-                        );
-                      },
+                      builder: (context) => _BreedPickerSheet(
+                        breeds: _availableBreeds,
+                        selectedBreedId: _breedId,
+                      ),
                     );
+                    if (breed == null) return;
+                    updateForm(() {
+                      _breedId = breed.breedId;
+                      _breedDisplayName = breed.displayName;
+                    });
                   },
             child: Container(
               width: double.infinity,
@@ -713,6 +691,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ],
     );
   }
+
 
   Widget _buildPetLifestyleFields(void Function(VoidCallback) updateForm) {
     const foodOptions = ['건식', '습식', '동결건조', '소프트 (반습식)', '자연식 (화식/생식)', '홈메이드'];
@@ -2069,6 +2048,164 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _BreedPickerSheet extends StatefulWidget {
+  const _BreedPickerSheet({
+    required this.breeds,
+    this.selectedBreedId,
+  });
+
+  final List<BreedModel> breeds;
+  final int? selectedBreedId;
+
+  @override
+  State<_BreedPickerSheet> createState() => _BreedPickerSheetState();
+}
+
+class _BreedPickerSheetState extends State<_BreedPickerSheet> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  List<BreedModel> get _filteredBreeds {
+    final query = _query.trim().toLowerCase().replaceAll(' ', '');
+    if (query.isEmpty) return widget.breeds;
+
+    return widget.breeds.where((breed) {
+      final koreanName = breed.breedNameKo.toLowerCase().replaceAll(' ', '');
+      final englishName = breed.breedName.toLowerCase().replaceAll(' ', '');
+      return koreanName.contains(query) || englishName.contains(query);
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final breeds = _filteredBreeds;
+
+    return SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.72,
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ChowColors.gray300,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '품종 선택',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onChanged: (value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  hintText: '품종을 검색해주세요',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                          icon: const Icon(Icons.close),
+                        ),
+                  filled: true,
+                  fillColor: ChowColors.gray50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: ChowColors.gray300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: ChowColors.gray300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: ChowCozy.stone500,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: breeds.isEmpty
+                  ? const Center(
+                      child: Text(
+                        '검색 결과가 없습니다.',
+                        style: TextStyle(color: ChowColors.gray500),
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: breeds.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final breed = breeds[index];
+                        final hasDifferentEnglishName =
+                            breed.breedName.isNotEmpty &&
+                                breed.breedName != breed.displayName;
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 2,
+                          ),
+                          title: Text(
+                            breed.displayName,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          subtitle: hasDifferentEnglishName
+                              ? Text(
+                                  breed.breedName,
+                                  style: const TextStyle(
+                                    color: ChowColors.gray500,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : null,
+                          trailing: widget.selectedBreedId == breed.breedId
+                              ? const Icon(
+                                  Icons.check,
+                                  color: ChowCozy.stone500,
+                                )
+                              : null,
+                          onTap: () => Navigator.of(context).pop(breed),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
