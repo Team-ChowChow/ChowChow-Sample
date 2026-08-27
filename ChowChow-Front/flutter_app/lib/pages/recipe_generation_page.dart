@@ -268,7 +268,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                     onPressed: () => context.pop(),
                     icon: const Icon(Icons.arrow_back),
                   ),
-                  const Text('AI 레시피 생성', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  const Text('AI 레시피 생성', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -304,7 +304,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
           const SizedBox(height: 16),
           const Text(
             '등록된 반려동물이 없어요',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ChowColors.gray800),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: ChowColors.gray800),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -323,7 +323,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
               ),
               onPressed: () => context.go('/profile'),
               icon: const Icon(Icons.add),
-              label: const Text('반려동물 추가하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              label: const Text('반려동물 추가하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
             ),
           ),
           const SizedBox(height: 24),
@@ -382,7 +382,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('어떤 아이를 위한 레시피인가요?',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray800)),
           const SizedBox(height: 12),
           ..._pets.map((pet) {
             final selected = _selectedPet?.petId == pet.petId;
@@ -417,7 +417,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(pet.petName,
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: ChowColors.gray800)),
                           Text(
                             '${pet.breedName ?? pet.displayType}${pet.petWeight != null ? ' • ${pet.petWeight!.toStringAsFixed(1)}kg' : ''}',
                             style: const TextStyle(fontSize: 12, color: ChowColors.gray500),
@@ -466,7 +466,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
               ),
               onPressed: _selectedPet != null ? _startGeneration : null,
               icon: const Icon(Icons.auto_awesome),
-              label: const Text('AI 레시피 생성하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              label: const Text('AI 레시피 생성하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
             ),
           ),
         ],
@@ -538,7 +538,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: ChowCozy.stone500,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
                         ),
                   ),
                   const SizedBox(height: 12),
@@ -580,7 +580,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       Text('$_progress%', style: const TextStyle(fontSize: 13, color: ChowColors.gray600)),
                       Text(
                         _progress >= 100 ? '완료!' : '생성 중...',
-                        style: const TextStyle(fontSize: 13, color: ChowCozy.stone500, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 13, color: ChowCozy.stone500, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -641,7 +641,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                                         style: TextStyle(
                                           color: current ? Colors.white : ChowColors.gray600,
                                           fontSize: 11,
-                                          fontWeight: FontWeight.bold,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
@@ -673,7 +673,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                     child: const Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(text: '💡 Tip: ', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF9A3412))),
+                          TextSpan(text: '💡 Tip: ', style: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF9A3412))),
                           TextSpan(
                             text: 'AI가 생성한 레시피는 저장하여 언제든지 다시 확인할 수 있어요!',
                             style: TextStyle(fontSize: 13, color: Color(0xFF9A3412)),
@@ -714,7 +714,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                   const Expanded(
                     child: Text(
                       '생성된 레시피',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -755,7 +755,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                                   'AI 생성 레시피',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w500,
                                     color: ChowCozy.stone700,
                                   ),
                                 ),
@@ -772,7 +772,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: ChowColors.gray900,
                         height: 1.3,
                       ),
@@ -871,7 +871,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
@@ -902,7 +902,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('⚠️ 주의사항', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF9A3412))),
+                            const Text('⚠️ 주의사항', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF9A3412))),
                             const SizedBox(height: 6),
                             ...recipe.warnings.map(
                               (w) => Padding(
@@ -933,7 +933,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                             : const Icon(Icons.ios_share),
                         label: Text(
                           _isSharing ? '글쓰기 화면 여는 중...' : '커뮤니티에 레시피 공유하기',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ),
@@ -948,7 +948,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
                           onPressed: () => context.push('/recipes/${recipe.recipeId}'),
-                          child: const Text('레시피 상세보기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                          child: const Text('레시피 상세보기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -963,7 +963,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         onPressed: () => context.go('/'),
-                        child: const Text('홈으로 돌아가기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        child: const Text('홈으로 돌아가기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                       ),
                     ),
                   ],
@@ -1008,7 +1008,7 @@ class _ResultCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: ChowCozy.stone500),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ChowColors.gray800)),
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray800)),
               if (trailing != null) ...[
                 const Spacer(),
                 Text(trailing!, style: const TextStyle(fontSize: 12, color: ChowColors.gray400)),

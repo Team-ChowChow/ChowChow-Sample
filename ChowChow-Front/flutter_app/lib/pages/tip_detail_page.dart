@@ -18,7 +18,7 @@ class TipDetailPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios, color: ChowColors.gray800),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('오늘의 팁', style: TextStyle(color: ChowColors.gray800, fontWeight: FontWeight.w600)),
+        title: const Text('오늘의 팁', style: TextStyle(color: ChowColors.gray800, fontWeight: FontWeight.w500)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -41,13 +41,13 @@ class TipDetailPage extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     tip,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, height: 1.4),
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500, height: 1.4),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            const Text('상세 내용', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray800)),
+            const Text('상세 내용', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray800)),
             const SizedBox(height: 12),
             Container(
               width: double.infinity,

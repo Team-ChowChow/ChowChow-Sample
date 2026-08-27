@@ -5,6 +5,7 @@ import com.petdiet.community.entity.CommunityLike;
 import com.petdiet.community.entity.CommunityPost;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface CommunityLikeRepository extends JpaRepository<CommunityLike, Integer> {
@@ -14,4 +15,8 @@ public interface CommunityLikeRepository extends JpaRepository<CommunityLike, In
     boolean existsByPostAndUser(CommunityPost post, User user);
 
     long countByPost(CommunityPost post);
+
+    List<CommunityLike> findAllByUserAndPost_PostStatusOrderByCreatedAtDesc(
+            User user,
+            String postStatus);
 }

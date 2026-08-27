@@ -44,6 +44,12 @@ public class CommunityController {
         return ResponseEntity.ok(communityService.getMyPosts(principal.authUuid(), pageable));
     }
 
+    @GetMapping("/posts/liked")
+    public ResponseEntity<List<PostResponse>> getLikedPosts(
+            @AuthenticationPrincipal SupabasePrincipal principal) {
+        return ResponseEntity.ok(communityService.getLikedPosts(principal.authUuid()));
+    }
+
     @PostMapping("/posts")
     public ResponseEntity<PostResponse> createPost(
             @AuthenticationPrincipal SupabasePrincipal principal,

@@ -12,6 +12,7 @@ import '../pages/coin_shop_page.dart';
 import '../pages/pet_raising_3d_page.dart';
 import '../pages/character_raise_page.dart';
 import '../pages/community_page.dart';
+import '../pages/completed_recipes_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
 import '../pages/home_page.dart';
@@ -21,6 +22,7 @@ import '../pages/login_page.dart';
 import '../pages/notices_page.dart';
 import '../pages/post_detail_page.dart';
 import '../pages/profile_page.dart';
+import '../pages/profile_settings_page.dart';
 import '../pages/recipe_detail_page.dart';
 import '../pages/recipe_generation_page.dart';
 import '../pages/search_page.dart';
@@ -33,6 +35,7 @@ import '../pages/tip_detail_page.dart';
 import '../pages/my_posts_page.dart';
 import '../pages/walk_page.dart';
 import '../pages/diet_log_page.dart';
+import '../pages/custom_recipe_form_page.dart';
 import '../pages/feeding_guideline_page.dart';
 import '../pages/food_info_page.dart';
 import '../pages/food_transition_guide_page.dart';
@@ -112,7 +115,13 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: '/food-info',
-        builder: (context, state) => const FoodInfoPage(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return FoodInfoPage(
+            selectMode: extra?['selectMode'] as bool? ?? false,
+            allowUserFoods: extra?['allowUserFoods'] as bool? ?? true,
+          );
+        },
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -123,6 +132,17 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/diet-log',
         builder: (context, state) => const DietLogPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/diet-log/new-recipe',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return CustomRecipeFormPage(
+            petId: extra?['petId'] as int? ?? 0,
+            petType: extra?['petType'] as String?,
+          );
+        },
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -141,6 +161,11 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/app-settings',
         builder: (context, state) => const AppSettingsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile-settings',
+        builder: (context, state) => const ProfileSettingsPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
@@ -206,6 +231,23 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         path: '/saved-posts',
         builder: (context, state) =>
             const MyPostsPage(mode: MyPostsMode.savedPosts),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/liked-posts',
+        builder: (context, state) =>
+            const MyPostsPage(mode: MyPostsMode.likedPosts),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/saved-recipes',
+        builder: (context, state) =>
+            const MyPostsPage(mode: MyPostsMode.savedRecipes),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/completed-recipes',
+        builder: (context, state) => const CompletedRecipesPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

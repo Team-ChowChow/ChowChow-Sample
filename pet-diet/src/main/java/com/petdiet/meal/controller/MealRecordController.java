@@ -23,8 +23,9 @@ public class MealRecordController {
 
     @GetMapping
     public ResponseEntity<List<MealRecordResponse>> getMyRecords(
-            @AuthenticationPrincipal SupabasePrincipal principal) {
-        return ResponseEntity.ok(mealRecordService.getMyRecords(principal.authUuid()));
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @RequestParam(required = false) Integer petId) {
+        return ResponseEntity.ok(mealRecordService.getMyRecords(principal.authUuid(), petId));
     }
 
     @PostMapping

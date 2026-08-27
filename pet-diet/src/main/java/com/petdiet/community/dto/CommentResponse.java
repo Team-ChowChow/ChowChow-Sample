@@ -13,6 +13,7 @@ public class CommentResponse {
     private Integer postId;
     private Integer userId;
     private String userNickname;
+    private String userProfileImg;
     private Integer parentCommentId;
     private String commentContent;
     private String commentStatus;
@@ -26,6 +27,7 @@ public class CommentResponse {
                 .postId(comment.getPost().getPostId())
                 .userId(comment.getUser().getUserId())
                 .userNickname(comment.getUser().getUserNickname())
+                .userProfileImg(comment.getUser().getUserProfileImg())
                 .parentCommentId(comment.getParentCommentId())
                 .commentContent(comment.getCommentContent())
                 .commentStatus(comment.getCommentStatus())

@@ -105,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                             '멍냥밥상',
                             style: TextStyle(
                               fontSize: 22,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: ChowCozy.stone500,
                               letterSpacing: -0.3,
                             ),
@@ -277,7 +277,7 @@ class _LoginPageState extends State<LoginPage> {
                                       '회원가입',
                                       style: TextStyle(
                                         color: ChowCozy.stone500,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
@@ -319,7 +319,7 @@ class _PawLogo extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+        child: Image.asset('assets/images/pet_home_icon_2.png', fit: BoxFit.cover),
       ),
     );
   }
@@ -357,7 +357,7 @@ class _LoginButton extends StatelessWidget {
                   '로그인',
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     color: onPressed != null
                         ? Colors.white
                         : Colors.white.withValues(alpha: 0.7),

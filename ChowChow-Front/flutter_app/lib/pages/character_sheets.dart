@@ -27,7 +27,7 @@ class SheetHeader extends StatelessWidget {
             '$emoji $title',
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
               color: ChowCozy.stone900,
             ),
           ),
@@ -106,7 +106,7 @@ class _AttendanceSheetState extends State<AttendanceSheet> {
                   '$streak일 연속 출석 중',
                   style: const TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w500,
                     color: ChowCozy.stone800,
                   ),
                 ),
@@ -194,7 +194,7 @@ class _DayBox extends StatelessWidget {
             style: TextStyle(
               fontSize: 8,
               color: checked ? Colors.white : ChowCozy.mutedForeground,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -226,6 +226,20 @@ class MissionSheet extends StatelessWidget {
             const SheetHandle(),
             const SheetHeader(emoji: '🎯', title: '성장미션'),
             const SizedBox(height: 16),
+            if (loading && missions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (missions.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  '성장미션을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: ChowCozy.mutedForeground),
+                ),
+              ),
             ...missions.map(
               (m) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -287,7 +301,7 @@ class _MissionRow extends StatelessWidget {
                       mission.label,
                       style: const TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone800,
                       ),
                     ),
@@ -311,7 +325,7 @@ class _MissionRow extends StatelessWidget {
                   done ? '지급 완료' : '🪙 ${mission.rewardCoins}P',
                   style: TextStyle(
                     fontSize: 10,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     color: done ? Colors.white : ChowCozy.stone700,
                   ),
                 ),
@@ -449,7 +463,7 @@ class _ThemeSheetState extends State<ThemeSheet> {
                     '${_catalog!.balance}',
                     style: const TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w500,
                       color: ChowCozy.stone800,
                     ),
                   ),
@@ -544,7 +558,7 @@ class _ThemeTile extends StatelessWidget {
                     item.name,
                     style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                       color: ChowCozy.stone800,
                     ),
                   ),
@@ -564,7 +578,7 @@ class _ThemeTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 9,
                         color: ChowCozy.stone600,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                       ),
                     )
                   else if (item.owned)
@@ -693,7 +707,7 @@ class _CraftSheetState extends State<CraftSheet> {
                       '24H',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone800,
                       ),
                     ),
@@ -723,7 +737,7 @@ class _CraftSheetState extends State<CraftSheet> {
                   '제작 중인 아이템',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     color: ChowCozy.stone800,
                   ),
                 ),
@@ -779,7 +793,7 @@ class _CraftSheetState extends State<CraftSheet> {
                                   item.name,
                                   style: const TextStyle(
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w500,
                                     color: ChowCozy.stone800,
                                   ),
                                 ),

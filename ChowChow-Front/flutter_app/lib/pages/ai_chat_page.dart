@@ -127,7 +127,7 @@ class _AiChatPageState extends State<AiChatPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('AI 셰프', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+                          Text('AI 셰프', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500)),
                           Text('맞춤 레시피 상담', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12)),
                         ],
                       ),

@@ -26,5 +26,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, Integer> {
 
     List<Recipe> findTop8ByPet_PetIdAndIsAiGeneratedTrueOrderByCreatedAtDesc(Integer petId);
 
+    List<Recipe> findTop50ByPet_PetIdAndRecipeStatusOrderByCreatedAtDesc(Integer petId, String recipeStatus);
+
     List<Recipe> findTop8ByIsAiGeneratedTrueOrderByCreatedAtDesc();
 }

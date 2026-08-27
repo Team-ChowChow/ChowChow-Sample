@@ -6,6 +6,7 @@ import com.petdiet.recipe.dto.RecipeRequest;
 import com.petdiet.recipe.dto.RecipeResponse;
 import com.petdiet.recipe.dto.ReviewRequest;
 import com.petdiet.recipe.dto.ReviewResponse;
+import com.petdiet.recipe.repository.MenuRepository;
 import com.petdiet.recipe.repository.RecipeRepository;
 import com.petdiet.recipe.service.RecipeService;
 import jakarta.validation.Valid;
@@ -26,6 +27,7 @@ public class RecipeV1Controller {
 
     private final RecipeService recipeService;
     private final RecipeRepository recipeRepository;
+    private final MenuRepository menuRepository;
     private final JdbcTemplate jdbc;
     private final AllergyRepository allergyRepository;
 
@@ -78,6 +80,8 @@ public class RecipeV1Controller {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String petType,
             @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String purpose,
+            @RequestParam(required = false) String ingredient,
             @RequestParam(required = false) List<Integer> allergyIds,
             @RequestParam(required = false) List<Integer> diseaseIds,
             @RequestParam(defaultValue = "false") Boolean useMyPetFilter,
@@ -107,6 +111,22 @@ public class RecipeV1Controller {
             sql.append(" AND m.\"petType\" = ?");
             params.add(petType.trim());
         }
+        List<String> purposes = splitSearchValues(purpose);
+        if (!purposes.isEmpty()) {
+            sql.append(" AND (");
+            for (int i = 0; i < purposes.size(); i++) {
+                if (i > 0) sql.append(" OR ");
+                sql.append("r.\"recipePurpose\" ILIKE ?");
+                params.add("%" + purposes.get(i) + "%");
+            }
+            sql.append(")");
+        }
+        if (ingredient != null && !ingredient.isBlank()) {
+            sql.append(" AND EXISTS (SELECT 1 FROM \"RecipeIngredients\" ri ")
+                    .append("JOIN \"Ingredients\" i ON ri.\"ingredientId\" = i.\"ingredientId\" ")
+                    .append("WHERE ri.\"recipeId\" = r.\"recipeId\" AND i.\"ingredientName\" ILIKE ?)");
+            params.add("%" + ingredient.trim() + "%");
+        }
         String normalizedSort = normalizeSearchSort(sort);
         sql.append(" GROUP BY r.\"recipeId\"")
                 .append(searchOrderBy(normalizedSort))
@@ -128,6 +148,8 @@ public class RecipeV1Controller {
                 "keyword", keyword == null ? "" : keyword,
                 "tag", tag == null ? "" : tag,
                 "petType", petType == null ? "" : petType,
+                "purpose", purpose == null ? "" : purpose,
+                "ingredient", ingredient == null ? "" : ingredient,
                 "sortType", normalizedSort,
                 "data", results
         ));
@@ -135,6 +157,15 @@ public class RecipeV1Controller {
 
     static String normalizeSearchSort(String sort) {
         return "latest".equalsIgnoreCase(sort) ? "latest" : "popular";
+    }
+
+    static List<String> splitSearchValues(String values) {
+        if (values == null || values.isBlank()) return List.of();
+        return java.util.Arrays.stream(values.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .toList();
     }
 
     static String searchOrderBy(String normalizedSort) {
@@ -217,54 +248,74 @@ public class RecipeV1Controller {
     }
 
     @GetMapping("/menus")
-    public ResponseEntity<List<Object>> getMenus() {
-        return ResponseEntity.ok(List.of());
+    public ResponseEntity<List<Map<String, Object>>> getMenus(
+            @RequestParam(required = false, defaultValue = "DOG") String petType) {
+        return ResponseEntity.ok(
+            menuRepository.findAllByPetTypeAndMenuStatusOrderByMenuIdAsc(petType, "ACTIVE").stream()
+                .map(m -> Map.<String, Object>of(
+                    "menuId", m.getMenuId(),
+                    "menuName", m.getMenuName(),
+                    "menuCategory", m.getMenuCategory() != null ? m.getMenuCategory() : ""
+                ))
+                .toList()
+        );
     }
 
     /**
-     * 유사한 레시피 추천: recipePurpose 태그가 2개 이상 겹치는 레시피, 최대 4개 반환
+     * 유사한 레시피 추천: 같은 종(강아지/고양이)이면서 recipePurpose 태그가 겹치는 레시피 우선,
+     * 부족하면 같은 종의 최신 레시피로 채움. 최대 4개 반환.
+     *
+     * 이전에는 종 필터가 전혀 없고(강아지 레시피에 고양이 레시피가 섞여 나올 수 있었음),
+     * 태그 2개 이상 일치를 요구해 대부분 매칭되지 않아 사실상 항상 같은 정렬 없는
+     * fallback 목록(추천 로직 미반영)만 보였다. 종으로 후보를 좁히고 태그 매칭 기준을
+     * 1개로 낮췄으며, fallback도 같은 종·최신순으로 바꿔 레시피마다 다른 결과가 나오게 했다.
      */
     @GetMapping("/recipes/{recipeId}/similar")
     public ResponseEntity<List<RecipeResponse>> getSimilarRecipes(@PathVariable Integer recipeId) {
-        // 기준 레시피의 purpose 태그 목록
-        String purposeRaw = jdbc.queryForObject(
-            "SELECT COALESCE(\"recipePurpose\", '') FROM \"Recipes\" WHERE \"recipeId\" = ?",
-            String.class, recipeId
+        Map<String, Object> base = jdbc.queryForMap(
+            "SELECT COALESCE(r.\"recipePurpose\", '') AS purpose, m.\"petType\" AS pet_type " +
+            "FROM \"Recipes\" r JOIN \"Menus\" m ON m.\"menuId\" = r.\"menuId\" WHERE r.\"recipeId\" = ?",
+            recipeId
         );
+        String purposeRaw = (String) base.get("purpose");
+        String petType = (String) base.get("pet_type");
+
+        List<Integer> similarIds;
         if (purposeRaw == null || purposeRaw.isBlank()) {
-            return ResponseEntity.ok(recipeService.getPublicRecipes(
-                org.springframework.data.domain.PageRequest.of(0, 4)).getContent());
+            similarIds = List.of();
+        } else {
+            String[] tags = purposeRaw.split(",");
+            StringBuilder sql = new StringBuilder(
+                "SELECT r.\"recipeId\", COUNT(*) AS match_count FROM \"Recipes\" r " +
+                "JOIN \"Menus\" m ON m.\"menuId\" = r.\"menuId\" " +
+                "WHERE r.\"recipeId\" != ? AND r.\"isPublic\" = true AND r.\"recipeStatus\" = 'ACTIVE' " +
+                "AND m.\"petType\" = ? AND ("
+            );
+            List<Object> params = new java.util.ArrayList<>();
+            params.add(recipeId);
+            params.add(petType);
+            for (int i = 0; i < tags.length; i++) {
+                if (i > 0) sql.append(" OR ");
+                sql.append("r.\"recipePurpose\" LIKE ?");
+                params.add("%" + tags[i].trim() + "%");
+            }
+            sql.append(") GROUP BY r.\"recipeId\" HAVING COUNT(*) >= 1 ORDER BY match_count DESC LIMIT 4");
+            similarIds = jdbc.queryForList(sql.toString(), Integer.class, params.toArray());
         }
 
-        String[] tags = purposeRaw.split(",");
-        // 각 태그를 LIKE 조건으로 검색해 2개 이상 매칭되는 레시피
-        StringBuilder sql = new StringBuilder(
-            "SELECT r.\"recipeId\", COUNT(*) AS match_count FROM \"Recipes\" r WHERE r.\"recipeId\" != ? " +
-            "AND r.\"isPublic\" = true AND r.\"recipeStatus\" = 'ACTIVE' AND ("
-        );
-        List<Object> params = new java.util.ArrayList<>();
-        params.add(recipeId);
-        for (int i = 0; i < tags.length; i++) {
-            if (i > 0) sql.append(" OR ");
-            sql.append("r.\"recipePurpose\" LIKE ?");
-            params.add("%" + tags[i].trim() + "%");
-        }
-        sql.append(") GROUP BY r.\"recipeId\" HAVING COUNT(*) >= 2 ORDER BY match_count DESC LIMIT 4");
+        List<RecipeResponse> similar = new java.util.ArrayList<>(
+            similarIds.stream().map(id -> recipeService.getRecipe(id)).toList());
 
-        List<Integer> similarIds = jdbc.queryForList(sql.toString(), Integer.class, params.toArray());
-        List<RecipeResponse> similar = similarIds.stream()
-            .map(id -> recipeService.getRecipe(id))
-            .toList();
-
-        // 결과가 부족하면 최신순으로 채움
         if (similar.size() < 4) {
-            List<RecipeResponse> fallback = recipeService.getPublicRecipes(
-                org.springframework.data.domain.PageRequest.of(0, 8)).getContent();
-            for (RecipeResponse r : fallback) {
+            List<Integer> fallbackIds = jdbc.queryForList(
+                "SELECT r.\"recipeId\" FROM \"Recipes\" r JOIN \"Menus\" m ON m.\"menuId\" = r.\"menuId\" " +
+                "WHERE r.\"recipeId\" != ? AND r.\"isPublic\" = true AND r.\"recipeStatus\" = 'ACTIVE' " +
+                "AND m.\"petType\" = ? ORDER BY r.\"createdAt\" DESC LIMIT 8",
+                Integer.class, recipeId, petType);
+            for (Integer id : fallbackIds) {
                 if (similar.size() >= 4) break;
-                if (!r.getRecipeId().equals(recipeId) && similar.stream().noneMatch(s -> s.getRecipeId().equals(r.getRecipeId()))) {
-                    similar = new java.util.ArrayList<>(similar);
-                    ((java.util.ArrayList<RecipeResponse>) similar).add(r);
+                if (similar.stream().noneMatch(s -> s.getRecipeId().equals(id))) {
+                    similar.add(recipeService.getRecipe(id));
                 }
             }
         }

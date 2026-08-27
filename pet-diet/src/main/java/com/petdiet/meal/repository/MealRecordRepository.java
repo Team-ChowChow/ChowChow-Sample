@@ -9,5 +9,6 @@ import java.util.Optional;
 
 public interface MealRecordRepository extends JpaRepository<MealRecord, Integer> {
     List<MealRecord> findAllByUserOrderByCreatedAtDesc(User user);
+    List<MealRecord> findAllByUserAndPet_PetIdOrderByCreatedAtDesc(User user, Integer petId);
     Optional<MealRecord> findByMealIdAndUser(Integer mealId, User user);
 }

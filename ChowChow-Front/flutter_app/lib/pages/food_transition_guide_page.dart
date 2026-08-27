@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
+import '../widgets/chow_card.dart';
 
 class FoodTransitionGuidePage extends StatefulWidget {
   const FoodTransitionGuidePage({super.key});
@@ -69,7 +71,9 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'AI 가이드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.';
+        _error = e is ApiException && e.statusCode == 400
+            ? e.message
+            : '가이드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.';
         _generating = false;
       });
     }
@@ -78,7 +82,12 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('사료 교체 가이드')),
+      backgroundColor: ChowColors.gray50,
+      appBar: AppBar(
+        backgroundColor: ChowColors.gray50,
+        centerTitle: true,
+        title: const Text('사료 교체 가이드'),
+      ),
       body: _loadingPets
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -90,7 +99,7 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
                 ),
                 const SizedBox(height: 20),
                 if (_pets.isNotEmpty) ...[
-                  const Text('반려동물', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text('반려동물', style: TextStyle(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<PetModel>(
                     initialValue: _selectedPet,
@@ -144,7 +153,7 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
   }
 }
 
-class _FoodPickerField extends StatefulWidget {
+class _FoodPickerField extends StatelessWidget {
   const _FoodPickerField({
     required this.label,
     required this.selected,
@@ -157,41 +166,12 @@ class _FoodPickerField extends StatefulWidget {
   final ValueChanged<CommercialFoodModel> onSelected;
   final VoidCallback onClear;
 
-  @override
-  State<_FoodPickerField> createState() => _FoodPickerFieldState();
-}
-
-class _FoodPickerFieldState extends State<_FoodPickerField> {
-  final _controller = TextEditingController();
-  List<CommercialFoodModel> _results = [];
-  bool _searching = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _search();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _search() async {
-    final query = _controller.text.trim();
-    setState(() => _searching = true);
-    try {
-      final res = await ApiClient.get('/api/v1/foods/search', query: {'query': query}) as List<dynamic>;
-      if (!mounted) return;
-      setState(() {
-        _results = res.map((e) => CommercialFoodModel.fromJson(e as Map<String, dynamic>)).toList();
-        _searching = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _searching = false);
-    }
+  Future<void> _pick(BuildContext context) async {
+    final picked = await context.push<CommercialFoodModel>(
+      '/food-info',
+      extra: {'selectMode': true, 'allowUserFoods': false},
+    );
+    if (picked != null) onSelected(picked);
   }
 
   @override
@@ -199,76 +179,37 @@ class _FoodPickerFieldState extends State<_FoodPickerField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
-        if (widget.selected != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: ChowCozy.stone300),
-              borderRadius: BorderRadius.circular(12),
-            ),
+        if (selected != null)
+          ChowCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
-                    '${widget.selected!.brandName} · ${widget.selected!.productName}',
+                    '${selected!.brandName} · ${selected!.productName}',
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 18),
-                  onPressed: widget.onClear,
+                  onPressed: onClear,
                 ),
               ],
             ),
           )
-        else ...[
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  decoration: const InputDecoration(hintText: '브랜드명 또는 제품명으로 검색'),
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => _search(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                onPressed: _searching ? null : _search,
-                icon: _searching
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.search),
-              ),
-            ],
-          ),
-          if (_results.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: ChowCozy.stone300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: _results
-                    .map((f) => ListTile(
-                          title: Text('${f.brandName} · ${f.productName}', overflow: TextOverflow.ellipsis),
-                          subtitle: Text('100g당 ${f.caloriesPer100g?.toStringAsFixed(0) ?? '-'}kcal'),
-                          onTap: () {
-                            widget.onSelected(f);
-                            setState(() => _results = []);
-                          },
-                        ))
-                    .toList(),
-              ),
+        else
+          OutlinedButton.icon(
+            onPressed: () => _pick(context),
+            icon: const Icon(Icons.search),
+            label: const Text('사료 목록에서 선택'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 48),
+              side: const BorderSide(color: ChowCozy.stone300),
+              foregroundColor: ChowCozy.stone700,
             ),
-          ],
-        ],
+          ),
       ],
     );
   }
@@ -291,7 +232,7 @@ class _FoodTransitionResultView extends StatelessWidget {
           ),
           child: Text(
             result.summary,
-            style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4),
+            style: const TextStyle(fontWeight: FontWeight.w500, height: 1.4),
           ),
         ),
         const SizedBox(height: 16),
@@ -301,7 +242,7 @@ class _FoodTransitionResultView extends StatelessWidget {
         ],
         if (result.warnings.isNotEmpty) ...[
           const SizedBox(height: 8),
-          const Text('주의사항', style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text('주의사항', style: TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           for (final w in result.warnings)
             Padding(
@@ -315,6 +256,12 @@ class _FoodTransitionResultView extends StatelessWidget {
               ),
             ),
         ],
+        const SizedBox(height: 16),
+        const Text(
+          '이 가이드는 일반적인 사료 전환 권장 관행을 참고한 근사치예요. 반려동물의 건강 상태에 따라 다를 수 있으니, '
+          '소화기가 예민하거나 지병이 있다면 수의사와 상담 후 진행해주세요.',
+          style: TextStyle(fontSize: 12, color: ChowColors.gray500, height: 1.4),
+        ),
       ],
     );
   }
@@ -326,17 +273,13 @@ class _TransitionStepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ChowCard(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        border: Border.all(color: ChowCozy.stone300),
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Row(
         children: [
           SizedBox(
             width: 72,
-            child: Text(step.dayRange, style: const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(step.dayRange, style: const TextStyle(fontWeight: FontWeight.w500)),
           ),
           Expanded(
             child: ClipRRect(

@@ -127,7 +127,7 @@ class _CharacterGrowthLogsPageState extends State<CharacterGrowthLogsPage> {
                                 padding: const EdgeInsets.only(bottom: 8, top: 8),
                                 child: Text(
                                   entry.key,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: ChowColors.gray700),
+                                  style: const TextStyle(fontWeight: FontWeight.w500, color: ChowColors.gray700),
                                 ),
                               ),
                               ...entry.value.map((log) => _GrowthLogCard(log: log)),
@@ -190,10 +190,10 @@ class _GrowthLogCard extends StatelessWidget {
                       Text(_time(), style: const TextStyle(fontSize: 12, color: ChowColors.gray500)),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(log.activityLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        child: Text(log.activityLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
                       ),
                       if (!log.levelUp && log.expGained > 0)
-                        Text('+${log.expGained} EXP', style: const TextStyle(color: ChowColors.green500, fontWeight: FontWeight.w600)),
+                        Text('+${log.expGained} EXP', style: const TextStyle(color: ChowColors.green500, fontWeight: FontWeight.w500)),
                     ],
                   ),
                   const SizedBox(height: 4),

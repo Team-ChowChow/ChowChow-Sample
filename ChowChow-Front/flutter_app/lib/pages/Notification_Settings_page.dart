@@ -334,7 +334,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   style: const TextStyle(
                     color: ChowColors.gray800,
                     fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -375,7 +375,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             style: TextStyle(
               color: Color(0xFF1E40AF),
               fontSize: 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
             ),
           ),
           SizedBox(height: 7),

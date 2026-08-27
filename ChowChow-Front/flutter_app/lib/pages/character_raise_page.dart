@@ -113,7 +113,7 @@ class _CharacterRaisePageState extends State<CharacterRaisePage> {
                       children: [
                         _ProfileCard(character: c),
                         const SizedBox(height: 16),
-                        const Text('활동', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ChowColors.gray800)),
+                        const Text('활동', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray800)),
                         const SizedBox(height: 12),
                         GridView.count(
                           crossAxisCount: 2,
@@ -136,7 +136,7 @@ class _CharacterRaisePageState extends State<CharacterRaisePage> {
                           children: [
                             const Text(
                               '최근 성장 기록',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: ChowColors.gray800),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray800),
                             ),
                             TextButton(
                               onPressed: () => context.push('/character/${c.characterId}/logs'),
@@ -211,14 +211,14 @@ class _ProfileCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Text(character.characterName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(character.characterName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
             if (character.typeBreedLine.isNotEmpty)
               Text(character.typeBreedLine, style: const TextStyle(color: ChowColors.gray500)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(color: ChowCozy.stone300, borderRadius: BorderRadius.circular(8)),
-              child: Text('레벨 ${character.level}', style: const TextStyle(color: ChowCozy.stone700, fontWeight: FontWeight.w600)),
+              child: Text('레벨 ${character.level}', style: const TextStyle(color: ChowCozy.stone700, fontWeight: FontWeight.w500)),
             ),
             const SizedBox(height: 12),
             Row(
@@ -312,7 +312,7 @@ class _ActivityButton extends StatelessWidget {
             children: [
               Icon(act.icon, color: act.color, size: 32),
               const SizedBox(height: 8),
-              Text(act.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(act.label, style: const TextStyle(fontWeight: FontWeight.w500)),
               Text(act.expLabel, style: TextStyle(fontSize: 12, color: act.color)),
             ],
           ),
@@ -348,7 +348,7 @@ class _LogTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(log.activityLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(log.activityLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
                     if (log.levelUp) ...[
                       const SizedBox(width: 6),
                       const Icon(Icons.star, size: 16, color: ChowColors.yellow500),

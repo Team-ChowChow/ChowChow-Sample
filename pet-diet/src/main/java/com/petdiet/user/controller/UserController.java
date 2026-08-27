@@ -80,6 +80,12 @@ public class UserController {
             "WHERE u.\"authUuid\" = ?",
             Integer.class, authUuid
         );
+        Integer writtenPosts = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM \"CommunityPosts\" cp " +
+            "JOIN \"Users\" u ON cp.\"userId\" = u.\"userId\" " +
+            "WHERE u.\"authUuid\" = ? AND cp.\"postStatus\" = 'ACTIVE'",
+            Integer.class, authUuid
+        );
         Integer completedCooking = jdbc.queryForObject(
             "SELECT COUNT(*) FROM \"MealRecords\" mr " +
             "JOIN \"Users\" u ON mr.\"userId\" = u.\"userId\" " +
@@ -89,6 +95,7 @@ public class UserController {
         return ResponseEntity.ok(Map.of(
             "savedRecipes", savedRecipes != null ? savedRecipes : 0,
             "completedCooking", completedCooking != null ? completedCooking : 0,
+            "writtenPosts", writtenPosts != null ? writtenPosts : 0,
             "writtenReviews", writtenReviews != null ? writtenReviews : 0
         ));
     }

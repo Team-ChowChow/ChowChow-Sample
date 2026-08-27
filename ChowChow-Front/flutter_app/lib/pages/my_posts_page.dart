@@ -4,10 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/sample_data.dart';
 import '../services/api_client.dart';
+import '../services/community_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
-enum MyPostsMode { myPosts, savedPosts }
+enum MyPostsMode { myPosts, savedPosts, likedPosts, savedRecipes }
 
 class MyPostsPage extends StatefulWidget {
   const MyPostsPage({super.key, required this.mode});
@@ -35,10 +36,15 @@ class _MyPostsPageState extends State<MyPostsPage> {
       _error = null;
     });
     try {
-      if (widget.mode == MyPostsMode.myPosts) {
-        await _loadMyPosts();
-      } else {
-        await _loadSavedPosts();
+      switch (widget.mode) {
+        case MyPostsMode.myPosts:
+          await _loadMyPosts();
+        case MyPostsMode.savedPosts:
+          await _loadSavedPosts();
+        case MyPostsMode.likedPosts:
+          await _loadLikedPosts();
+        case MyPostsMode.savedRecipes:
+          await _loadSavedRecipes();
       }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -78,27 +84,58 @@ class _MyPostsPageState extends State<MyPostsPage> {
       }),
     );
 
-    // 레시피 북마크 (서버)
-    List<RecipeModel> recipes = [];
-    try {
-      final res = await ApiClient.get('/api/v1/recipes/me/bookmarks') as Map<String, dynamic>;
-      final list = res['bookmarks'] as List<dynamic>? ?? [];
-      recipes = list.map((e) => RecipeModel.fromJson(e as Map<String, dynamic>)).toList();
-    } catch (_) {}
-
     if (mounted) {
       setState(() {
         _posts = postResults.whereType<CommunityPost>().toList();
-        _savedRecipes = recipes;
+        _savedRecipes = [];
       });
     }
   }
 
-  String get _title =>
-      widget.mode == MyPostsMode.myPosts ? '내가 작성한 글' : '저장한 글';
+  Future<void> _loadSavedRecipes() async {
+    final recipes = await _fetchSavedRecipes();
+    if (!mounted) return;
+    setState(() => _savedRecipes = recipes);
+  }
 
-  String get _emptyMessage =>
-      widget.mode == MyPostsMode.myPosts ? '작성한 글이 없습니다.' : '저장한 글이 없습니다.';
+  Future<void> _loadLikedPosts() async {
+    final posts = await CommunityService.getLikedPosts();
+    if (!mounted) return;
+    setState(() {
+      _posts = posts;
+      _savedRecipes = [];
+    });
+  }
+
+  Future<List<RecipeModel>> _fetchSavedRecipes() async {
+    final res = await ApiClient.get('/api/v1/recipes/me/bookmarks')
+        as Map<String, dynamic>;
+    final list = res['bookmarks'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => RecipeModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  String get _title => switch (widget.mode) {
+        MyPostsMode.myPosts => '내가 작성한 글',
+        MyPostsMode.savedPosts => '저장한 글',
+        MyPostsMode.likedPosts => '좋아한 글',
+        MyPostsMode.savedRecipes => '저장한 레시피',
+      };
+
+  String get _emptyMessage => switch (widget.mode) {
+        MyPostsMode.myPosts => '작성한 글이 없습니다.',
+        MyPostsMode.savedPosts => '저장한 글이 없습니다.',
+        MyPostsMode.likedPosts => '좋아한 글이 없습니다.',
+        MyPostsMode.savedRecipes => '저장한 레시피가 없습니다.',
+      };
+
+  bool get _isEmpty => switch (widget.mode) {
+        MyPostsMode.myPosts => _posts.isEmpty,
+        MyPostsMode.savedPosts => _posts.isEmpty,
+        MyPostsMode.likedPosts => _posts.isEmpty,
+        MyPostsMode.savedRecipes => _savedRecipes.isEmpty,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +149,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
           _title,
           style: const TextStyle(
             fontSize: 17,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
             color: Color(0xFF111827),
           ),
         ),
@@ -140,17 +177,17 @@ class _MyPostsPageState extends State<MyPostsPage> {
                     ],
                   ),
                 )
-              : (widget.mode == MyPostsMode.savedPosts
-                      ? (_posts.isEmpty && _savedRecipes.isEmpty)
-                      : _posts.isEmpty)
+              : _isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            widget.mode == MyPostsMode.myPosts
-                                ? Icons.edit_note
-                                : Icons.bookmark_border,
+                            switch (widget.mode) {
+                              MyPostsMode.myPosts => Icons.edit_note,
+                              MyPostsMode.likedPosts => Icons.favorite_border,
+                              _ => Icons.bookmark_border,
+                            },
                             size: 56,
                             color: ChowColors.gray300,
                           ),
@@ -168,13 +205,9 @@ class _MyPostsPageState extends State<MyPostsPage> {
                       child: ListView(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         children: [
-                          // 저장한 레시피 섹션
-                          if (widget.mode == MyPostsMode.savedPosts && _savedRecipes.isNotEmpty) ...[
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 8),
-                              child: Text('저장한 레시피',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.gray700)),
-                            ),
+                          // 저장한 레시피 화면에서만 레시피 목록 표시
+                          if (widget.mode == MyPostsMode.savedRecipes &&
+                              _savedRecipes.isNotEmpty) ...[
                             ..._savedRecipes.map((recipe) => Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: _RecipeListItem(
@@ -182,27 +215,17 @@ class _MyPostsPageState extends State<MyPostsPage> {
                                 onTap: () => context.push('/recipes/${recipe.recipeId}').then((_) => _load()),
                               ),
                             )),
-                            if (_posts.isNotEmpty) ...[
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 8),
-                                child: Text('저장한 커뮤니티 글',
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowColors.gray700)),
-                              ),
-                            ],
                           ],
-                          // 커뮤니티 글 목록
-                          ..._posts.asMap().entries.map((entry) {
-                            final post = entry.value;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _PostListItem(
-                                post: post,
-                                onTap: () => context
-                                    .push('/community/posts/${post.id}', extra: post)
-                                    .then((_) => _load()),
-                              ),
-                            );
-                          }),
+                          if (widget.mode != MyPostsMode.savedRecipes)
+                            ..._posts.map((post) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: _PostListItem(
+                                    post: post,
+                                    onTap: () => context
+                                        .push('/community/posts/${post.id}', extra: post)
+                                        .then((_) => _load()),
+                                  ),
+                                )),
                         ],
                       ),
                     ),
@@ -241,7 +264,7 @@ class _PostListItem extends StatelessWidget {
                       post.category,
                       style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone500,
                       ),
                     ),
@@ -261,7 +284,7 @@ class _PostListItem extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   color: Color(0xFF111827),
                 ),
               ),
@@ -367,14 +390,14 @@ class _RecipeListItem extends StatelessWidget {
                     if (recipe.menuName != null)
                       Text(
                         recipe.menuName!,
-                        style: const TextStyle(fontSize: 11, color: ChowCozy.stone500, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 11, color: ChowCozy.stone500, fontWeight: FontWeight.w500),
                       ),
                     const SizedBox(height: 2),
                     Text(
                       recipe.recipeTitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
                     ),
                     const SizedBox(height: 6),
                     Row(

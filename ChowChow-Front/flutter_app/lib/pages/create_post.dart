@@ -293,7 +293,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: ChowColors.gray600,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               const SizedBox(height: 10),
@@ -404,7 +404,7 @@ class _CreatePostHeader extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 18,
                 color: ChowColors.gray800,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const Spacer(),
@@ -424,7 +424,7 @@ class _CreatePostHeader extends StatelessWidget {
                 ),
                 child: Text(
                   isEditMode ? '수정' : '게시',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
               ),
             ),
@@ -774,7 +774,7 @@ class _CategorySuggestionCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         color: selected ? Colors.white : ChowColors.gray600,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: selected ? FontWeight.w500 : FontWeight.w400,
                       ),
                     ),
                   ),
@@ -850,7 +850,7 @@ class _PetTypeOption extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
                     color: selected ? ChowCozy.stone700 : ChowColors.gray600,
                   ),
                 ),

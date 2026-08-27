@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -45,6 +46,8 @@ class _CharacterPageState extends State<CharacterPage>
   int? _characterId;
   List<DailyMissionModel> _missions = [];
   bool _missionsLoading = true;
+  final Map<String, DateTime> _cooldownUntil = {};
+  Timer? _cooldownTimer;
 
   bool _isInteracting = false;
   final List<_Particle> _particles = [];
@@ -97,6 +100,9 @@ class _CharacterPageState extends State<CharacterPage>
     _loadShopStyle();
     _claimDailyLogin();
     _loadDailyMissions();
+    _cooldownTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted && _cooldownUntil.isNotEmpty) setState(() {});
+    });
   }
 
   Future<void> _loadDailyMissions() async {
@@ -111,6 +117,29 @@ class _CharacterPageState extends State<CharacterPage>
     } catch (_) {
       if (mounted) setState(() => _missionsLoading = false);
     }
+  }
+
+  Future<void> _loadActivityCooldowns(int characterId) async {
+    try {
+      final logs = await CharacterService.fetchGrowthLogs(characterId);
+      final next = <String, DateTime>{};
+      for (final type in ['FEED', 'PET']) {
+        final matching = logs.where(
+          (log) => log.activityType == type && log.createdAt != null,
+        );
+        if (matching.isEmpty) continue;
+        final availableAt = matching.first.createdAt!
+            .toLocal()
+            .add(const Duration(hours: 3));
+        if (availableAt.isAfter(DateTime.now())) next[type] = availableAt;
+      }
+      if (!mounted) return;
+      setState(() {
+        _cooldownUntil
+          ..clear()
+          ..addAll(next);
+      });
+    } catch (_) {}
   }
 
   String _resolveImageUrl(String? url) {
@@ -157,6 +186,11 @@ class _CharacterPageState extends State<CharacterPage>
     };
     return catMap[_groupName] ?? 'cat1_longhair';
   }
+
+  /// 강아지/고양이 GIF 캔버스의 여백 비율이 서로 달라(강아지는 세로로 긴 캔버스에
+  /// 여백이 많고, 고양이는 캔버스를 꽉 채움) 같은 프레임에 넣어도 고양이가 훨씬 커
+  /// 보인다. 실측한 캐릭터 픽셀 비율을 기준으로 둘의 중간 크기로 보정한다.
+  double get _speciesSizeScale => _petType == 'CAT' ? 0.8 : 1.35;
 
   String _getGifPath() {
     final anim = _currentAnimation;
@@ -254,6 +288,9 @@ class _CharacterPageState extends State<CharacterPage>
           hunger = (c['hunger'] as num?)?.toInt() ?? 50;
         });
 
+        final characterId = _characterId;
+        if (characterId != null) await _loadActivityCooldowns(characterId);
+
         debugPrint('🎯 [CharacterPage] Loaded: type=$petType, group=$groupName');
       } else {
         final res = await ApiClient.get('/api/characters') as List<dynamic>;
@@ -273,6 +310,8 @@ class _CharacterPageState extends State<CharacterPage>
           happiness = (c['happiness'] as num?)?.toInt() ?? 80;
           hunger = (c['hunger'] as num?)?.toInt() ?? 50;
         });
+        final characterId = _characterId;
+        if (characterId != null) await _loadActivityCooldowns(characterId);
       }
     } catch (_) {}
   }
@@ -399,6 +438,7 @@ class _CharacterPageState extends State<CharacterPage>
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _idleCtrl.dispose();
     _interactCtrl.dispose();
     _decorCtrl.dispose();
@@ -463,12 +503,39 @@ class _CharacterPageState extends State<CharacterPage>
     setState(() {});
   }
 
+  String _activityTypeFor(_ActivityData activity) => switch (activity.label) {
+    '밥주기' => 'FEED',
+    '쓰다듬기' => 'PET',
+    '운동하기' => 'EXERCISE',
+    '목욕시키기' => 'BATH',
+    _ => throw StateError('지원하지 않는 활동입니다.'),
+  };
+
+  String? _cooldownLabel(String activityType) {
+    final until = _cooldownUntil[activityType];
+    if (until == null) return null;
+    final remaining = until.difference(DateTime.now());
+    if (remaining.isNegative) return null;
+    final roundedMinutes = (remaining.inSeconds / 60).ceil();
+    final hours = roundedMinutes ~/ 60;
+    final minutes = roundedMinutes % 60;
+    return hours > 0 ? '$hours시간 $minutes분' : '$minutes분';
+  }
+
   Future<void> _handleActivity(_ActivityData activity) async {
     final characterId = _characterId;
     if (characterId == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('캐릭터 정보를 불러온 뒤 다시 시도해주세요.')));
+      return;
+    }
+    final activityType = _activityTypeFor(activity);
+    final cooldown = _cooldownLabel(activityType);
+    if (cooldown != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${activity.label}는 $cooldown 후 다시 할 수 있습니다.')),
+      );
       return;
     }
     if (activity.cost > _coins) {
@@ -480,13 +547,6 @@ class _CharacterPageState extends State<CharacterPage>
       return;
     }
 
-    final activityType = switch (activity.label) {
-      '밥주기' => 'FEED',
-      '쓰다듬기' => 'PET',
-      '운동하기' => 'EXERCISE',
-      '목욕시키기' => 'BATH',
-      _ => throw StateError('지원하지 않는 활동입니다.'),
-    };
     final previousBalance = _coins;
     final previousLevel = level;
 
@@ -517,6 +577,11 @@ class _CharacterPageState extends State<CharacterPage>
         if (missionSummary != null) {
           _coins = missionSummary.balance;
           _missions = missionSummary.missions;
+        }
+        if (activityType == 'FEED' || activityType == 'PET') {
+          _cooldownUntil[activityType] = DateTime.now().add(
+            const Duration(hours: 3),
+          );
         }
       });
 
@@ -570,6 +635,7 @@ class _CharacterPageState extends State<CharacterPage>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
+      await _loadActivityCooldowns(characterId);
       return;
     } catch (_) {
       if (!mounted) return;
@@ -635,26 +701,24 @@ class _CharacterPageState extends State<CharacterPage>
               ),
             ),
           ),
-          // 활동에 맞는 배경 — 놀아주기/밥주기/목욕하기/쓰다듬기 시 5초간 페이드 전환
+          // 기본 배경과 활동별 배경 — 활동 시 해당 씬으로 페이드 전환
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: sceneAsset == null ? 0 : 1,
+              opacity: 1,
               duration: const Duration(milliseconds: 550),
               curve: Curves.easeInOut,
-              child: sceneAsset == null
-                  ? const SizedBox.shrink()
-                  : Image.asset(
-                      sceneAsset,
-                      key: ValueKey(sceneAsset),
-                      fit: BoxFit.cover,
-                      alignment: const Alignment(0, -2.2),
-                    ),
+              child: Image.asset(
+                sceneAsset,
+                key: ValueKey(sceneAsset),
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -2.2),
+              ),
             ),
           ),
           // 씬 이미지 위 은은한 그림자 오버레이(상단 UI 가독성 유지)
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: sceneAsset == null ? 0 : 1,
+              opacity: 1,
               duration: const Duration(milliseconds: 400),
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -728,7 +792,7 @@ class _CharacterPageState extends State<CharacterPage>
                       '$_coins',
                       style: const TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone800,
                       ),
                     ),
@@ -749,21 +813,40 @@ class _CharacterPageState extends State<CharacterPage>
 
   Widget _buildShortcuts() {
     final shortcuts = [
-      _ShortcutData('📅', '출석체크', true, _openAttendanceSheet),
-      _ShortcutData('🎯', '성장미션', true, _openMissionSheet),
-      _ShortcutData('🚶', '산책', false, _openWalk),
-      _ShortcutData('✨', '꾸미기', false, _openThemeSheet),
-      _ShortcutData('🪄', '제작소', false, _openCraftSheet),
+      _ShortcutData(Icons.event_available, '출석체크', true, _openAttendanceSheet),
+      _ShortcutData(Icons.track_changes, '성장미션', true, _openMissionSheet),
+      _ShortcutData(Icons.directions_walk, '산책', false, _openWalk),
+      _ShortcutData(Icons.auto_awesome, '꾸미기', false, _openThemeSheet),
+      _ShortcutData(Icons.auto_fix_high, '제작소', false, _openCraftSheet),
     ];
-    return SizedBox(
-      height: 80,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        itemCount: shortcuts.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) => _ShortcutChip(data: shortcuts[i]),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const horizontalPadding = 16.0;
+        const spacing = 8.0;
+        final side = ((constraints.maxWidth - (horizontalPadding * 2) -
+                    (spacing * (shortcuts.length - 1))) /
+                shortcuts.length)
+            .clamp(0.0, 68.0)
+            .toDouble();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 4),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < shortcuts.length; i++) ...[
+                  SizedBox.square(
+                    dimension: side,
+                    child: _ShortcutChip(data: shortcuts[i]),
+                  ),
+                  if (i < shortcuts.length - 1) const SizedBox(width: spacing),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -803,7 +886,7 @@ class _CharacterPageState extends State<CharacterPage>
                       _sceneLabelFor(_scene)!,
                       style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w500,
                         color: ChowCozy.stone700,
                       ),
                     )
@@ -820,7 +903,7 @@ class _CharacterPageState extends State<CharacterPage>
                           roomStyle.label,
                           style: const TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: ChowCozy.stone700,
                           ),
                         ),
@@ -943,11 +1026,13 @@ class _CharacterPageState extends State<CharacterPage>
                 width: 380,
                 height: 380,
                 child: _characterImageUrl != null
-                    ? _buildCharacterImage(_characterImageUrl!)
-                    : Center(
-                        child: Text(
-                          _petType == 'CAT' ? '🐱' : '🐶',
-                          style: const TextStyle(fontSize: 165),
+                    ? Transform.scale(
+                        scale: _speciesSizeScale,
+                        child: _buildCharacterImage(_characterImageUrl!),
+                      )
+                    : const Center(
+                        child: CircularProgressIndicator(
+                          color: ChowCozy.stone500,
                         ),
                       ),
               ),
@@ -1014,7 +1099,7 @@ class _CharacterPageState extends State<CharacterPage>
                     '$level',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w500,
                       fontSize: 14,
                     ),
                   ),
@@ -1031,7 +1116,7 @@ class _CharacterPageState extends State<CharacterPage>
                             _petName.isNotEmpty ? _petName : '나의 반려동물',
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                               color: ChowCozy.stone900,
                             ),
                           ),
@@ -1111,14 +1196,21 @@ class _CharacterPageState extends State<CharacterPage>
             const SizedBox(height: 14),
             Row(
               children: _activities
-                  .map(
-                    (a) => Expanded(
+                  .map((a) {
+                    final type = _activityTypeFor(a);
+                    final cooldown = _cooldownLabel(type);
+                    final usesCooldown = type == 'FEED' || type == 'PET';
+                    return Expanded(
                       child: _ActionButton(
                         activity: a,
+                        statusLabel: usesCooldown
+                            ? (cooldown ?? '3시간마다')
+                            : null,
+                        enabled: cooldown == null,
                         onTap: () => _handleActivity(a),
                       ),
-                    ),
-                  )
+                    );
+                  })
                   .toList(),
             ),
           ],
@@ -1129,8 +1221,8 @@ class _CharacterPageState extends State<CharacterPage>
 }
 
 class _ShortcutData {
-  const _ShortcutData(this.emoji, this.label, this.badge, this.onTap);
-  final String emoji;
+  const _ShortcutData(this.icon, this.label, this.badge, this.onTap);
+  final IconData icon;
   final String label;
   final bool badge;
   final VoidCallback onTap;
@@ -1148,50 +1240,54 @@ class _ShortcutChip extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: data.onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(data.emoji, style: const TextStyle(fontSize: 20)),
+                  Icon(data.icon, size: 20, color: ChowCozy.stone700),
                   const SizedBox(height: 2),
-                  Text(
-                    data.label,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: ChowCozy.stone800,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      data.label,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: ChowCozy.stone800,
+                      ),
                     ),
                   ),
                 ],
               ),
-              if (data.badge)
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: const BoxDecoration(
-                      color: ChowColors.red500,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '!',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+            ),
+            if (data.badge)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: const BoxDecoration(
+                    color: ChowColors.red500,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    '!',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -1243,15 +1339,15 @@ class _FloatingDeco extends StatelessWidget {
 
 enum _InteractAnim { bounce, shake, scale, wiggle }
 
-/// 활동별 전환 배경. none이면 코인 상점에서 고른 기본 방 배경을 그대로 보여준다.
+/// 기본 및 활동별 전환 배경.
 enum _Scene { none, play, feed, bath, pet }
 
-String? _sceneAssetFor(_Scene scene) => switch (scene) {
+String _sceneAssetFor(_Scene scene) => switch (scene) {
   _Scene.play => 'assets/images/scenes/scene_play.png',
   _Scene.feed => 'assets/images/scenes/scene_feed.png',
   _Scene.bath => 'assets/images/scenes/scene_bath.png',
   _Scene.pet => 'assets/images/scenes/scene_pet.png',
-  _Scene.none => null,
+  _Scene.none => 'assets/images/scenes/scene_pet.png',
 };
 
 String? _sceneLabelFor(_Scene scene) => switch (scene) {
@@ -1367,7 +1463,7 @@ class _StatRow extends StatelessWidget {
               '$value%',
               style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 color: ChowCozy.stone800,
               ),
             ),
@@ -1395,19 +1491,26 @@ class _StatRow extends StatelessWidget {
 }
 
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.activity, required this.onTap});
+  const _ActionButton({
+    required this.activity,
+    required this.onTap,
+    required this.enabled,
+    this.statusLabel,
+  });
   final _ActivityData activity;
   final VoidCallback onTap;
+  final bool enabled;
+  final String? statusLabel;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
-        color: ChowCozy.stone50,
+        color: enabled ? ChowCozy.stone50 : ChowCozy.stone100,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: onTap,
+          onTap: enabled ? onTap : null,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1421,18 +1524,22 @@ class _ActionButton extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     color: ChowCozy.stone800,
                   ),
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  activity.cost > 0 ? '🪙-${activity.cost}' : '무료',
+                  statusLabel ?? (activity.cost > 0 ? '🪙-${activity.cost}' : '무료'),
                   style: TextStyle(
                     fontSize: 10,
-                    color: activity.cost > 0
-                        ? ChowCozy.mutedForeground
-                        : ChowColors.green500,
+                    color: !enabled
+                        ? ChowCozy.stone500
+                        : statusLabel != null
+                            ? ChowColors.green500
+                            : activity.cost > 0
+                                ? ChowCozy.mutedForeground
+                                : ChowColors.green500,
                   ),
                 ),
               ],

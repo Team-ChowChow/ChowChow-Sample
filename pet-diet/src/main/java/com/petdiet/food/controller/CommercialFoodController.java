@@ -4,6 +4,7 @@ import com.petdiet.food.dto.CommercialFoodResponse;
 import com.petdiet.food.entity.CommercialFood;
 import com.petdiet.food.repository.CommercialFoodRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,13 +25,7 @@ public class CommercialFoodController {
             @RequestParam String query,
             @RequestParam(required = false) String petType,
             @RequestParam(required = false) String brand) {
-        List<CommercialFood> results = (petType == null || petType.isBlank())
-                ? repository.findTop30ByProductNameContainingIgnoreCaseOrBrandNameContainingIgnoreCaseOrderByFoodIdDesc(query, query)
-                : repository.findTop30ByPetTypeAndProductNameContainingIgnoreCaseOrPetTypeAndBrandNameContainingIgnoreCaseOrderByFoodIdDesc(
-                        petType, query, petType, query);
-        if (brand != null && !brand.isBlank()) {
-            results = results.stream().filter(f -> brand.equals(f.getBrandName())).toList();
-        }
+        List<CommercialFood> results = repository.searchByPopularity(query, petType, brand, Pageable.unpaged());
         return ResponseEntity.ok(results.stream().map(CommercialFoodResponse::from).toList());
     }
 

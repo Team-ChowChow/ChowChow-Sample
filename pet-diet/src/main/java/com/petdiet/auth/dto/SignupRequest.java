@@ -20,6 +20,7 @@ public class SignupRequest {
     @NotBlank @Size(min = 2, max = 20, message = "닉네임은 2~20자여야 합니다.")
     private String nickname;
 
-    // "YYYY-MM-DD" 형식, 선택 입력
+    // "YYYY-MM-DD" 형식
+    @NotBlank(message = "생년월일을 입력해주세요.")
     private String birthdate;
 }

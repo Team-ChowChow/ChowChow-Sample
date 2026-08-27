@@ -68,6 +68,19 @@ public class CommunityService {
                 .map(post -> PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user)));
     }
 
+    @Transactional(readOnly = true)
+    public List<PostResponse> getLikedPosts(UUID authUuid) {
+        User user = getUser(authUuid);
+        return likeRepository
+                .findAllByUserAndPost_PostStatusOrderByCreatedAtDesc(user, "ACTIVE")
+                .stream()
+                .map(like -> {
+                    CommunityPost post = like.getPost();
+                    return PostResponse.from(post, post.getLikeCount(), true);
+                })
+                .toList();
+    }
+
     @Transactional
     public PostResponse createPost(UUID authUuid, PostRequest req) {
         User user = getUser(authUuid);

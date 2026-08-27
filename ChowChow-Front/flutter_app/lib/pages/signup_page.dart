@@ -17,6 +17,13 @@ class _SignupPageState extends State<SignupPage> {
   final _emailCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
   final _pw2Ctrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
+  String? _birthYear;
+  String? _birthMonth;
+  String? _birthDay;
+  late final List<String> _birthYears;
+  final _birthMonths = List.generate(12, (i) => '${i + 1}');
+  final _birthDays = List.generate(31, (i) => '${i + 1}');
 
   bool _showPw = false;
   bool _showPw2 = false;
@@ -27,11 +34,19 @@ class _SignupPageState extends State<SignupPage> {
   bool _emailSent = false;
   bool _emailVerified = false;
   bool _sendingEmail = false;
-  bool _checkingVerify = false;
+  bool _verifyingCode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final currentYear = DateTime.now().year;
+    _birthYears = List.generate(currentYear - 1899, (i) => '${currentYear - i}');
+    _codeCtrl.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
-    for (final c in [_nameCtrl, _nicknameCtrl, _emailCtrl, _pwCtrl, _pw2Ctrl]) {
+    for (final c in [_nameCtrl, _nicknameCtrl, _emailCtrl, _pwCtrl, _pw2Ctrl, _codeCtrl]) {
       c.dispose();
     }
     super.dispose();
@@ -61,32 +76,33 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  Future<void> _checkVerified() async {
+  Future<void> _verifyCode() async {
+    if (_codeCtrl.text.length != 6) return;
     final email = _emailCtrl.text.trim();
-    setState(() { _checkingVerify = true; _errorMessage = null; });
+    setState(() { _verifyingCode = true; _errorMessage = null; });
     try {
-      final res = await ApiClient.get(
-        '/api/auth/check-pre-verified',
+      await ApiClient.post(
+        '/api/auth/verify-signup-code',
+        {'email': email, 'code': _codeCtrl.text.trim()},
         auth: false,
-        query: {'email': email},
-      ) as Map<String, dynamic>;
-      final verified = res['verified'] as bool? ?? false;
-      setState(() => _emailVerified = verified);
-      if (!verified && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('아직 인증이 완료되지 않았습니다. 메일함을 확인해주세요.')),
-        );
-      }
+      );
+      setState(() => _emailVerified = true);
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
     } catch (_) {
-      if (mounted) setState(() => _errorMessage = '인증 상태를 확인할 수 없습니다.');
+      if (mounted) setState(() => _errorMessage = '인증번호를 확인할 수 없습니다.');
     } finally {
-      if (mounted) setState(() => _checkingVerify = false);
+      if (mounted) setState(() => _verifyingCode = false);
     }
   }
 
   Future<void> _handleSignup() async {
     if (!_emailVerified) {
       setState(() => _errorMessage = '이메일 인증을 먼저 완료해주세요.');
+      return;
+    }
+    if (_birthYear == null || _birthMonth == null || _birthDay == null) {
+      setState(() => _errorMessage = '생년월일을 선택해주세요.');
       return;
     }
     if (_pwCtrl.text != _pw2Ctrl.text) {
@@ -106,6 +122,8 @@ class _SignupPageState extends State<SignupPage> {
           'password': _pwCtrl.text,
           'userName': _nameCtrl.text.trim(),
           'nickname': _nicknameCtrl.text.trim(),
+          'birthdate':
+              '$_birthYear-${_birthMonth!.padLeft(2, '0')}-${_birthDay!.padLeft(2, '0')}',
         },
         auth: false,
       );
@@ -143,6 +161,45 @@ class _SignupPageState extends State<SignupPage> {
             controller: _nicknameCtrl,
             decoration: const InputDecoration(labelText: '닉네임 (2~20자)'),
             textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          const Text('생년월일', style: TextStyle(fontSize: 12, color: ChowCozy.stone600)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _birthYear,
+                  decoration: const InputDecoration(hintText: '년도'),
+                  items: _birthYears
+                      .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _birthYear = v),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _birthMonth,
+                  decoration: const InputDecoration(hintText: '월'),
+                  items: _birthMonths
+                      .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _birthMonth = v),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _birthDay,
+                  decoration: const InputDecoration(hintText: '일'),
+                  items: _birthDays
+                      .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _birthDay = v),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Row(
@@ -183,33 +240,39 @@ class _SignupPageState extends State<SignupPage> {
           ),
           if (_emailSent && !_emailVerified) ...[
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: ChowCozy.stone100,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: ChowCozy.stone300),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    '📧 인증 메일을 발송했습니다.\n메일함의 링크를 클릭한 후 아래 버튼을 눌러주세요.',
-                    style: TextStyle(fontSize: 13, color: ChowCozy.stone800),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _codeCtrl,
+                    decoration: const InputDecoration(labelText: '인증번호 6자리 입력'),
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
                   ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: _checkingVerify ? null : _checkVerified,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: ChowCozy.stone500),
-                      foregroundColor: ChowCozy.stone700,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF22C55E),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                     ),
-                    child: _checkingVerify
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('인증 완료 확인', style: TextStyle(fontSize: 13)),
+                    onPressed: (_verifyingCode || _codeCtrl.text.length != 6) ? null : _verifyCode,
+                    child: _verifyingCode
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('확인', style: TextStyle(fontSize: 13)),
                   ),
-                ],
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                '⏱️ 인증번호는 5분간 유효합니다',
+                style: TextStyle(fontSize: 12, color: ChowColors.gray500),
               ),
             ),
           ],

@@ -41,6 +41,7 @@ dependencies:
   geolocator: ^14.0.2
   webview_flutter: ^4.8.0
   google_fonts: ^6.2.1
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:

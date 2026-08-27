@@ -25,7 +25,7 @@ class _SearchPageState extends State<SearchPage> {
   bool _searchFocused = false;
   String? _selectedTag; // 카테고리 칩으로 선택된 태그
 
-  String? _petTypeFilter; // DOG | CAT | ETC | null
+  String? _petTypeFilter; // DOG | CAT | null
   List<String> _purposeFilters = [];
   String? _ingredientFilter;
   _SearchSort _sort = _SearchSort.popular;
@@ -381,7 +381,7 @@ class _SearchPageState extends State<SearchPage> {
                                     '우리 아이 맞춤 필터',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w500,
                                       fontSize: 13,
                                     ),
                                   ),
@@ -409,7 +409,7 @@ class _SearchPageState extends State<SearchPage> {
                           '인기 카테고리',
                           style: TextStyle(
                             fontSize: 17,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: ChowColors.gray900,
                             height: 1.2,
                           ),
@@ -518,7 +518,7 @@ class _SearchSuggestionPanel extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   color: ChowColors.gray800,
                 ),
               ),
@@ -535,7 +535,7 @@ class _SearchSuggestionPanel extends StatelessWidget {
                   '닫기',
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
@@ -638,7 +638,7 @@ class _PopularSearchTile extends StatelessWidget {
                   '${term.rank}',
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     color: term.rank <= 3
                         ? ChowCozy.stone500
                         : ChowColors.gray400,
@@ -654,7 +654,7 @@ class _PopularSearchTile extends StatelessWidget {
                   style: const TextStyle(
                     color: ChowColors.gray800,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     height: 1.2,
                   ),
                 ),
@@ -707,7 +707,7 @@ class _SuggestionChip extends StatelessWidget {
                 style: TextStyle(
                   color: hasQuery ? ChowCozy.stone700 : ChowColors.gray700,
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   height: 1.2,
                 ),
               ),
@@ -755,7 +755,7 @@ class _PopularCategoryChip extends StatelessWidget {
             style: TextStyle(
               color: isSelected ? Colors.white : ChowColors.gray600,
               fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
               height: 1.2,
             ),
           ),
@@ -859,7 +859,7 @@ class _SortTextButton extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             color: selected ? ChowCozy.stone500 : ChowColors.gray500,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: selected ? FontWeight.w500 : FontWeight.w500,
           ),
         ),
       ),
@@ -927,7 +927,7 @@ class _RecipeRow extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 13,
                             height: 1.25,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: ChowColors.gray900,
                           ),
                         ),
@@ -965,7 +965,7 @@ class _RecipeRow extends StatelessWidget {
                                       style: const TextStyle(
                                         fontSize: 10,
                                         color: ChowCozy.stone700,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
@@ -1107,7 +1107,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       '맞춤 필터',
                       style: TextStyle(
                         fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: ChowColors.gray900,
                       ),
                     ),
@@ -1142,14 +1142,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       label: '고양이',
                       selected: _petType == 'CAT',
                       onTap: () => setState(() => _petType = 'CAT'),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: _FilterChoiceButton(
-                      label: '기타',
-                      selected: _petType == 'ETC',
-                      onTap: () => setState(() => _petType = 'ETC'),
                     ),
                   ),
                 ],
@@ -1282,7 +1274,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           '적용하기',
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),

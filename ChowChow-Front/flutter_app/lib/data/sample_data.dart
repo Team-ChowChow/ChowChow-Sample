@@ -4,6 +4,7 @@ class CommunityPost {
     this.userId,
     required this.author,
     required this.avatar,
+    this.profileImageUrl,
     required this.category,
     required this.timeAgo,
     required this.content,
@@ -21,6 +22,7 @@ class CommunityPost {
   final int? userId; // 서버에서 받은 게시글 작성자 ID
   final String author;
   final String avatar;
+  final String? profileImageUrl;
   final String category;
   final String timeAgo;
   final String content;
@@ -59,6 +61,8 @@ class CommunityPost {
           json['author'] as String? ??
           '사용자 ${json['userId'] ?? ''}'.trim(),
       avatar: json['avatar'] as String? ?? '🙂',
+      profileImageUrl: json['userProfileImg'] as String? ??
+          json['profileImageUrl'] as String?,
       category: json['postCategory'] as String? ?? json['category'] as String? ?? '기타',
       timeAgo: _timeAgo(json['createdAt'] as String?),
       content: json['postContent'] as String? ??
@@ -92,12 +96,14 @@ class CommunityPost {
     int? recipeId,
     String? petType,
     List<String>? tags,
+    String? profileImageUrl,
   }) {
     return CommunityPost(
       id: id,
       userId: userId,
       author: author,
       avatar: avatar,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       category: category,
       timeAgo: timeAgo,
       content: content,

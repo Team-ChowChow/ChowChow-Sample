@@ -77,7 +77,7 @@ class AuthPageHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 color: ChowColors.gray900,
               ),
             ),
@@ -339,7 +339,7 @@ class AuthPrimaryButton extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -377,7 +377,7 @@ class AuthSideButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Text(
             label,
-            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ),
       ),
@@ -402,7 +402,7 @@ class AuthInfoBox extends StatelessWidget {
         children: [
           const Text(
             '💡 안전한 비밀번호 만들기:',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1E40AF)),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1E40AF)),
           ),
           const SizedBox(height: 8),
           ...[

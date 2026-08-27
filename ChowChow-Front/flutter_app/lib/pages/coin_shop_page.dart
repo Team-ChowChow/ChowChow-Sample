@@ -221,7 +221,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                     ),
                     child: Text(
                       _toast!,
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ),
@@ -259,7 +259,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
               const SizedBox(width: 12),
               const Text(
                 '코인상점',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ChowCozy.stone900),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: ChowCozy.stone900),
               ),
             ],
           ),
@@ -291,7 +291,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                     const SizedBox(height: 2),
                     Text(
                       '${_balance ?? 0}',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, height: 1),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w500, color: Colors.white, height: 1),
                     ),
                   ],
                 ),
@@ -313,7 +313,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
                             )
                           : const Text(
                               '+2000 (테스트)',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ChowCozy.stone900),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ChowCozy.stone900),
                             ),
                     ),
                   ),
@@ -398,7 +398,7 @@ class _TabButton extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               color: selected ? Colors.white : ChowCozy.mutedForeground,
             ),
           ),
@@ -454,7 +454,7 @@ class _ShopItemRow extends StatelessWidget {
                       child: Text(
                         item.name,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ChowCozy.stone900),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: ChowCozy.stone900),
                       ),
                     ),
                     if (item.tag != null) ...[
@@ -492,7 +492,7 @@ class _ShopItemRow extends StatelessWidget {
                           const SizedBox(height: 1),
                           Text(
                             '${item.price}',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
                           ),
                         ],
                       ),
@@ -515,7 +515,7 @@ class _Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg)),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: fg)),
     );
   }
 }
@@ -563,7 +563,7 @@ class _CoinPackRow extends StatelessWidget {
                           '${pack.total}',
                           style: TextStyle(
                             fontSize: 20,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w500,
                             color: featured ? Colors.white : ChowCozy.stone900,
                           ),
                         ),
@@ -574,7 +574,7 @@ class _CoinPackRow extends StatelessWidget {
                     if (pack.bonus != null)
                       Text(
                         '+${pack.bonus} 보너스 포함',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF22C55E)),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF22C55E)),
                       ),
                   ],
                 ),
@@ -591,7 +591,7 @@ class _CoinPackRow extends StatelessWidget {
                       pack.won,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                         color: featured ? ChowCozy.stone900 : Colors.white,
                       ),
                     ),
@@ -618,7 +618,7 @@ class _CoinPackRow extends StatelessWidget {
                   decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
                   child: Text(
                     pack.tag!,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: fg),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: fg),
                   ),
                 );
               },

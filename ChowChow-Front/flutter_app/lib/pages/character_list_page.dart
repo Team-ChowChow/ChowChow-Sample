@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../services/api_client.dart';
 import '../services/character_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
@@ -96,7 +95,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
                 children: [
                   const Text(
                     '캐릭터 키우기',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: ChowColors.gray800),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: ChowColors.gray800),
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -107,7 +106,7 @@ class _CharacterListPageState extends State<CharacterListPage> {
                           children: [
                             const Text(
                               '캐릭터 관리',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ChowColors.gray700),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray700),
                             ),
                             FittedBox(
                               fit: BoxFit.scaleDown,
@@ -128,18 +127,18 @@ class _CharacterListPageState extends State<CharacterListPage> {
                         tooltip: '새로고침',
                         visualDensity: VisualDensity.compact,
                       ),
-                      FilledButton.icon(
+                      FilledButton(
                         onPressed: () async {
                           final created = await context.push<bool>('/character/new');
                           if (created == true) _load();
                         },
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('새 캐릭터 생성', maxLines: 1, softWrap: false),
                         style: FilledButton.styleFrom(
                           backgroundColor: ChowCozy.stone500,
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           visualDensity: VisualDensity.compact,
+                          alignment: Alignment.center,
                         ),
+                        child: const Text('+ 새 캐릭터 생성', maxLines: 1, softWrap: false),
                       ),
                     ],
                   ),
@@ -229,7 +228,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _CharacterCard extends StatefulWidget {
+class _CharacterCard extends StatelessWidget {
   const _CharacterCard({
     required this.character,
     required this.onTap,
@@ -245,66 +244,8 @@ class _CharacterCard extends StatefulWidget {
   final VoidCallback onDelete;
 
   @override
-  State<_CharacterCard> createState() => _CharacterCardState();
-}
-
-class _CharacterCardState extends State<_CharacterCard> {
-  String? _loadedGroupName;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadGroupName();
-  }
-
-  Future<void> _loadGroupName() async {
-    if (widget.character.groupName != null) {
-      setState(() => _loadedGroupName = widget.character.groupName);
-      return;
-    }
-    try {
-      final pet = await ApiClient.get('/api/pets/${widget.character.petId}') as Map<String, dynamic>;
-      final groupName = pet['groupName'] as String? ?? pet['group_name'] as String?;
-      if (mounted) {
-        setState(() => _loadedGroupName = groupName);
-        debugPrint('✅ [CharacterCard] Loaded groupName=$groupName for petId=${widget.character.petId}');
-      }
-    } catch (e) {
-      debugPrint('❌ [CharacterCard] Failed to load groupName: $e');
-    }
-  }
-
-  String _resolveImageUrl(String? url) {
-    final groupName = _loadedGroupName ?? widget.character.groupName;
-    debugPrint('🖼️ [CharacterCard] url=$url, petType=${widget.character.petType}, groupName=$groupName');
-    if (url == null || url.isEmpty) {
-      if (widget.character.petType == 'CAT') {
-        if (groupName == 'Longhair') {
-          return 'assets/images/characters/character_group_8.png';
-        } else if (groupName == 'Shorthair') {
-          return 'assets/images/characters/character_group_9.png';
-        } else if (groupName == 'Hairless') {
-          return 'assets/images/characters/character_group_10.png';
-        } else {
-          debugPrint('⚠️ [CharacterCard] CAT but no groupName, defaulting to group_8');
-          return 'assets/images/characters/character_group_8.png';
-        }
-      }
-      return 'assets/images/characters/character_group_1.png';
-    }
-    if (!url.contains('/') && url.contains('character_group')) {
-      final resolved = 'assets/images/characters/$url.png';
-      debugPrint('✅ [CharacterCard] Resolved: $resolved');
-      return resolved;
-    }
-    debugPrint('📡 [CharacterCard] Network URL: $url');
-    return url;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final img = widget.character.characterImageUrl;
-    final resolvedUrl = _resolveImageUrl(img);
+    final img = character.characterImageUrl;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
@@ -313,7 +254,7 @@ class _CharacterCardState extends State<_CharacterCard> {
         side: const BorderSide(color: ChowColors.gray200),
       ),
       child: InkWell(
-        onTap: widget.onTap,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -322,25 +263,29 @@ class _CharacterCardState extends State<_CharacterCard> {
             children: [
               Row(
                 children: [
-                  widget.character.characterImageUrl != null && widget.character.characterImageUrl!.isNotEmpty
-                      ? SizedBox(
-                          width: 64,
-                          height: 64,
-                          child: ClipOval(child: ChowNetworkImage(url: widget.character.characterImageUrl!, fit: BoxFit.cover)),
-                        )
-                      : const SizedBox.shrink(),
+                  SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: img != null && img.isNotEmpty
+                        ? ClipOval(child: ChowNetworkImage(url: img, fit: BoxFit.cover))
+                        : const CircleAvatar(
+                            radius: 32,
+                            backgroundColor: ChowCozy.stone300,
+                            child: Icon(Icons.pets, color: ChowCozy.stone500, size: 32),
+                          ),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.character.characterName,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ChowColors.gray800),
+                          character.characterName,
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: ChowColors.gray800),
                         ),
-                        if (widget.character.typeBreedLine.isNotEmpty)
+                        if (character.typeBreedLine.isNotEmpty)
                           Text(
-                            widget.character.typeBreedLine,
+                            character.typeBreedLine,
                             style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
                           ),
                         const SizedBox(height: 6),
@@ -351,8 +296,8 @@ class _CharacterCardState extends State<_CharacterCard> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '레벨 ${widget.character.level}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ChowCozy.stone700),
+                            '레벨 ${character.level}',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ChowCozy.stone700),
                           ),
                         ),
                       ],
@@ -364,7 +309,7 @@ class _CharacterCardState extends State<_CharacterCard> {
               Row(
                 children: [
                   Text(
-                    'EXP ${widget.character.exp} / ${widget.character.requiredExp}',
+                    'EXP ${character.exp} / ${character.requiredExp}',
                     style: const TextStyle(fontSize: 12, color: ChowColors.gray600),
                   ),
                 ],
@@ -373,7 +318,7 @@ class _CharacterCardState extends State<_CharacterCard> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: widget.character.expFraction,
+                  value: character.expFraction,
                   minHeight: 6,
                   backgroundColor: ChowColors.gray200,
                   color: ChowCozy.stone500,
@@ -383,9 +328,9 @@ class _CharacterCardState extends State<_CharacterCard> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _StatChip(icon: Icons.favorite, label: '건강', value: widget.character.health, color: ChowColors.red500),
-                  _StatChip(icon: Icons.auto_awesome, label: '행복', value: widget.character.happiness, color: ChowColors.yellow500),
-                  _StatChip(icon: Icons.restaurant, label: '배고픔', value: widget.character.hunger, color: ChowCozy.stone500),
+                  _StatChip(icon: Icons.favorite, label: '건강', value: character.health, color: ChowColors.red500),
+                  _StatChip(icon: Icons.auto_awesome, label: '행복', value: character.happiness, color: ChowColors.yellow500),
+                  _StatChip(icon: Icons.restaurant, label: '배고픔', value: character.hunger, color: ChowCozy.stone500),
                 ],
               ),
               const SizedBox(height: 14),
@@ -393,7 +338,7 @@ class _CharacterCardState extends State<_CharacterCard> {
                 children: [
                   Expanded(
                     child: FilledButton(
-                      onPressed: widget.onRaise,
+                      onPressed: onRaise,
                       style: FilledButton.styleFrom(
                         backgroundColor: ChowCozy.stone500,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -405,7 +350,7 @@ class _CharacterCardState extends State<_CharacterCard> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: widget.onEdit,
+                      onPressed: onEdit,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         minimumSize: const Size(0, 44),
@@ -416,7 +361,7 @@ class _CharacterCardState extends State<_CharacterCard> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: widget.onDelete,
+                      onPressed: onDelete,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: ChowColors.red500,
                         padding: const EdgeInsets.symmetric(horizontal: 8),

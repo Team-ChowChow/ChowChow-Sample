@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/character_service.dart';
@@ -117,8 +114,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   int _savedRecipes = 0;
   int _completedCooking = 0;
-  int _writtenReviews = 0;
-  int _coinBalance = 0;
+  int _writtenPosts = 0;
   String _profileFrameKey = 'frame_orange';
 
   String _petType = '';
@@ -171,16 +167,9 @@ class _ProfilePageState extends State<ProfilePage> {
       final catalog = await ShopService.fetchCatalog();
       if (!mounted) return;
       setState(() {
-        _coinBalance = catalog.balance;
         _profileFrameKey = catalog.equippedProfileFrameKey;
       });
     } catch (_) {}
-  }
-
-  Future<void> _openCoinShop() async {
-    await context.push('/coin-shop');
-    if (!mounted) return;
-    await _loadShopStyle();
   }
 
   Future<void> _loadProfile() async {
@@ -191,6 +180,11 @@ class _ProfilePageState extends State<ProfilePage> {
         ApiClient.get(
           '/api/users/me/stats',
         ).catchError((_) => <String, dynamic>{}),
+        ApiClient.get('/api/meal-records').catchError((_) => <dynamic>[]),
+        ApiClient.get(
+          '/api/community/posts/my',
+          query: {'page': '0', 'size': '1'},
+        ).catchError((_) => <String, dynamic>{}),
         ApiClient.get('/api/notifications').catchError((_) => <dynamic>[]),
         ApiClient.get('/api/v1/allergies').catchError((_) => <dynamic>[]),
       ]);
@@ -198,8 +192,18 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
 
       final stats = results[2] as Map<String, dynamic>? ?? {};
-      final rawNotifs = results[3] as List<dynamic>? ?? [];
-      final rawAllergies = results[4] as List<dynamic>? ?? [];
+      final rawMealRecords = results[3] as List<dynamic>? ?? [];
+      final myPostsPage = results[4] as Map<String, dynamic>? ?? {};
+      final rawNotifs = results[5] as List<dynamic>? ?? [];
+      final rawAllergies = results[6] as List<dynamic>? ?? [];
+      final completedRecipeIds = rawMealRecords
+          .map((item) => MealRecordModel.fromJson(item as Map<String, dynamic>))
+          .where((record) => record.isCompletedRecipe)
+          .map((record) => record.recipeId!)
+          .toSet();
+      final myPostCount = (myPostsPage['totalElements'] as num?)?.toInt() ??
+          (myPostsPage['content'] as List<dynamic>?)?.length ??
+          0;
 
       setState(() {
         _user = UserModel.fromJson(results[0] as Map<String, dynamic>);
@@ -210,8 +214,8 @@ class _ProfilePageState extends State<ProfilePage> {
             .map((e) => AllergyModel.fromJson(e as Map<String, dynamic>))
             .toList();
         _savedRecipes = (stats['savedRecipes'] as num?)?.toInt() ?? 0;
-        _completedCooking = (stats['completedCooking'] as num?)?.toInt() ?? 0;
-        _writtenReviews = (stats['writtenReviews'] as num?)?.toInt() ?? 0;
+        _completedCooking = completedRecipeIds.length;
+        _writtenPosts = myPostCount;
         _notifications = rawNotifs.map((e) {
           final m = e as Map<String, dynamic>;
           final createdAt = m['createdAt'] as String?;
@@ -362,140 +366,161 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _openAddPetSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            void updateForm(VoidCallback callback) {
-              setModalState(callback);
-              setState(() {});
-            }
+  Future<void> _openAddPetPage() async {
+    var pageIsOpen = true;
 
-            return DraggableScrollableSheet(
-              initialChildSize: 0.9,
-              minChildSize: 0.5,
-              maxChildSize: 0.95,
-              builder: (context, scrollController) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setPageState) {
+              void updateForm(VoidCallback callback) {
+                if (!pageIsOpen || !mounted) return;
+                setPageState(callback);
+              }
+
+              return Scaffold(
+                backgroundColor: Colors.white,
+                appBar: AppBar(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF111827),
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  title: const Text(
+                    '반려동물 추가',
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
-                  child: Column(
+                  bottom: const PreferredSize(
+                    preferredSize: Size.fromHeight(1),
+                    child: Divider(height: 1),
+                  ),
+                ),
+                body: SafeArea(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 14, 12, 10),
-                        child: Row(
-                          children: [
-                            const Text(
-                              '반려동물 추가',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(
-                                Icons.close,
-                                color: ChowColors.gray500,
-                              ),
-                            ),
-                          ],
+                      _buildPetTypeSelector(updateForm),
+                      const SizedBox(height: 22),
+                      if (_petType.isNotEmpty) ...[
+                        _buildBreedSelector(updateForm),
+                        const SizedBox(height: 22),
+                      ],
+                      _buildPetInputField(
+                        label: '이름',
+                        required: true,
+                        hintText: '반려동물 이름을 입력하세요',
+                        onChanged: (value) {
+                          updateForm(() => _petName = value);
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _buildBirthdateSelector(updateForm),
+                      const SizedBox(height: 18),
+                      _buildPetWeightBcsField(updateForm),
+                      const SizedBox(height: 18),
+                      _buildPetLifestyleFields(updateForm),
+                      const SizedBox(height: 24),
+                      const Divider(
+                        height: 10,
+                        thickness: 10,
+                        color: ChowColors.gray100,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPreferenceSections(updateForm),
+                      const SizedBox(height: 24),
+                      const Divider(
+                        height: 10,
+                        thickness: 10,
+                        color: ChowColors.gray100,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPetOptionGroup(
+                        label: '가장 중요한 우선순위',
+                        options: const [
+                          '균형 잡힌 식사',
+                          '체중 & 영양',
+                          '실시간 행동',
+                          '건강 추적',
+                        ],
+                        selected: _priorities,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_priorities, value),
                         ),
                       ),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                          children: [
-                            _buildPetTypeSelector(updateForm),
-                            const SizedBox(height: 22),
-                            if (_petType.isNotEmpty) ...[
-                              _buildBreedSelector(updateForm),
-                              const SizedBox(height: 22),
-                            ],
-                            _buildPetInputField(
-                              label: '이름',
-                              required: true,
-                              hintText: '반려동물 이름을 입력하세요',
-                              onChanged: (value) {
-                                updateForm(() => _petName = value);
-                              },
+                      const SizedBox(height: 18),
+                      _buildPetOptionGroup(
+                        label: '주 생활 공간',
+                        options: const ['실내', '마당', '테라스 / 발코니'],
+                        selected: _livingSpaces,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_livingSpaces, value),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildPetOptionGroup(
+                        label: '낮 시간을 보내는 방법',
+                        options: const [
+                          '집에 혼자 있어요',
+                          '유치원에 가요',
+                          '산책 도우미와 함께해요',
+                          '항상 가족과 함께해요',
+                        ],
+                        selected: _daytimeRoutines,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_daytimeRoutines, value),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildPetOptionGroup(
+                        label: '궁금하거나 걱정되는 행동',
+                        options: const [
+                          '분리 불안 / 짖음',
+                          '수면 / 휴식 패턴',
+                          '식이 / 음수 습관',
+                          '전반적 활동량',
+                        ],
+                        selected: _behaviorConcerns,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_behaviorConcerns, value),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: _isPetFormValid ? _submitPetForm : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ChowCozy.stone500,
+                            disabledBackgroundColor: ChowColors.gray300,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            const SizedBox(height: 18),
-                            _buildBirthdateSelector(updateForm),
-                            const SizedBox(height: 18),
-                            _buildPetWeightBcsField(updateForm),
-                            const SizedBox(height: 18),
-                            _buildPetLifestyleFields(updateForm),
-                            const SizedBox(height: 24),
-                            const Divider(height: 10, thickness: 10, color: ChowColors.gray100),
-                            const SizedBox(height: 24),
-                            _buildPreferenceSections(updateForm),
-                            const SizedBox(height: 24),
-                            const Divider(height: 10, thickness: 10, color: ChowColors.gray100),
-                            const SizedBox(height: 24),
-                            _buildPetOptionGroup(label: '가장 중요한 우선순위', options: const ['균형 잡힌 식사', '체중 & 영양', '실시간 행동', '건강 추적'], selected: _priorities, onChanged: (value) => updateForm(() => _toggleSingle(_priorities, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '주 생활 공간', options: const ['실내', '마당', '테라스 / 발코니'], selected: _livingSpaces, onChanged: (value) => updateForm(() => _toggleSingle(_livingSpaces, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '낮 시간을 보내는 방법', options: const ['집에 혼자 있어요', '유치원에 가요', '산책 도우미와 함께해요', '항상 가족과 함께해요'], selected: _daytimeRoutines, onChanged: (value) => updateForm(() => _toggleSingle(_daytimeRoutines, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '궁금하거나 걱정되는 행동', options: const ['분리 불안 / 짖음', '수면 / 휴식 패턴', '식이 / 음수 습관', '전반적 활동량'], selected: _behaviorConcerns, onChanged: (value) => updateForm(() => _toggleSingle(_behaviorConcerns, value))),
-                            const SizedBox(height: 28),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 52,
-                              child: ElevatedButton(
-                                onPressed: _isPetFormValid
-                                    ? _submitPetForm
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: ChowCozy.stone500,
-                                  disabledBackgroundColor: ChowColors.gray300,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                child: const Text(
-                                  '추가하기',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
+                          ),
+                          child: const Text(
+                            '추가하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                );
-              },
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      if (mounted) {
-        setState(() {
-          _resetPetForm();
-        });
-      }
-    });
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+
+    pageIsOpen = false;
+    if (!mounted) return;
+    setState(_resetPetForm);
   }
 
   Widget _buildPetTypeSelector(void Function(VoidCallback) updateForm) {
@@ -600,122 +625,26 @@ class _ProfilePageState extends State<ProfilePage> {
             borderRadius: BorderRadius.circular(14),
             onTap: _availableBreeds.isEmpty
                 ? null
-                : () {
-                    showModalBottomSheet<void>(
+                : () async {
+                    final breed = await showModalBottomSheet<BreedModel>(
                       context: context,
+                      isScrollControlled: true,
                       backgroundColor: Colors.white,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(
                           top: Radius.circular(24),
                         ),
                       ),
-                      builder: (context) {
-                        String searchQuery = '';
-                        return StatefulBuilder(
-                          builder: (context, setSheet) {
-                            final filteredBreeds = _availableBreeds
-                                .where((breed) => breed.displayName
-                                    .toLowerCase()
-                                    .contains(searchQuery.toLowerCase()))
-                                .toList();
-
-                            return SafeArea(
-                              child: Column(
-                                children: [
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                                    child: TextField(
-                                      onChanged: (value) {
-                                        setSheet(() => searchQuery = value);
-                                      },
-                                      decoration: InputDecoration(
-                                        hintText: '품종 검색...',
-                                        hintStyle: const TextStyle(
-                                            color: ChowColors.gray400),
-                                        prefixIcon:
-                                            const Icon(Icons.search, size: 20),
-                                        suffixIcon: searchQuery.isNotEmpty
-                                            ? GestureDetector(
-                                                onTap: () {
-                                                  setSheet(
-                                                      () => searchQuery = '');
-                                                },
-                                                child: const Icon(
-                                                  Icons.clear,
-                                                  size: 20,
-                                                  color: ChowColors.gray400,
-                                                ),
-                                              )
-                                            : null,
-                                        border: OutlineInputBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                          borderSide: const BorderSide(
-                                            color: ChowColors.gray300,
-                                          ),
-                                        ),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                                vertical: 12),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: filteredBreeds.isEmpty
-                                        ? Center(
-                                            child: Text(
-                                              searchQuery.isEmpty
-                                                  ? '품종이 없습니다'
-                                                  : '일치하는 품종이 없습니다',
-                                              style: const TextStyle(
-                                                color: ChowColors.gray500,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          )
-                                        : ListView.separated(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 8),
-                                            itemCount: filteredBreeds.length,
-                                            separatorBuilder: (_, _) =>
-                                                const Divider(height: 1),
-                                            itemBuilder: (context, index) {
-                                              final breed =
-                                                  filteredBreeds[index];
-                                              return ListTile(
-                                                title: Text(
-                                                  breed.displayName,
-                                                  style: const TextStyle(
-                                                      fontSize: 15),
-                                                ),
-                                                trailing:
-                                                    _breedId == breed.breedId
-                                                        ? const Icon(
-                                                            Icons.check,
-                                                            color: ChowCozy
-                                                                .stone500,
-                                                          )
-                                                        : null,
-                                                onTap: () {
-                                                  updateForm(() {
-                                                    _breedId = breed.breedId;
-                                                    _breedDisplayName =
-                                                        breed.displayName;
-                                                  });
-                                                  Navigator.of(context).pop();
-                                                },
-                                              );
-                                            },
-                                          ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
+                      builder: (context) => _BreedPickerSheet(
+                        breeds: _availableBreeds,
+                        selectedBreedId: _breedId,
+                      ),
                     );
+                    if (breed == null) return;
+                    updateForm(() {
+                      _breedId = breed.breedId;
+                      _breedDisplayName = breed.displayName;
+                    });
                   },
             child: Container(
               width: double.infinity,
@@ -762,6 +691,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ],
     );
   }
+
 
   Widget _buildPetLifestyleFields(void Function(VoidCallback) updateForm) {
     const foodOptions = ['건식', '습식', '동결건조', '소프트 (반습식)', '자연식 (화식/생식)', '홈메이드'];
@@ -1118,7 +1048,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                  Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 18),
                   Expanded(
                     child: options.isEmpty
@@ -1227,7 +1157,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ? ChowCozy.stone700
                           : ChowColors.gray700,
                       fontWeight: selected
-                          ? FontWeight.w600
+                          ? FontWeight.w500
                           : FontWeight.normal,
                     ),
                   ),
@@ -1265,7 +1195,7 @@ class _ProfilePageState extends State<ProfilePage> {
             onTap: () => updateForm(() => _isExactBirthdate = exact),
             child: AnimatedContainer(duration: const Duration(milliseconds: 150), padding: const EdgeInsets.symmetric(vertical: 13),
               decoration: BoxDecoration(color: _isExactBirthdate == exact ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(10), boxShadow: _isExactBirthdate == exact ? const [BoxShadow(color: Colors.black12, blurRadius: 4)] : null),
-              child: Text(exact ? '정확한 날짜' : '대략', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: _isExactBirthdate == exact ? ChowColors.gray900 : ChowColors.gray500))),
+              child: Text(exact ? '정확한 날짜' : '대략', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w500, color: _isExactBirthdate == exact ? ChowColors.gray900 : ChowColors.gray500))),
           )),
         ]),
       ),
@@ -1322,7 +1252,7 @@ class _ProfilePageState extends State<ProfilePage> {
   ) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: ChowColors.gray700)),
+      Text(label, style: const TextStyle(fontWeight: FontWeight.w500, color: ChowColors.gray700)),
       const SizedBox(height: 6),
       Container(
         height: 64,
@@ -1337,7 +1267,7 @@ class _ProfilePageState extends State<ProfilePage> {
               onPressed: value > 0 ? () => onChanged(value - 1) : null,
               icon: const Icon(Icons.remove),
             ),
-            Text('$value', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            Text('$value', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
             IconButton(
               onPressed: value < max ? () => onChanged(value + 1) : null,
               icon: const Icon(Icons.add),
@@ -1377,9 +1307,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                const Text('체중 기록', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('체중 기록', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 16),
-                const Text('체중 *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text('체중 *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 16),
                 TextField(
                   controller: weightController,
@@ -1396,7 +1326,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           'kg',
                           style: TextStyle(
                             fontSize: 22,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: ChowColors.gray800,
                           ),
                         ),
@@ -1410,7 +1340,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onChanged: (value) => setSheet(() => temporaryWeight = value),
                 ),
                 const SizedBox(height: 16),
-                const Text('신체충실지수 (BCS) *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const Text('신체충실지수 (BCS) *', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1422,7 +1352,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Container(
                         width: 34, height: 34, alignment: Alignment.center,
                         decoration: BoxDecoration(shape: BoxShape.circle, color: selected ? ChowCozy.stone700 : Colors.white, border: Border.all(color: selected ? ChowCozy.stone700 : ChowColors.gray300)),
-                        child: Text('${index + 1}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: selected ? Colors.white : ChowColors.gray600)),
+                        child: Text('${index + 1}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: selected ? Colors.white : ChowColors.gray600)),
                       ),
                     );
                   }),
@@ -1470,7 +1400,8 @@ class _ProfilePageState extends State<ProfilePage> {
         },
       ),
     );
-    weightController.dispose();
+    // ponytail: dispose next frame, closing-sheet animation still reads the controller this frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => weightController.dispose());
   }
 
   Widget _buildPetWeightBcsField(void Function(VoidCallback) updateForm) {
@@ -1588,7 +1519,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           '알림',
                           style: TextStyle(
                             fontSize: 26,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         const Spacer(),
@@ -1674,7 +1605,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               Text(
                                                 item.title,
                                                 style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
+                                                  fontWeight: FontWeight.w500,
                                                   fontSize: 16,
                                                 ),
                                               ),
@@ -1776,6 +1707,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final userName = _user?.displayName ?? '사용자';
     final userEmail = _user?.authEmail ?? '';
+    final profileImageUrl = _user?.userProfileImg;
     final profileFrame = profileFrameVisualFor(_profileFrameKey);
 
     return ColoredBox(
@@ -1813,11 +1745,21 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               child: CircleAvatar(
                                 backgroundColor: Colors.white,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 34,
-                                  color: Colors.deepPurple.shade300,
-                                ),
+                                child: profileImageUrl != null &&
+                                        profileImageUrl.isNotEmpty
+                                    ? ClipOval(
+                                        child: SizedBox.expand(
+                                          child: ChowNetworkImage(
+                                            url: profileImageUrl,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.person,
+                                        size: 34,
+                                        color: Colors.deepPurple.shade300,
+                                      ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1832,7 +1774,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 20,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w500,
                                         height: 1.2,
                                       ),
                                     ),
@@ -1850,7 +1792,10 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                             IconButton(
-                              onPressed: () => context.push('/app-settings'),
+                              onPressed: () async {
+                                await context.push('/profile-settings');
+                                if (mounted) await _loadProfile();
+                              },
                               padding: const EdgeInsets.only(top: 4),
                               constraints: const BoxConstraints(
                                 minWidth: 40,
@@ -1865,32 +1810,44 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _StatTile(
-                                icon: Icons.bookmark_border,
-                                value: '$_savedRecipes',
-                                label: '저장한 레시피',
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _StatTile(
+                                  icon: Icons.bookmark_border,
+                                  value: '$_savedRecipes',
+                                  label: '저장한 레시피',
+                                  onTap: () => context.push('/saved-recipes'),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _StatTile(
-                                icon: Icons.check_circle_outline,
-                                value: '$_completedCooking',
-                                label: '조리 완료',
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _StatTile(
+                                  icon: Icons.check_circle_outline,
+                                  value: '$_completedCooking',
+                                  label: '조리 완료',
+                                  onTap: () async {
+                                    await context.push('/completed-recipes');
+                                    if (mounted) await _loadProfile();
+                                  },
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _StatTile(
-                                icon: Icons.rate_review_outlined,
-                                value: '$_writtenReviews',
-                                label: '작성한 리뷰',
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _StatTile(
+                                  icon: Icons.edit_note,
+                                  value: '$_writtenPosts',
+                                  label: '작성한 글',
+                                  onTap: () async {
+                                    await context.push('/my-posts');
+                                    if (mounted) await _loadProfile();
+                                  },
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1918,13 +1875,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                     '우리 아이들',
                                     style: TextStyle(
                                       fontSize: 17,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w500,
                                       color: ChowColors.gray800,
                                     ),
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: _openAddPetSheet,
+                                  onPressed: _openAddPetPage,
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,
@@ -1981,6 +1938,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         icon: Icons.bookmark_border,
                         onTap: () => context.push('/saved-posts'),
                       ),
+                      _MenuItem(
+                        label: '좋아한 글',
+                        icon: Icons.favorite_border,
+                        onTap: () => context.push('/liked-posts'),
+                      ),
                     ],
                   ),
                 ),
@@ -2000,19 +1962,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: '앱 설정',
                         icon: Icons.settings_outlined,
                         onTap: () => context.push('/app-settings'),
-                      ),
-                    ],
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _MenuSection(
-                    title: '꾸미기',
-                    items: [
-                      _MenuItem(
-                        label: '코인 상점',
-                        icon: Icons.storefront_outlined,
-                        badge: '🪙 $_coinBalance',
-                        onTap: _openCoinShop,
                       ),
                     ],
                   ),
@@ -2103,51 +2052,215 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
+class _BreedPickerSheet extends StatefulWidget {
+  const _BreedPickerSheet({
+    required this.breeds,
+    this.selectedBreedId,
+  });
+
+  final List<BreedModel> breeds;
+  final int? selectedBreedId;
+
+  @override
+  State<_BreedPickerSheet> createState() => _BreedPickerSheetState();
+}
+
+class _BreedPickerSheetState extends State<_BreedPickerSheet> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  List<BreedModel> get _filteredBreeds {
+    final query = _query.trim().toLowerCase().replaceAll(' ', '');
+    if (query.isEmpty) return widget.breeds;
+
+    return widget.breeds.where((breed) {
+      final koreanName = breed.breedNameKo.toLowerCase().replaceAll(' ', '');
+      final englishName = breed.breedName.toLowerCase().replaceAll(' ', '');
+      return koreanName.contains(query) || englishName.contains(query);
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final breeds = _filteredBreeds;
+
+    return SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.72,
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: ChowColors.gray300,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '품종 선택',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onChanged: (value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  hintText: '품종을 검색해주세요',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                          icon: const Icon(Icons.close),
+                        ),
+                  filled: true,
+                  fillColor: ChowColors.gray50,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: ChowColors.gray300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: ChowColors.gray300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: ChowCozy.stone500,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: breeds.isEmpty
+                  ? const Center(
+                      child: Text(
+                        '검색 결과가 없습니다.',
+                        style: TextStyle(color: ChowColors.gray500),
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: breeds.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final breed = breeds[index];
+                        final hasDifferentEnglishName =
+                            breed.breedName.isNotEmpty &&
+                                breed.breedName != breed.displayName;
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 2,
+                          ),
+                          title: Text(
+                            breed.displayName,
+                            style: const TextStyle(fontSize: 15),
+                          ),
+                          subtitle: hasDifferentEnglishName
+                              ? Text(
+                                  breed.breedName,
+                                  style: const TextStyle(
+                                    color: ChowColors.gray500,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : null,
+                          trailing: widget.selectedBreedId == breed.breedId
+                              ? const Icon(
+                                  Icons.check,
+                                  color: ChowCozy.stone500,
+                                )
+                              : null,
+                          onTap: () => Navigator.of(context).pop(breed),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _StatTile extends StatelessWidget {
   const _StatTile({
     required this.icon,
     required this.value,
     required this.label,
+    this.onTap,
   });
 
   final IconData icon;
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 88),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.22),
+    return Material(
+      color: Colors.white.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 22),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              height: 1,
-            ),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 88),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  fontSize: 10.5,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.88),
-              fontSize: 10.5,
-              height: 1.2,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2163,40 +2276,12 @@ class _PetRow extends StatefulWidget {
 }
 
 class _PetRowState extends State<_PetRow> {
-  static const _placeholder =
-      'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80';
-
   PetModel get pet => widget.pet;
 
-  String _resolveImageUrl(String? url) {
-    if (url == null || url.isEmpty) {
-      if (pet.petType == 'CAT') {
-        if (pet.groupName == 'Longhair') {
-          return 'assets/images/characters/character_group_8.png';
-        } else if (pet.groupName == 'Shorthair') {
-          return 'assets/images/characters/character_group_9.png';
-        } else if (pet.groupName == 'Hairless') {
-          return 'assets/images/characters/character_group_10.png';
-        } else {
-          return 'assets/images/characters/character_group_8.png';
-        }
-      }
-      return 'assets/images/characters/character_group_1.png';
-    }
-    if (!url.contains('/') && url.contains('character_group')) {
-      return 'assets/images/characters/$url.png';
-    }
-    return url;
-  }
-
-  Widget _buildPetImage() {
-    final resolvedUrl = _resolveImageUrl(pet.petProfileImg);
-    if (resolvedUrl.startsWith('assets/')) {
-      return Image.asset(resolvedUrl, fit: BoxFit.cover);
-    } else {
-      return ChowNetworkImage(url: resolvedUrl);
-    }
-  }
+  // 사진을 등록하지 않은 반려동물은 종에 맞는 기본 캐릭터 이미지를 보여준다
+  // (예전엔 종류 상관없이 강아지 사진 하나로 고정돼 있었음).
+  String get _placeholder =>
+      pet.petType == 'CAT' ? 'character_group_8' : 'character_group_1';
 
   String get _breedAgeLine {
     final breed = pet.breedName?.isNotEmpty == true ? pet.breedName : pet.displayType;
@@ -2357,7 +2442,7 @@ class _PetRowState extends State<_PetRow> {
                 pet.petName,
                 style: const TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                   color: ChowColors.gray900,
                 ),
               ),
@@ -2455,9 +2540,9 @@ class _PetRowState extends State<_PetRow> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('반려동물 특징 수정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text('반려동물 특징 수정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 20),
-                Text('체형 점수 (BCS): $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('체형 점수 (BCS): $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 const Text('1(마름) ~ 5(적정) ~ 9(비만)', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
                 Slider(
                   value: bcs.toDouble(),
@@ -2469,7 +2554,7 @@ class _PetRowState extends State<_PetRow> {
                   onChanged: (v) => setSheet(() => bcs = v.round()),
                 ),
                 const SizedBox(height: 12),
-                Text('활동량: ${_activityLabels[activity - 1]}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('활동량: ${_activityLabels[activity - 1]}', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 Slider(
                   value: activity.toDouble(),
                   min: 1,
@@ -2480,7 +2565,7 @@ class _PetRowState extends State<_PetRow> {
                   onChanged: (v) => setSheet(() => activity = v.round()),
                 ),
                 const SizedBox(height: 12),
-                const Text('관심 건강 부위 (최대 3개)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Text('관심 건강 부위 (최대 3개)', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -2575,7 +2660,9 @@ class _PetRowState extends State<_PetRow> {
                           child: SizedBox(
                             width: 76,
                             height: 76,
-                            child: _buildPetImage(),
+                            child: ChowNetworkImage(
+                              url: pet.petProfileImg ?? _placeholder,
+                            ),
                           ),
                         ),
                         Positioned(
@@ -2612,7 +2699,7 @@ class _PetRowState extends State<_PetRow> {
                             pet.petName,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: ChowColors.gray800,
                               height: 1.2,
                             ),

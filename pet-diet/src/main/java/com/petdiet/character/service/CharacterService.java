@@ -18,12 +18,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class CharacterService {
+
+    private static final Duration FREE_ACTIVITY_COOLDOWN = Duration.ofHours(3);
 
     private final PetCharacterRepository characterRepository;
     private final CharacterGrowthLogRepository growthLogRepository;
@@ -128,6 +132,7 @@ public class CharacterService {
     private CharacterResponse performActivityOnCharacter(
             UUID authUuid, PetCharacter character, User user, String activityType) {
         RaisingActivity activity = RaisingActivity.from(activityType);
+        validateActivityCooldown(character, activity);
         int coinCost = switch (activity) {
             case EXERCISE -> CoinService.ACTIVITY_EXERCISE_COST;
             case BATH -> CoinService.ACTIVITY_BATH_COST;
@@ -161,6 +166,31 @@ public class CharacterService {
         characterRepository.save(character);
         coinService.getDailyMissions(authUuid);
         return toResponse(character);
+    }
+
+    private void validateActivityCooldown(PetCharacter character, RaisingActivity activity) {
+        if (activity != RaisingActivity.FEED && activity != RaisingActivity.PET) {
+            return;
+        }
+
+        growthLogRepository
+                .findFirstByCharacterAndActivityTypeOrderByCreatedAtDesc(character, activity.name())
+                .ifPresent(lastActivity -> {
+                    OffsetDateTime nextAvailableAt = lastActivity.getCreatedAt().plus(FREE_ACTIVITY_COOLDOWN);
+                    OffsetDateTime now = OffsetDateTime.now();
+                    if (!nextAvailableAt.isAfter(now)) {
+                        return;
+                    }
+
+                    Duration remaining = Duration.between(now, nextAvailableAt).plusSeconds(59);
+                    long hours = remaining.toHours();
+                    long minutes = remaining.minusHours(hours).toMinutes();
+                    String remainingText = hours > 0
+                            ? hours + "시간 " + minutes + "분"
+                            : minutes + "분";
+                    throw new IllegalStateException(
+                            activity.getLabel() + "는 " + remainingText + " 후 다시 할 수 있습니다.");
+                });
     }
 
     @Transactional(readOnly = true)
