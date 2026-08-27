@@ -2,6 +2,8 @@ package com.petdiet.recipe.controller;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class RecipeV1ControllerTest {
@@ -28,5 +30,15 @@ class RecipeV1ControllerTest {
     @Test
     void unknownSortFallsBackToPopular() {
         assertEquals("popular", RecipeV1Controller.normalizeSearchSort("unknown"));
+    }
+
+    @Test
+    void purposeFilterSplitsAndCleansCommaSeparatedValues() {
+        assertEquals(
+                List.of("다이어트", "면역력"),
+                RecipeV1Controller.splitSearchValues(" 다이어트, 면역력, 다이어트 ")
+        );
+        assertEquals(List.of(), RecipeV1Controller.splitSearchValues("  "));
+        assertEquals(List.of(), RecipeV1Controller.splitSearchValues(null));
     }
 }
