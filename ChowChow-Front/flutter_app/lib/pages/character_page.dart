@@ -813,11 +813,11 @@ class _CharacterPageState extends State<CharacterPage>
 
   Widget _buildShortcuts() {
     final shortcuts = [
-      _ShortcutData('📅', '출석체크', true, _openAttendanceSheet),
-      _ShortcutData('🎯', '성장미션', true, _openMissionSheet),
-      _ShortcutData('🚶', '산책', false, _openWalk),
-      _ShortcutData('✨', '꾸미기', false, _openThemeSheet),
-      _ShortcutData('🪄', '제작소', false, _openCraftSheet),
+      _ShortcutData(Icons.event_available, '출석체크', true, _openAttendanceSheet),
+      _ShortcutData(Icons.track_changes, '성장미션', true, _openMissionSheet),
+      _ShortcutData(Icons.directions_walk, '산책', false, _openWalk),
+      _ShortcutData(Icons.auto_awesome, '꾸미기', false, _openThemeSheet),
+      _ShortcutData(Icons.auto_fix_high, '제작소', false, _openCraftSheet),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1221,8 +1221,8 @@ class _CharacterPageState extends State<CharacterPage>
 }
 
 class _ShortcutData {
-  const _ShortcutData(this.emoji, this.label, this.badge, this.onTap);
-  final String emoji;
+  const _ShortcutData(this.icon, this.label, this.badge, this.onTap);
+  final IconData icon;
   final String label;
   final bool badge;
   final VoidCallback onTap;
@@ -1247,14 +1247,8 @@ class _ShortcutChip extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(data.emoji, style: const TextStyle(fontSize: 28)),
-                      ),
-                    ),
-                  ),
+                  Icon(data.icon, size: 20, color: ChowCozy.stone700),
+                  const SizedBox(height: 2),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(

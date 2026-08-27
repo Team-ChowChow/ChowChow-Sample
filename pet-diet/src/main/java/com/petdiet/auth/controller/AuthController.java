@@ -138,25 +138,58 @@ public class AuthController {
         return ResponseEntity.ok(java.util.Map.of("message", "인증 이메일을 발송했습니다. 메일함을 확인해주세요."));
     }
 
-    // 이메일 링크 클릭 콜백 (사전 인증)
-    @GetMapping(value = "/pre-verify", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> preVerify(@RequestParam(required = false) String token) {
-        if (token == null || token.isBlank()) {
-            return ResponseEntity.badRequest().body(htmlPage("❌ 잘못된 요청", "인증 링크가 올바르지 않습니다.", false));
+    // 회원가입 인증번호 확인
+    @PostMapping("/verify-signup-code")
+    public ResponseEntity<?> verifySignupCode(@RequestBody java.util.Map<String, String> body) {
+        boolean verified = authService.verifySignupCode(body.get("email"), body.get("code"));
+        if (!verified) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "인증번호가 올바르지 않거나 만료되었습니다."));
         }
-        try {
-            authService.confirmPreVerify(token);
-            return ResponseEntity.ok(htmlPage("✅ 이메일 인증 완료",
-                    "인증이 완료됐습니다.<br>앱으로 돌아가 <b>[인증 완료]</b> 버튼을 눌러주세요.", true));
-        } catch (Exception e) {
-            return ResponseEntity.ok(htmlPage("❌ 인증 실패", "링크가 만료됐거나 유효하지 않습니다. 다시 시도해주세요.", false));
-        }
+        return ResponseEntity.ok(java.util.Map.of("verified", true));
     }
 
-    // 앱에서 인증 완료 여부 확인
-    @GetMapping("/check-pre-verified")
-    public ResponseEntity<?> checkPreVerified(@RequestParam String email) {
-        boolean verified = authService.isPreVerified(email);
-        return ResponseEntity.ok(java.util.Map.of("verified", verified));
+    // 아이디 찾기: 이름 + 생년월일로 가입된 이메일 조회
+    @PostMapping("/find-id")
+    public ResponseEntity<?> findId(@RequestBody java.util.Map<String, String> body) {
+        String userName = body.get("userName");
+        String birthdateStr = body.get("birthdate");
+        if (userName == null || userName.isBlank() || birthdateStr == null || birthdateStr.isBlank()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "이름과 생년월일을 입력해주세요."));
+        }
+        java.time.LocalDate birthdate;
+        try {
+            birthdate = java.time.LocalDate.parse(birthdateStr);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "생년월일 형식이 올바르지 않습니다."));
+        }
+        java.util.List<String> emails = authService.findId(userName, birthdate);
+        if (emails.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "일치하는 계정을 찾을 수 없습니다."));
+        }
+        return ResponseEntity.ok(java.util.Map.of("emails", emails));
+    }
+
+    // 비밀번호 찾기 1단계: 이메일로 인증번호 발송
+    @PostMapping("/find-password/send-code")
+    public ResponseEntity<?> sendPasswordResetCode(@RequestBody java.util.Map<String, String> body) {
+        authService.sendPasswordResetCode(body.get("email"));
+        return ResponseEntity.ok(java.util.Map.of("message", "인증번호를 발송했습니다."));
+    }
+
+    // 비밀번호 찾기 2단계: 인증번호 확인
+    @PostMapping("/find-password/verify-code")
+    public ResponseEntity<?> verifyPasswordResetCode(@RequestBody java.util.Map<String, String> body) {
+        boolean verified = authService.verifyPasswordResetCode(body.get("email"), body.get("code"));
+        if (!verified) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", "인증번호가 올바르지 않거나 만료되었습니다."));
+        }
+        return ResponseEntity.ok(java.util.Map.of("verified", true));
+    }
+
+    // 비밀번호 찾기 3단계: 새 비밀번호로 재설정
+    @PostMapping("/find-password/reset")
+    public ResponseEntity<?> resetPassword(@RequestBody java.util.Map<String, String> body) {
+        authService.resetPassword(body.get("email"), body.get("code"), body.get("newPassword"));
+        return ResponseEntity.ok(java.util.Map.of("message", "비밀번호가 변경되었습니다."));
     }
 }

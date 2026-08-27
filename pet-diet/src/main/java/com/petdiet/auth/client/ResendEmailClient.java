@@ -23,12 +23,12 @@ public class ResendEmailClient {
                 .build();
     }
 
-    public void sendConfirmationEmail(String to, String confirmUrl) {
+    public void sendVerificationCode(String to, String code, String purpose) {
         Map<String, Object> body = Map.of(
                 "from", "Pet Diet <no-reply@chawchaws.com>",
                 "to", List.of(to),
-                "subject", "[Pet Diet] 이메일 인증을 완료해주세요",
-                "html", buildHtml(to, confirmUrl)
+                "subject", "[Pet Diet] " + purpose,
+                "html", buildCodeHtml(code, purpose)
         );
 
         try {
@@ -45,39 +45,38 @@ public class ResendEmailClient {
                             }))
                     .toBodilessEntity()
                     .block();
-            log.info("인증 이메일 발송 완료: {}", to);
+            log.info("인증번호 이메일 발송 완료: {}", to);
         } catch (Exception e) {
-            log.error("인증 이메일 발송 실패 [to={}]: {}", to, e.getMessage());
+            log.error("인증번호 이메일 발송 실패 [to={}]: {}", to, e.getMessage());
             throw new RuntimeException("이메일 발송 중 오류가 발생했습니다.", e);
         }
     }
 
-    private String buildHtml(String email, String confirmUrl) {
+    private String buildCodeHtml(String code, String purpose) {
         return """
                 <!DOCTYPE html>
                 <html lang="ko">
                 <head>
                   <meta charset="UTF-8">
-                  <title>이메일 인증</title>
+                  <title>인증번호</title>
                   <style>
                     body { font-family: sans-serif; background: #f5f5f5; display: flex; justify-content: center; padding: 40px 0; margin: 0; }
-                    .card { background: white; padding: 40px; border-radius: 12px; max-width: 480px; width: 100%%; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+                    .card { background: white; padding: 40px; border-radius: 12px; max-width: 480px; width: 100%%; box-shadow: 0 2px 12px rgba(0,0,0,0.08); text-align: center; }
                     h2 { color: #333; margin-bottom: 8px; }
                     p { color: #666; line-height: 1.6; }
-                    a.btn { display: inline-block; background: #4f46e5; color: white; padding: 14px 28px;
-                            border-radius: 8px; text-decoration: none; font-weight: 600; margin: 20px 0; }
+                    .code { font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #4f46e5; margin: 24px 0; }
                     .small { font-size: 12px; color: #999; margin-top: 20px; }
                   </style>
                 </head>
                 <body>
                   <div class="card">
-                    <h2>이메일 인증 안내</h2>
-                    <p><b>%s</b> 계정의 이메일 인증을 완료하려면 아래 버튼을 클릭해주세요.<br>링크는 24시간 동안 유효합니다.</p>
-                    <a class="btn" href="%s">이메일 인증하기</a>
+                    <h2>%s</h2>
+                    <p>아래 인증번호를 앱에 입력해주세요.<br>인증번호는 5분간 유효합니다.</p>
+                    <div class="code">%s</div>
                     <p class="small">본인이 요청하지 않은 경우 이 이메일을 무시하셔도 됩니다.</p>
                   </div>
                 </body>
                 </html>
-                """.formatted(email, confirmUrl);
+                """.formatted(purpose, code);
     }
 }

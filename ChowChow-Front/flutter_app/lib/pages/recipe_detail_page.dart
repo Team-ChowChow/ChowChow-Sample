@@ -1709,6 +1709,10 @@ class _RecipeDetailData {
         (json['steps'] as List<dynamic>?)
             ?.map((item) => _RecipeStep.fromJson(item as Map<String, dynamic>))
             .where((item) => item.description.isNotEmpty)
+            .toList()
+            .asMap()
+            .entries
+            .map((e) => _RecipeStep(step: e.key + 1, description: e.value.description))
             .toList() ??
         const <_RecipeStep>[];
 

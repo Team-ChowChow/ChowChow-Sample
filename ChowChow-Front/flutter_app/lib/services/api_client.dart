@@ -12,7 +12,7 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  static const _serverUrl = 'http://35.78.87.150:8080';
+  static const _serverUrl = 'http://localhost:8080';
 
   static String get _baseUrl {
     return _serverUrl;

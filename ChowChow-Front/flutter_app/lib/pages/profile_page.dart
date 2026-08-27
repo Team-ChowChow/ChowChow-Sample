@@ -1396,7 +1396,8 @@ class _ProfilePageState extends State<ProfilePage> {
         },
       ),
     );
-    weightController.dispose();
+    // ponytail: dispose next frame, closing-sheet animation still reads the controller this frame
+    WidgetsBinding.instance.addPostFrameCallback((_) => weightController.dispose());
   }
 
   Widget _buildPetWeightBcsField(void Function(VoidCallback) updateForm) {

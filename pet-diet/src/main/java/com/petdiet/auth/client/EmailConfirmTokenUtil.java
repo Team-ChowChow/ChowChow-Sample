@@ -54,27 +54,4 @@ public class EmailConfirmTokenUtil {
         }
         return claims;
     }
-
-    public String generatePreVerify(String email) {
-        return Jwts.builder()
-                .subject(email)
-                .claim("type", "email_pre_verify")
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
-                .signWith(Keys.hmacShaKeyFor(secretBytes))
-                .compact();
-    }
-
-    public String verifyPreVerify(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(Keys.hmacShaKeyFor(secretBytes))
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        if (!"email_pre_verify".equals(claims.get("type", String.class))) {
-            throw new IllegalArgumentException("유효하지 않은 인증 토큰입니다.");
-        }
-        return claims.getSubject();
-    }
 }

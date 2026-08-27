@@ -74,7 +74,7 @@ public class RecipeService {
         User user = findUser(authUuid);
         userPetRepository.findByPetIdAndUser(petId, user)
                 .orElseThrow(() -> new IllegalArgumentException("반려동물을 찾을 수 없습니다."));
-        return recipeRepository.findTop8ByPet_PetIdAndIsAiGeneratedTrueOrderByCreatedAtDesc(petId).stream()
+        return recipeRepository.findTop50ByPet_PetIdAndRecipeStatusOrderByCreatedAtDesc(petId, "ACTIVE").stream()
                 .map(RecipeResponse::from)
                 .toList();
     }
@@ -336,13 +336,15 @@ public class RecipeService {
 
     private void addSteps(Recipe recipe, List<RecipeStepDto> dtos) {
         if (dtos == null) return;
-        dtos.forEach(dto -> recipe.getSteps().add(
-                RecipeStep.builder()
-                        .recipe(recipe)
-                        .stepNumber(dto.getStepNumber())
-                        .stepDescription(dto.getStepDescription())
-                        .stepImage(dto.getStepImage())
-                        .build()));
+        for (int i = 0; i < dtos.size(); i++) {
+            RecipeStepDto dto = dtos.get(i);
+            recipe.getSteps().add(RecipeStep.builder()
+                    .recipe(recipe)
+                    .stepNumber(i + 1)
+                    .stepDescription(dto.getStepDescription())
+                    .stepImage(dto.getStepImage())
+                    .build());
+        }
     }
 
     private User findUser(UUID authUuid) {

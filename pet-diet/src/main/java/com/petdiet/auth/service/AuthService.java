@@ -17,7 +17,6 @@ import com.petdiet.config.SupabasePrincipal;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,26 +38,84 @@ public class AuthService {
     private final ResendEmailClient resendEmailClient;
     private final EmailConfirmTokenUtil emailConfirmTokenUtil;
 
-    @Value("${app.base-url}")
-    private String appBaseUrl;
-
     // 이메일 사전 인증 상태 저장 (메모리, 24시간 유효)
     private final Map<String, Long> preVerifiedEmails = new ConcurrentHashMap<>();
+
+    // 비밀번호 재설정 인증번호 저장 (메모리, 5분 유효)
+    private final Map<String, ResetCode> passwordResetCodes = new ConcurrentHashMap<>();
+    private record ResetCode(String code, long expiresAt) {}
+    private static final long RESET_CODE_TTL_MS = 5 * 60_000L;
+
+    /** 이름+생년월일이 일치하는 이메일(EMAIL 계정) 목록을 마스킹해 반환 */
+    @Transactional(readOnly = true)
+    public List<String> findId(String userName, LocalDate birthdate) {
+        List<User> users = userRepository.findAllByUserNameAndUserBirthdate(userName, birthdate);
+        return users.stream()
+                .map(u -> authAccountRepository.findByUserAndAuthProvider(u, "EMAIL").orElse(null))
+                .filter(a -> a != null)
+                .map(a -> maskEmail(a.getAuthEmail()))
+                .distinct()
+                .toList();
+    }
+
+    private String maskEmail(String email) {
+        int at = email.indexOf('@');
+        if (at <= 1) return email;
+        String local = email.substring(0, at);
+        String visible = local.substring(0, Math.min(3, local.length()));
+        return visible + "*".repeat(local.length() - visible.length()) + email.substring(at);
+    }
+
+    public void sendPasswordResetCode(String email) {
+        List<AuthAccount> accounts = authAccountRepository.findAllByAuthEmail(email);
+        boolean hasEmailAccount = accounts.stream().anyMatch(a -> "EMAIL".equals(a.getAuthProvider()));
+        if (!hasEmailAccount) {
+            throw new IllegalArgumentException("가입된 이메일을 찾을 수 없습니다.");
+        }
+        String code = String.valueOf((int) (Math.random() * 900_000) + 100_000);
+        passwordResetCodes.put(email, new ResetCode(code, System.currentTimeMillis() + RESET_CODE_TTL_MS));
+        resendEmailClient.sendVerificationCode(email, code, "비밀번호 재설정 인증번호");
+        log.info("비밀번호 재설정 인증번호 발송: {}", email);
+    }
+
+    public boolean verifyPasswordResetCode(String email, String code) {
+        ResetCode stored = passwordResetCodes.get(email);
+        return stored != null && stored.expiresAt() > System.currentTimeMillis() && stored.code().equals(code);
+    }
+
+    @Transactional(readOnly = true)
+    public void resetPassword(String email, String code, String newPassword) {
+        if (!verifyPasswordResetCode(email, code)) {
+            throw new IllegalArgumentException("인증번호가 올바르지 않거나 만료되었습니다.");
+        }
+        UUID authUuid = supabaseAuthClient.findUuidByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("가입된 이메일을 찾을 수 없습니다."));
+        supabaseAuthClient.changePassword(authUuid, newPassword);
+        passwordResetCodes.remove(email);
+        log.info("비밀번호 재설정 완료: {}", email);
+    }
+
+    // 회원가입 이메일 인증번호 저장 (메모리, 5분 유효)
+    private final Map<String, ResetCode> signupVerificationCodes = new ConcurrentHashMap<>();
 
     public void sendEmailVerify(String email) {
         if (authAccountRepository.existsByAuthEmail(email)) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
-        String token = emailConfirmTokenUtil.generatePreVerify(email);
-        String verifyUrl = appBaseUrl + "/api/auth/pre-verify?token=" + token;
-        resendEmailClient.sendConfirmationEmail(email, verifyUrl);
-        log.info("사전 인증 이메일 발송: {}", email);
+        String code = String.valueOf((int) (Math.random() * 900_000) + 100_000);
+        signupVerificationCodes.put(email, new ResetCode(code, System.currentTimeMillis() + RESET_CODE_TTL_MS));
+        resendEmailClient.sendVerificationCode(email, code, "회원가입 인증번호");
+        log.info("회원가입 인증번호 발송: {}", email);
     }
 
-    public void confirmPreVerify(String token) {
-        String email = emailConfirmTokenUtil.verifyPreVerify(token);
-        preVerifiedEmails.put(email, System.currentTimeMillis());
-        log.info("이메일 사전 인증 완료: {}", email);
+    public boolean verifySignupCode(String email, String code) {
+        ResetCode stored = signupVerificationCodes.get(email);
+        boolean valid = stored != null && stored.expiresAt() > System.currentTimeMillis() && stored.code().equals(code);
+        if (valid) {
+            preVerifiedEmails.put(email, System.currentTimeMillis());
+            signupVerificationCodes.remove(email);
+        }
+        return valid;
     }
 
     public boolean isPreVerified(String email) {

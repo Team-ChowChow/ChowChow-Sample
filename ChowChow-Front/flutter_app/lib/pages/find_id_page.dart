@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/auth_account_ui.dart';
 
@@ -15,16 +16,14 @@ class _FindIdPageState extends State<FindIdPage> {
   _FindIdStep _step = _FindIdStep.input;
 
   final _name = TextEditingController();
-  final _phone = TextEditingController();
-  final _code = TextEditingController();
 
   String? _year;
   String? _month;
   String? _day;
 
-  bool _verificationSent = false;
-  bool _isVerified = false;
-  String _foundEmail = '';
+  bool _loading = false;
+  String? _errorMessage;
+  List<String> _foundEmails = [];
 
   late final List<String> _years;
   late final List<String> _months;
@@ -37,53 +36,47 @@ class _FindIdPageState extends State<FindIdPage> {
     _years = List.generate(currentYear - 1949, (i) => '${currentYear - i}');
     _months = List.generate(12, (i) => '${i + 1}');
     _days = List.generate(31, (i) => '${i + 1}');
-    for (final c in [_name, _phone, _code]) {
-      c.addListener(() => setState(() {}));
-    }
+    _name.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _phone.dispose();
-    _code.dispose();
     super.dispose();
   }
 
   bool get _canFindId =>
-      _name.text.isNotEmpty &&
-      _year != null &&
-      _month != null &&
-      _day != null &&
-      _isVerified;
+      _name.text.isNotEmpty && _year != null && _month != null && _day != null && !_loading;
 
-  void _sendVerification() {
-    if (_phone.text.length < 10) return;
-    setState(() => _verificationSent = true);
-  }
-
-  void _verifyCode() {
-    if (_code.text.length == 6) {
-      setState(() => _isVerified = true);
+  Future<void> _findId() async {
+    if (!_canFindId) return;
+    setState(() { _loading = true; _errorMessage = null; });
+    final birthdate =
+        '$_year-${_month!.padLeft(2, '0')}-${_day!.padLeft(2, '0')}';
+    try {
+      final res = await ApiClient.post(
+        '/api/auth/find-id',
+        {'userName': _name.text.trim(), 'birthdate': birthdate},
+        auth: false,
+      ) as Map<String, dynamic>;
+      setState(() {
+        _foundEmails = (res['emails'] as List<dynamic>).cast<String>();
+        _step = _FindIdStep.result;
+      });
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (_) {
+      setState(() => _errorMessage = '서버에 연결할 수 없습니다.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-  }
-
-  void _findId() {
-    const mockEmail = 'petlover1234@gmail.com';
-    final parts = mockEmail.split('@');
-    final local = parts[0];
-    final blurred = '${local.substring(0, 3)}${'*' * (local.length - 3)}@${parts[1]}';
-    setState(() {
-      _foundEmail = blurred;
-      _step = _FindIdStep.result;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     if (_step == _FindIdStep.result) {
       return _ResultView(
-        foundEmail: _foundEmail,
+        foundEmails: _foundEmails,
         onLogin: () => context.push('/login'),
         onFindPassword: () => context.push('/find-password'),
       );
@@ -95,7 +88,7 @@ class _FindIdPageState extends State<FindIdPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AuthBrandIcon(subtitle: '가입 시 등록한 정보를 입력해주세요'),
+          const AuthBrandIcon(subtitle: '가입 시 등록한 이름과 생년월일을 입력해주세요'),
           const AuthFieldLabel(label: '이름'),
           AuthTextField(
             controller: _name,
@@ -133,82 +126,17 @@ class _FindIdPageState extends State<FindIdPage> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          const AuthFieldLabel(label: '전화번호'),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: AuthTextField(
-                  controller: _phone,
-                  hintText: '010-0000-0000',
-                  keyboardType: TextInputType.phone,
-                  enabled: !_isVerified,
-                  maxLength: 11,
-                ),
-              ),
-              const SizedBox(width: 8),
-              AuthSideButton(
-                label: _verificationSent ? '재전송' : '인증번호',
-                enabled: _phone.text.length >= 10 && !_isVerified,
-                onPressed: _sendVerification,
-              ),
-            ],
-          ),
-          if (_verificationSent && !_isVerified) ...[
-            const SizedBox(height: 20),
-            const AuthFieldLabel(label: '인증번호'),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: AuthTextField(
-                    controller: _code,
-                    hintText: '인증번호 6자리 입력',
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                AuthSideButton(
-                  label: '확인',
-                  enabled: _code.text.length == 6,
-                  color: ChowColors.green500,
-                  onPressed: _verifyCode,
-                ),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text(
-                '⏱️ 인증번호는 5분간 유효합니다',
-                style: TextStyle(fontSize: 12, color: ChowColors.gray500),
-              ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(fontSize: 13, color: ChowColors.red500),
+              textAlign: TextAlign.center,
             ),
           ],
-          if (_isVerified)
-            Container(
-              margin: const EdgeInsets.only(top: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFBBF7D0)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: ChowColors.green500, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    '전화번호 인증이 완료되었습니다',
-                    style: TextStyle(fontSize: 14, color: ChowColors.green500),
-                  ),
-                ],
-              ),
-            ),
           const SizedBox(height: 32),
           AuthPrimaryButton(
-            label: '아이디 찾기',
+            label: _loading ? '조회 중...' : '아이디 찾기',
             enabled: _canFindId,
             onPressed: _findId,
           ),
@@ -222,12 +150,12 @@ enum _FindIdStep { input, result }
 
 class _ResultView extends StatelessWidget {
   const _ResultView({
-    required this.foundEmail,
+    required this.foundEmails,
     required this.onLogin,
     required this.onFindPassword,
   });
 
-  final String foundEmail;
+  final List<String> foundEmails;
   final VoidCallback onLogin;
   final VoidCallback onFindPassword;
 
@@ -271,10 +199,14 @@ class _ResultView extends StatelessWidget {
               children: [
                 const Text('가입된 이메일 (아이디)', style: TextStyle(fontSize: 14, color: ChowColors.gray600)),
                 const SizedBox(height: 8),
-                Text(
-                  foundEmail,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: ChowColors.gray900),
-                ),
+                for (final email in foundEmails)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      email,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: ChowColors.gray900),
+                    ),
+                  ),
               ],
             ),
           ),
