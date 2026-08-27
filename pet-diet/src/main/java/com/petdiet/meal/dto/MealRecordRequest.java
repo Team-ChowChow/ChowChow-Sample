@@ -14,4 +14,5 @@ public class MealRecordRequest {
     private BigDecimal feedingAmountG;
     private Integer recipeId;
     private Integer commercialFoodId;
+    private Integer userFoodId;
 }

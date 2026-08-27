@@ -111,7 +111,17 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
     return !_characterizedPetIds.contains(_selectedPet!.petId);
   }
 
-  String _getCharacterImageByGroup(String? groupName) {
+  String _getCharacterImageByGroup(String? groupName, String? petType) {
+    if (petType == 'CAT') {
+      // 고양이 그룹명을 번호로 매핑 (8~10)
+      final catGroupMap = {
+        'Longhair': 8,
+        'Shorthair': 9,
+        'Hairless': 10,
+      };
+      return 'character_group_${catGroupMap[groupName] ?? 8}';
+    }
+
     if (groupName == null || groupName.isEmpty) {
       return 'character_group_1';
     }
@@ -153,7 +163,7 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
         final pet = _selectedPet!;
 
         // 품종 그룹에 따라 이미지 패턴 미리 결정
-        final groupImagePath = _getCharacterImageByGroup(pet.groupName);
+        final groupImagePath = _getCharacterImageByGroup(pet.groupName, pet.petType);
 
         // 1. 캐릭터 생성 (이미지와 함께)
         final created = await CharacterService.createCharacter(

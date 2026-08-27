@@ -1,5 +1,9 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
@@ -28,10 +32,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
   _DietType _dietType = _DietType.recipe;
   RecipeModel? _selectedRecipe;
   final _kcalController = TextEditingController();
-  final _foodSearchController = TextEditingController();
-  List<CommercialFoodModel> _foodResults = [];
   CommercialFoodModel? _selectedFood;
-  bool _searchingFood = false;
 
   final Set<String> _feedingTimes = {};
 
@@ -40,6 +41,10 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
   FeedingGuidelineModel? _result;
   bool _recording = false;
   bool _recorded = false;
+
+  final ImagePicker _picker = ImagePicker();
+  Uint8List? _selectedImageBytes;
+  String? _selectedImagePath;
 
   @override
   void initState() {
@@ -50,7 +55,6 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
   @override
   void dispose() {
     _kcalController.dispose();
-    _foodSearchController.dispose();
     super.dispose();
   }
 
@@ -103,20 +107,73 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
     } catch (_) {}
   }
 
-  Future<void> _searchFoods() async {
-    final query = _foodSearchController.text.trim();
-    if (query.isEmpty) return;
-    setState(() => _searchingFood = true);
-    try {
-      final res = await ApiClient.get('/api/v1/foods/search', query: {'query': query}) as List<dynamic>;
-      if (!mounted) return;
+  Future<void> _pickFood() async {
+    final picked = await context.push<CommercialFoodModel>('/food-info', extra: {'selectMode': true});
+    if (picked != null) {
       setState(() {
-        _foodResults = res.map((e) => CommercialFoodModel.fromJson(e as Map<String, dynamic>)).toList();
-        _searchingFood = false;
+        _selectedFood = picked;
+        _kcalController.clear();
       });
+    }
+  }
+
+  Future<void> _enterFoodManually() async {
+    final nameController = TextEditingController();
+    final kcalController = TextEditingController();
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('사료 정보 직접 입력', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+            const SizedBox(height: 6),
+            const Text('찾는 사료가 목록에 없나요? 여기서 등록하면 식단 기록 등 다른 화면에서도 바로 다시 골라 쓸 수 있어요.',
+                style: TextStyle(color: ChowColors.gray500, fontSize: 13)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: '사료 이름', hintText: '예: OO 사료'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: kcalController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: '100g당 칼로리 (kcal)', hintText: '예: 380'),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: ChowColors.orange500),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('등록하고 선택하기'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    final name = nameController.text.trim();
+    final kcal = double.tryParse(kcalController.text.trim());
+    if (name.isEmpty) return;
+    try {
+      final res = await ApiClient.post('/api/v1/user-foods', {
+        'productName': name,
+        if (kcal != null) 'caloriesPer100g': kcal,
+      }) as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() => _selectedFood = CommercialFoodModel.fromUserFoodJson(res));
     } catch (_) {
       if (!mounted) return;
-      setState(() => _searchingFood = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('사료 등록에 실패했어요.')),
+      );
     }
   }
 
@@ -140,7 +197,11 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
       final kcal = double.tryParse(_kcalController.text.trim());
       final query = <String, String>{
         if (_dietType == _DietType.recipe) 'recipeId': '${_selectedRecipe!.recipeId}',
-        if (_dietType == _DietType.feed && _selectedFood != null) 'commercialFoodId': '${_selectedFood!.foodId}',
+        // 직접 등록한 사료는 별도 테이블이라 계산 API가 모르므로, 저장해둔 칼로리 값을 그대로 넘긴다.
+        if (_dietType == _DietType.feed && _selectedFood != null && !_selectedFood!.isUserFood)
+          'commercialFoodId': '${_selectedFood!.foodId}',
+        if (_dietType == _DietType.feed && _selectedFood != null && _selectedFood!.isUserFood)
+          'kcalPer100g': '${_selectedFood!.caloriesPer100g}',
         if (_dietType == _DietType.feed && _selectedFood == null) 'kcalPer100g': '$kcal',
       };
       final res = await ApiClient.get(
@@ -161,6 +222,27 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (image == null) return;
+    final bytes = await image.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _selectedImageBytes = bytes;
+      _selectedImagePath = image.path;
+    });
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImageBytes = null;
+      _selectedImagePath = null;
+    });
+  }
+
   Future<void> _recordMeal() async {
     final pet = _selectedPet;
     final result = _result;
@@ -172,14 +254,22 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
 
     setState(() => _recording = true);
     try {
+      String? imageUrl;
+      if (_selectedImagePath != null) {
+        imageUrl = await ApiClient.uploadImage(File(_selectedImagePath!), type: 'meal');
+      }
       await ApiClient.post('/api/meal-records', {
         'petId': pet.petId,
         'mealTitle': title,
         'mealNote': _feedingTimes.isNotEmpty ? '${_feedingTimes.join(', ')} 급여' : null,
+        'imageUrl': imageUrl,
         'mealDate': DateTime.now().toIso8601String().split('T').first,
         'feedingAmountG': result.recommendedGrams,
         if (_dietType == _DietType.recipe && _selectedRecipe != null) 'recipeId': _selectedRecipe!.recipeId,
-        if (_dietType == _DietType.feed && _selectedFood != null) 'commercialFoodId': _selectedFood!.foodId,
+        if (_dietType == _DietType.feed && _selectedFood != null && !_selectedFood!.isUserFood)
+          'commercialFoodId': _selectedFood!.foodId,
+        if (_dietType == _DietType.feed && _selectedFood != null && _selectedFood!.isUserFood)
+          'userFoodId': _selectedFood!.foodId,
       });
       if (!mounted) return;
       setState(() {
@@ -483,31 +573,9 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
                   ),
           ),
         ] else ...[
-          const Text('사료 검색', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
+          const Text('사료 선택', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _card(
-                  child: TextField(
-                    controller: _foodSearchController,
-                    decoration: const InputDecoration(border: InputBorder.none, hintText: '사료 브랜드/제품명으로 검색'),
-                    onSubmitted: (_) => _searchFoods(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                onPressed: _searchingFood ? null : _searchFoods,
-                icon: _searchingFood
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.search),
-                style: IconButton.styleFrom(backgroundColor: ChowColors.orange500),
-              ),
-            ],
-          ),
-          if (_selectedFood != null) ...[
-            const SizedBox(height: 8),
+          if (_selectedFood != null)
             _card(
               child: Row(
                 children: [
@@ -523,35 +591,44 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
                   ),
                 ],
               ),
-            ),
-          ] else if (_foodResults.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            )
+          else if (_kcalController.text.trim().isNotEmpty)
             _card(
-              child: Column(
-                children: _foodResults
-                    .map((f) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('${f.brandName} · ${f.productName}', overflow: TextOverflow.ellipsis),
-                          subtitle: Text('100g당 ${f.caloriesPer100g?.toStringAsFixed(0) ?? '-'}kcal'),
-                          onTap: () => setState(() {
-                            _selectedFood = f;
-                            _foodResults = [];
-                          }),
-                        ))
-                    .toList(),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('직접 입력한 칼로리: 100g당 ${_kcalController.text.trim()}kcal'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() => _kcalController.clear()),
+                  ),
+                ],
               ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickFood,
+                    icon: const Icon(Icons.search),
+                    label: const Text('사료 목록에서 선택'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: ChowColors.orange500),
+                      foregroundColor: ChowColors.orange500,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-          const SizedBox(height: 12),
-          const Text('또는 100g당 칼로리 직접 입력 (kcal)', style: TextStyle(color: ChowColors.gray500, fontSize: 13)),
           const SizedBox(height: 8),
-          _card(
-            child: TextField(
-              controller: _kcalController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              enabled: _selectedFood == null,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(border: InputBorder.none, hintText: '사료 포장지에 표기된 값을 입력하세요'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: _enterFoodManually,
+              child: const Text('찾는 사료가 없나요? 직접 입력하기'),
             ),
           ),
         ],
@@ -742,6 +819,58 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
               style: const TextStyle(fontSize: 14, color: ChowColors.gray700),
             ),
           ),
+        ],
+        if (!_recorded) ...[
+          const SizedBox(height: 16),
+          const Text('급여 사진 (선택)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: ChowColors.gray700)),
+          const SizedBox(height: 8),
+          _selectedImageBytes != null
+              ? Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        _selectedImageBytes!,
+                        width: double.infinity,
+                        height: 160,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: InkWell(
+                        onTap: _removeImage,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                          child: const Icon(Icons.close, color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _pickImage,
+                  child: Container(
+                    width: double.infinity,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ChowColors.gray200),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_outlined, color: ChowColors.gray500),
+                        SizedBox(height: 6),
+                        Text('사진 추가하기', style: TextStyle(fontSize: 13, color: ChowColors.gray500)),
+                      ],
+                    ),
+                  ),
+                ),
         ],
         if (_recorded) ...[
           const SizedBox(height: 16),

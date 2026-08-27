@@ -42,7 +42,15 @@ public class NutritionCalculationService {
             Map.entry("컵", BigDecimal.valueOf(200)),
             Map.entry("개", BigDecimal.valueOf(50)),
             Map.entry("장", BigDecimal.valueOf(30)),
-            Map.entry("쪽", BigDecimal.valueOf(5))
+            Map.entry("쪽", BigDecimal.valueOf(5)),
+            Map.entry("마리", BigDecimal.valueOf(60)),
+            Map.entry("알", BigDecimal.valueOf(50)),
+            Map.entry("줌", BigDecimal.valueOf(30)),
+            Map.entry("조각", BigDecimal.valueOf(30)),
+            Map.entry("꼬집", BigDecimal.valueOf(1)),
+            Map.entry("tbsp", BigDecimal.valueOf(15)),
+            Map.entry("tsp", BigDecimal.valueOf(5)),
+            Map.entry("cup", BigDecimal.valueOf(200))
     );
     private static final BigDecimal DEFAULT_GRAM_PER_UNIT = BigDecimal.ONE;
 

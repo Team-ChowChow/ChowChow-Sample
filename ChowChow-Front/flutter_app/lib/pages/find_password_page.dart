@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/auth_account_ui.dart';
 
@@ -22,6 +23,8 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
   bool _verificationSent = false;
   bool _showNew = false;
   bool _showConfirm = false;
+  bool _loading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -51,20 +54,65 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
   bool get _isMatch =>
       _confirm.text.isNotEmpty && _newPass.text == _confirm.text;
 
-  void _sendVerification() {
-    if (_email.text.isEmpty) return;
-    setState(() => _verificationSent = true);
-  }
-
-  void _verifyCode() {
-    if (_code.text.length == 6) {
-      setState(() => _step = _FindPwStep.reset);
+  Future<void> _sendVerification() async {
+    if (_email.text.isEmpty || _loading) return;
+    setState(() { _loading = true; _errorMessage = null; });
+    try {
+      await ApiClient.post(
+        '/api/auth/find-password/send-code',
+        {'email': _email.text.trim()},
+        auth: false,
+      );
+      setState(() => _verificationSent = true);
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (_) {
+      setState(() => _errorMessage = '서버에 연결할 수 없습니다.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _resetPassword() {
-    if (!_canReset) return;
-    setState(() => _step = _FindPwStep.complete);
+  Future<void> _verifyCode() async {
+    if (_code.text.length != 6 || _loading) return;
+    setState(() { _loading = true; _errorMessage = null; });
+    try {
+      await ApiClient.post(
+        '/api/auth/find-password/verify-code',
+        {'email': _email.text.trim(), 'code': _code.text.trim()},
+        auth: false,
+      );
+      setState(() => _step = _FindPwStep.reset);
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (_) {
+      setState(() => _errorMessage = '서버에 연결할 수 없습니다.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    if (!_canReset || _loading) return;
+    setState(() { _loading = true; _errorMessage = null; });
+    try {
+      await ApiClient.post(
+        '/api/auth/find-password/reset',
+        {
+          'email': _email.text.trim(),
+          'code': _code.text.trim(),
+          'newPassword': _newPass.text,
+        },
+        auth: false,
+      );
+      setState(() => _step = _FindPwStep.complete);
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (_) {
+      setState(() => _errorMessage = '서버에 연결할 수 없습니다.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -169,10 +217,18 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
                   ],
                 ),
               ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(fontSize: 13, color: ChowColors.red500),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 32),
             AuthPrimaryButton(
-              label: '비밀번호 변경',
-              enabled: _canReset,
+              label: _loading ? '변경 중...' : '비밀번호 변경',
+              enabled: _canReset && !_loading,
               onPressed: _resetPassword,
             ),
           ],
@@ -205,7 +261,7 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
               const SizedBox(width: 8),
               AuthSideButton(
                 label: _verificationSent ? '재전송' : '인증번호',
-                enabled: _email.text.isNotEmpty && !_verificationSent,
+                enabled: _email.text.isNotEmpty && !_loading,
                 onPressed: _sendVerification,
               ),
             ],
@@ -227,7 +283,7 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
                 const SizedBox(width: 8),
                 AuthSideButton(
                   label: '확인',
-                  enabled: _code.text.length == 6,
+                  enabled: _code.text.length == 6 && !_loading,
                   color: ChowColors.green500,
                   onPressed: _verifyCode,
                 ),
@@ -239,6 +295,14 @@ class _FindPasswordPageState extends State<FindPasswordPage> {
                 '⏱️ 인증번호는 5분간 유효합니다',
                 style: TextStyle(fontSize: 12, color: ChowColors.gray500),
               ),
+            ),
+          ],
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(fontSize: 13, color: ChowColors.red500),
+              textAlign: TextAlign.center,
             ),
           ],
         ],

@@ -319,7 +319,7 @@ class _PawLogo extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+        child: Image.asset('assets/images/pet_home_icon_2.png', fit: BoxFit.cover),
       ),
     );
   }

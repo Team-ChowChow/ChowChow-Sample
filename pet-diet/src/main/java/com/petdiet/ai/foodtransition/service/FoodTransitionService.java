@@ -1,8 +1,7 @@
 package com.petdiet.ai.foodtransition.service;
 
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import com.petdiet.ai.foodtransition.dto.FoodTransitionResponse;
+import com.petdiet.ai.foodtransition.dto.FoodTransitionStepDto;
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
 import com.petdiet.food.entity.CommercialFood;
@@ -11,59 +10,43 @@ import com.petdiet.master.entity.Allergy;
 import com.petdiet.master.repository.AllergyRepository;
 import com.petdiet.pet.entity.UserPet;
 import com.petdiet.pet.repository.UserPetRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static java.util.stream.Collectors.joining;
 
 /**
- * 현재 급여 중인 사료에서 새 사료로 넘어갈 때, 소화 적응을 위한 단계별 배합 비율(일수별 %)을
- * OpenAI에 요청해 안내. DietRecommendService와 동일한 WebClient 직접 호출 방식을 사용.
+ * 현재 급여 중인 사료에서 새 사료로 넘어갈 때의 단계별 배합 비율(전환 스케줄)을 계산.
+ *
+ * 널리 통용되는 수의학적 사료 전환 가이드라인(예: WSAVA, 각 사료 제조사 공식 가이드)은
+ * "7일에 걸쳐 75:25 → 50:50 → 25:75 → 0:100으로 점진 전환"을 표준으로 제시하고,
+ * 두 사료의 영양 성분 차이가 크면 기간을 늘리고 단계를 세분화하도록 권장한다(정확한
+ * 임계값은 문헌에 명시되어 있지 않아 이 서비스의 근사치를 사용). 이 스케줄을 LLM이
+ * 매번 새로 생성하면 실행마다 달라지고 근거도 없어, 표준 스케줄을 코드에 고정하고
+ * 성분 차이 크기로 기간(7/10일)과 단계 수(4/6단계)를 결정하는 계산으로 대체했다.
+ * 성분 차이 자체(칼로리/단백질/지방 실측 수치)는 warnings에 구체적으로 안내한다.
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class FoodTransitionService {
+
+    // ponytail: 임계값은 WSAVA 등에서 제시하는 정성적 기준("차이가 크면 더 길게")을
+    // 정량화한 근사치. 더 정밀한 임상 데이터가 확보되면 교체.
+    private static final BigDecimal CALORIE_DIFF_RATIO_THRESHOLD = new BigDecimal("0.15"); // 칼로리 15% 이상 차이
+    private static final BigDecimal MACRO_DIFF_THRESHOLD = new BigDecimal("8"); // 단백질/지방 8g/100g 이상 차이
 
     private final UserRepository userRepository;
     private final UserPetRepository userPetRepository;
     private final AllergyRepository allergyRepository;
     private final CommercialFoodRepository commercialFoodRepository;
-    private final ObjectMapper objectMapper;
-    private final WebClient webClient;
-    private final String model;
-    private final int maxTokens;
-
-    public FoodTransitionService(
-            UserRepository userRepository,
-            UserPetRepository userPetRepository,
-            AllergyRepository allergyRepository,
-            CommercialFoodRepository commercialFoodRepository,
-            ObjectMapper objectMapper,
-            @Value("${openai.api-key}") String apiKey,
-            @Value("${openai.base-url:https://api.openai.com}") String baseUrl,
-            @Value("${openai.model:gpt-4o}") String model,
-            @Value("${openai.max-tokens:2048}") int maxTokens) {
-        this.userRepository = userRepository;
-        this.userPetRepository = userPetRepository;
-        this.allergyRepository = allergyRepository;
-        this.commercialFoodRepository = commercialFoodRepository;
-        this.objectMapper = objectMapper;
-        this.model = model;
-        this.maxTokens = maxTokens;
-        this.webClient = WebClient.builder()
-                .baseUrl(baseUrl)
-                .defaultHeader("Authorization", "Bearer " + apiKey)
-                .defaultHeader("Content-Type", "application/json")
-                .build();
-    }
 
     @Transactional(readOnly = true)
     public FoodTransitionResponse recommend(UUID authUuid, Integer petId, Integer currentFoodId, Integer targetFoodId) {
@@ -75,101 +58,150 @@ public class FoodTransitionService {
         CommercialFood targetFood = commercialFoodRepository.findById(targetFoodId)
                 .orElseThrow(() -> new IllegalArgumentException("바꿀 사료를 찾을 수 없습니다."));
 
+        if (currentFood.getPetType() != null && targetFood.getPetType() != null
+                && !currentFood.getPetType().equals(targetFood.getPetType())) {
+            throw new IllegalArgumentException("강아지 사료와 고양이 사료는 서로 전환할 수 없어요. 같은 동물용 사료를 선택해주세요.");
+        }
+
         UserPet pet = null;
         List<Allergy> allergies = List.of();
         if (petId != null) {
             pet = userPetRepository.findByPetIdAndUser(petId, user).orElse(null);
             if (pet != null) {
+                if (currentFood.getPetType() != null && !currentFood.getPetType().equals(pet.getPetType())) {
+                    throw new IllegalArgumentException("선택한 사료가 반려동물의 종(강아지/고양이)과 맞지 않아요.");
+                }
                 List<Integer> allergyIds = pet.getAllergies().stream().map(a -> a.getAllergyId()).toList();
                 allergies = allergyRepository.findAllById(allergyIds);
             }
         }
 
-        String prompt = buildPrompt(pet, allergies, currentFood, targetFood);
-        return callOpenAi(prompt);
+        boolean bigDifference = isBigDifference(currentFood, targetFood);
+        int totalDays = bigDifference ? 10 : 7;
+        List<FoodTransitionStepDto> schedule = buildSchedule(totalDays, bigDifference);
+        List<String> warnings = buildWarnings(allergies, currentFood, targetFood);
+        String summary = String.format(
+                "%s에서 %s로 %d일에 걸쳐 점진적으로 전환합니다.",
+                currentFood.getProductName(), targetFood.getProductName(), totalDays);
+
+        return FoodTransitionResponse.builder()
+                .summary(summary)
+                .totalDays(totalDays)
+                .schedule(schedule)
+                .warnings(warnings)
+                .build();
     }
 
-    String buildPrompt(UserPet pet, List<Allergy> allergies, CommercialFood currentFood, CommercialFood targetFood) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("당신은 반려동물 영양 전문가입니다. 사료를 바꿀 때 급격한 전환으로 인한 소화불량(설사, 구토 등)을 ")
-          .append("막기 위해, 현재 사료와 새 사료를 섞어 먹이는 단계별 배합 비율(전환 스케줄)을 추천해주세요.\n\n");
-
-        if (pet != null) {
-            sb.append("## 반려동물 정보\n");
-            sb.append("- 종류: ").append(pet.getPetType()).append("\n");
-            if (pet.getPetWeight() != null) {
-                sb.append("- 체중: ").append(pet.getPetWeight()).append("kg\n");
-            }
-            if (!allergies.isEmpty()) {
-                sb.append("- 알레르기: ").append(allergies.stream().map(Allergy::getAllergyName).collect(joining(", ")))
-                  .append("\n");
-            }
-        }
-
-        sb.append("\n## 현재 급여 중인 사료\n");
-        appendFoodInfo(sb, currentFood);
-
-        sb.append("\n## 새로 바꿀 사료\n");
-        appendFoodInfo(sb, targetFood);
-
-        sb.append("\n## 전환 원칙\n");
-        sb.append("- 총 기간은 보통 7~10일 사이에서, 두 사료의 성분 차이(칼로리 밀도, 단백질/지방 비율)가 클수록 더 길게 잡아주세요.\n");
-        sb.append("- 최소 3단계 이상으로 나누어, 새 사료 비율을 점진적으로 늘려가야 합니다.\n");
-        sb.append("- 급여 중 설사·구토 등 이상 반응 시 이전 단계로 되돌아가라는 주의사항을 포함해주세요.\n");
-
-        sb.append("\n## 응답 형식 (JSON만 반환, 마크다운 코드블록 없이)\n");
-        sb.append("""
-                {
-                  "summary": "전체 전환 계획 한줄 요약",
-                  "totalDays": 7,
-                  "schedule": [
-                    {"dayRange": "1~2일차", "currentFoodPercent": 75, "newFoodPercent": 25, "note": "소량 섞어 반응 관찰"}
-                  ],
-                  "warnings": ["주의사항 1", "주의사항 2"]
-                }
-                """);
-        return sb.toString();
+    private boolean isBigDifference(CommercialFood a, CommercialFood b) {
+        if (macroDiffExceeds(a.getCaloriesPer100g(), b.getCaloriesPer100g(), null, CALORIE_DIFF_RATIO_THRESHOLD)) return true;
+        if (macroDiffExceeds(a.getProteinG(), b.getProteinG(), MACRO_DIFF_THRESHOLD, null)) return true;
+        return macroDiffExceeds(a.getFatG(), b.getFatG(), MACRO_DIFF_THRESHOLD, null);
     }
 
-    private void appendFoodInfo(StringBuilder sb, CommercialFood food) {
-        sb.append("- 제품명: ").append(food.getBrandName()).append(' ').append(food.getProductName()).append("\n");
-        if (food.getCaloriesPer100g() != null) {
-            sb.append("- 칼로리: ").append(food.getCaloriesPer100g()).append(" kcal/100g\n");
+    /** absThreshold(절대값 g) 또는 ratioThreshold(비율) 중 주어진 쪽 기준으로 차이가 임계값을 넘는지 확인 */
+    private boolean macroDiffExceeds(BigDecimal x, BigDecimal y, BigDecimal absThreshold, BigDecimal ratioThreshold) {
+        if (x == null || y == null) return false;
+        BigDecimal diff = x.subtract(y).abs();
+        if (absThreshold != null) {
+            return diff.compareTo(absThreshold) >= 0;
         }
-        appendMacro(sb, "단백질", food.getProteinG());
-        appendMacro(sb, "지방", food.getFatG());
-        appendMacro(sb, "탄수화물", food.getCarbohydrateG());
+        BigDecimal avg = x.add(y).divide(BigDecimal.valueOf(2), 4, java.math.RoundingMode.HALF_UP);
+        if (avg.compareTo(BigDecimal.ZERO) == 0) return false;
+        return diff.divide(avg, 4, java.math.RoundingMode.HALF_UP).compareTo(ratioThreshold) >= 0;
     }
 
-    private void appendMacro(StringBuilder sb, String label, BigDecimal value) {
-        if (value != null) {
-            sb.append("- ").append(label).append(": ").append(value).append("g/100g\n");
+    /**
+     * 표준 사료 전환 스케줄. 성분 차이가 작으면 75:25→50:50→25:75→0:100의 4단계(7일),
+     * 성분 차이가 크면 장 적응 부담을 줄이도록 6단계로 더 세분화(10일) — 기간만 늘리고
+     * 같은 4단계를 나눠 붓는 방식은 단계별 변화폭이 그대로라 개선 효과가 없다는 지적을
+     * 반영해, 단계 수 자체를 늘렸다.
+     */
+    private List<FoodTransitionStepDto> buildSchedule(int totalDays, boolean fineGrained) {
+        int[] currentPercents = fineGrained
+                ? new int[]{90, 75, 50, 25, 10, 0}
+                : new int[]{75, 50, 25, 0};
+        String[] notes = fineGrained
+                ? new String[]{
+                        "아주 소량만 섞어 반응 관찰",
+                        "소량 섞어 반응 관찰",
+                        "절반씩 섞어 급여",
+                        "새 사료 비중을 늘려 적응",
+                        "새 사료 비중을 더 늘려 마무리 준비",
+                        "새 사료로 완전 전환"}
+                : new String[]{
+                        "소량 섞어 반응 관찰",
+                        "절반씩 섞어 급여",
+                        "새 사료 비중을 늘려 적응 마무리",
+                        "새 사료로 완전 전환"};
+
+        int steps = currentPercents.length;
+        int stepDays = totalDays / steps;
+        int remainder = totalDays % steps;
+
+        List<FoodTransitionStepDto> schedule = new ArrayList<>();
+        int dayCursor = 1;
+        for (int i = 0; i < steps; i++) {
+            int daysInStep = stepDays + (i < remainder ? 1 : 0);
+            if (daysInStep <= 0) daysInStep = 1;
+            int startDay = dayCursor;
+            int endDay = dayCursor + daysInStep - 1;
+            String dayRange = startDay == endDay ? startDay + "일차" : startDay + "~" + endDay + "일차";
+            schedule.add(FoodTransitionStepDto.builder()
+                    .dayRange(dayRange)
+                    .currentFoodPercent(currentPercents[i])
+                    .newFoodPercent(100 - currentPercents[i])
+                    .note(notes[i])
+                    .build());
+            dayCursor = endDay + 1;
         }
+        return schedule;
     }
 
-    private FoodTransitionResponse callOpenAi(String prompt) {
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "max_tokens", maxTokens,
-                "temperature", 0.7,
-                "messages", List.of(Map.of("role", "user", "content", prompt)),
-                "response_format", Map.of("type", "json_object")
-        );
+    // ponytail: "얼마나 다르면 언급할 가치가 있는가"의 근사치. isBigDifference()의 기간 연장
+    // 임계값보다 낮게 잡아, 기간은 그대로 7일이어도 실질적 성분 차이는 사용자에게 알린다.
+    private static final BigDecimal CALORIE_MENTION_RATIO = new BigDecimal("0.10");
+    private static final BigDecimal MACRO_MENTION_THRESHOLD = new BigDecimal("5");
 
-        try {
-            String responseBody = webClient.post()
-                    .uri("/v1/chat/completions")
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+    private List<String> buildWarnings(List<Allergy> allergies, CommercialFood currentFood, CommercialFood targetFood) {
+        List<String> warnings = new ArrayList<>();
+        warnings.add("급여 중 설사, 구토 등의 이상 반응이 발생하면 이전 단계로 되돌아가세요.");
 
-            JsonNode root = objectMapper.readTree(responseBody);
-            String content = root.path("choices").get(0).path("message").path("content").stringValue();
-            return objectMapper.readValue(content, FoodTransitionResponse.class);
-        } catch (Exception e) {
-            log.error("OpenAI 사료 교체 가이드 API 호출 실패", e);
-            throw new RuntimeException("AI 사료 교체 가이드 생성 중 오류가 발생했습니다.", e);
+        addCalorieWarning(warnings, currentFood.getCaloriesPer100g(), targetFood.getCaloriesPer100g());
+        addMacroWarning(warnings, "단백질", currentFood.getProteinG(), targetFood.getProteinG(),
+                "신장이나 간 질환이 있다면 수의사와 상담 후 진행하세요.");
+        addMacroWarning(warnings, "지방", currentFood.getFatG(), targetFood.getFatG(),
+                "췌장염 등 지방에 민감한 질환이 있다면 단계를 더 천천히 늘려주세요.");
+
+        if (!allergies.isEmpty()) {
+            warnings.add(
+                    allergies.stream().map(Allergy::getAllergyName).collect(joining(", "))
+                            + " 알러지가 있으므로 새 사료 성분에 주의하세요.");
         }
+        return warnings;
+    }
+
+    private void addCalorieWarning(List<String> warnings, BigDecimal current, BigDecimal target) {
+        if (current == null || target == null) return;
+        BigDecimal diff = target.subtract(current);
+        BigDecimal avg = current.add(target).divide(BigDecimal.valueOf(2), 4, java.math.RoundingMode.HALF_UP);
+        if (avg.compareTo(BigDecimal.ZERO) == 0) return;
+        BigDecimal ratio = diff.abs().divide(avg, 4, java.math.RoundingMode.HALF_UP);
+        if (ratio.compareTo(CALORIE_MENTION_RATIO) < 0) return;
+        int percent = ratio.multiply(BigDecimal.valueOf(100)).setScale(0, java.math.RoundingMode.HALF_UP).intValue();
+        String direction = diff.signum() > 0 ? "높아요" : "낮아요";
+        warnings.add(String.format(
+                "새 사료는 100g당 칼로리가 기존 사료보다 약 %d%% %s(%s → %skcal). 같은 무게로 바꾸면 급여량이 달라지니 급여량 계산기로 다시 확인하세요.",
+                percent, direction, current.stripTrailingZeros().toPlainString(), target.stripTrailingZeros().toPlainString()));
+    }
+
+    private void addMacroWarning(List<String> warnings, String label, BigDecimal current, BigDecimal target, String advice) {
+        if (current == null || target == null) return;
+        BigDecimal diff = target.subtract(current);
+        if (diff.abs().compareTo(MACRO_MENTION_THRESHOLD) < 0) return;
+        String direction = diff.signum() > 0 ? "많아요" : "적어요";
+        warnings.add(String.format(
+                "%s 함량이 100g당 %sg %s(%s → %sg). %s",
+                label, diff.abs().stripTrailingZeros().toPlainString(), direction,
+                current.stripTrailingZeros().toPlainString(), target.stripTrailingZeros().toPlainString(), advice));
     }
 }

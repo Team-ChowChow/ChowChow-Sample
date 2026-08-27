@@ -352,6 +352,8 @@ class CommercialFoodModel {
   final double? carbohydrateG;
   final String? features;
   final String? imageUrl;
+  /// true면 공식 카탈로그가 아니라 사용자가 직접 등록한 사료(`UserFoods`)다.
+  final bool isUserFood;
 
   CommercialFoodModel({
     required this.foodId,
@@ -364,6 +366,7 @@ class CommercialFoodModel {
     this.carbohydrateG,
     this.features,
     this.imageUrl,
+    this.isUserFood = false,
   });
 
   factory CommercialFoodModel.fromJson(Map<String, dynamic> j) => CommercialFoodModel(
@@ -377,6 +380,72 @@ class CommercialFoodModel {
         carbohydrateG: (j['carbohydrateG'] as num?)?.toDouble(),
         features: j['features'] as String?,
         imageUrl: j['imageUrl'] as String?,
+      );
+
+  factory CommercialFoodModel.fromUserFoodJson(Map<String, dynamic> j) => CommercialFoodModel(
+        foodId: j['userFoodId'] as int,
+        brandName: (j['brandName'] as String?) ?? '직접 등록',
+        productName: j['productName'] as String,
+        petType: j['petType'] as String?,
+        caloriesPer100g: (j['caloriesPer100g'] as num?)?.toDouble(),
+        proteinG: (j['proteinG'] as num?)?.toDouble(),
+        fatG: (j['fatG'] as num?)?.toDouble(),
+        carbohydrateG: (j['carbohydrateG'] as num?)?.toDouble(),
+        isUserFood: true,
+      );
+}
+
+class MealRecordModel {
+  final int mealId;
+  final int? petId;
+  final String mealTitle;
+  final String? mealNote;
+  final String? imageUrl;
+  final String? mealDate;
+  final double? feedingAmountG;
+  final int? recipeId;
+  final int? commercialFoodId;
+  final int? userFoodId;
+  final String? recipeTitle;
+  final String? foodBrandName;
+  final String? foodProductName;
+  final String? foodImageUrl;
+  final bool isUserFood;
+
+  MealRecordModel({
+    required this.mealId,
+    this.petId,
+    required this.mealTitle,
+    this.mealNote,
+    this.imageUrl,
+    this.mealDate,
+    this.feedingAmountG,
+    this.recipeId,
+    this.commercialFoodId,
+    this.userFoodId,
+    this.recipeTitle,
+    this.foodBrandName,
+    this.foodProductName,
+    this.foodImageUrl,
+    this.isUserFood = false,
+  });
+
+  factory MealRecordModel.fromJson(Map<String, dynamic> j) => MealRecordModel(
+        mealId: j['mealId'] as int,
+        petId: j['petId'] as int?,
+        mealTitle: j['mealTitle'] as String,
+        mealNote: j['mealNote'] as String?,
+        imageUrl: j['imageUrl'] as String?,
+        mealDate: j['mealDate'] as String?,
+        feedingAmountG: (j['feedingAmountG'] as num?)?.toDouble(),
+        recipeId: j['recipeId'] as int?,
+        commercialFoodId: j['commercialFoodId'] as int?,
+        userFoodId: j['userFoodId'] as int?,
+        recipeTitle: j['recipeTitle'] as String?,
+        foodBrandName: j['foodBrandName'] as String?,
+        foodProductName: j['foodProductName'] as String?,
+        foodImageUrl: j['foodImageUrl'] as String?,
+        isUserFood: j['isUserFood'] as bool? ?? false,
       );
 }
 
