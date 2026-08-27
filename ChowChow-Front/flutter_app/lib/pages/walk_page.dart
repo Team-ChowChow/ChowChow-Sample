@@ -84,32 +84,7 @@ class _WalkPageState extends State<WalkPage> {
 
   Future<void> _startWalk() async {
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        await _showLocationDialog(
-          title: '위치 서비스가 꺼져 있어요',
-          message: '휴대폰의 위치 서비스를 켠 뒤 다시 시작해주세요.',
-          openSettings: Geolocator.openLocationSettings,
-        );
-        return;
-      }
-
-      var permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied) {
-        _showMessage('산책 거리를 기록하려면 위치 권한이 필요해요.');
-        return;
-      }
-      if (permission == LocationPermission.deniedForever) {
-        await _showLocationDialog(
-          title: '위치 권한이 차단됐어요',
-          message: '앱 설정에서 위치 권한을 허용해주세요.',
-          openSettings: Geolocator.openAppSettings,
-        );
-        return;
-      }
+      if (!await _ensureLocationAvailable()) return;
 
       final now = DateTime.now();
       setState(() {
@@ -132,6 +107,36 @@ class _WalkPageState extends State<WalkPage> {
       setState(() => _status = _WalkStatus.idle);
       _showMessage('현재 기기에서 위치 정보를 시작하지 못했어요.');
     }
+  }
+
+  Future<bool> _ensureLocationAvailable() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await _showLocationDialog(
+        title: '위치 서비스가 꺼져 있어요',
+        message: '휴대폰의 위치 서비스를 켠 뒤 다시 시작해주세요.',
+        openSettings: Geolocator.openLocationSettings,
+      );
+      return false;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      _showMessage('산책 거리를 기록하려면 위치 권한이 필요해요.');
+      return false;
+    }
+    if (permission == LocationPermission.deniedForever) {
+      await _showLocationDialog(
+        title: '위치 권한이 차단됐어요',
+        message: '앱 설정에서 위치 권한을 허용해주세요.',
+        openSettings: Geolocator.openAppSettings,
+      );
+      return false;
+    }
+    return true;
   }
 
   void _startTimer() {
@@ -184,7 +189,9 @@ class _WalkPageState extends State<WalkPage> {
     );
     final speedMetersPerSecond = deltaMeters / elapsedSeconds;
 
-    if (deltaMeters > 200 || speedMetersPerSecond > 5.6) {
+    // 장시간 GPS가 끊겼다 복구되면 정상 직선 거리도 200m를 넘을 수 있다.
+    // 거리 상한 대신 경과 시간을 포함한 속도로 GPS 튀임을 판별한다.
+    if (speedMetersPerSecond > 5.6) {
       _ignoredGpsPoints++;
       return;
     }
@@ -210,6 +217,13 @@ class _WalkPageState extends State<WalkPage> {
 
   Future<void> _resumeWalk() async {
     if (_status != _WalkStatus.paused) return;
+    try {
+      if (!await _ensureLocationAvailable()) return;
+    } catch (_) {
+      _showMessage('현재 기기에서 위치 정보를 다시 시작하지 못했어요.');
+      return;
+    }
+    if (!mounted || _status != _WalkStatus.paused) return;
     setState(() => _status = _WalkStatus.tracking);
     _startTimer();
     _startPositionUpdates();

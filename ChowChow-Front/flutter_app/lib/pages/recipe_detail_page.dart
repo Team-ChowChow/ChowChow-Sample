@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
@@ -22,6 +25,7 @@ class RecipeDetailPage extends StatefulWidget {
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _loading = true;
+  bool _sharing = false;
   bool _loadError = false;
   bool _isSaved = false;
   bool _isLiked = false;
@@ -48,12 +52,17 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     final newSaved = !_isSaved;
     setState(() {
       _isSaved = newSaved;
-      _saveCount = newSaved ? _saveCount + 1 : (_saveCount - 1).clamp(0, 999999);
+      _saveCount = newSaved
+          ? _saveCount + 1
+          : (_saveCount - 1).clamp(0, 999999);
     });
     try {
-      final res = await ApiClient.post(
-        '/api/v1/recipes/${widget.recipeId}/bookmark', {},
-      ) as Map<String, dynamic>;
+      final res =
+          await ApiClient.post(
+                '/api/v1/recipes/${widget.recipeId}/bookmark',
+                {},
+              )
+              as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _isSaved = res['bookmarked'] as bool? ?? newSaved;
@@ -63,7 +72,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       if (mounted) {
         setState(() {
           _isSaved = !newSaved;
-          _saveCount = newSaved ? (_saveCount - 1).clamp(0, 999999) : _saveCount + 1;
+          _saveCount = newSaved
+              ? (_saveCount - 1).clamp(0, 999999)
+              : _saveCount + 1;
         });
       }
     }
@@ -73,9 +84,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     final newLiked = !_isLiked;
     setState(() => _isLiked = newLiked);
     try {
-      final res = await ApiClient.post(
-        '/api/v1/recipes/${widget.recipeId}/like', {},
-      ) as Map<String, dynamic>;
+      final res =
+          await ApiClient.post('/api/v1/recipes/${widget.recipeId}/like', {})
+              as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _isLiked = res['liked'] as bool? ?? newLiked;
@@ -88,13 +99,17 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   Future<void> _loadReviews() async {
     try {
-      final res = await ApiClient.get('/api/v1/recipes/${widget.recipeId}/reviews') as List<dynamic>;
+      final res =
+          await ApiClient.get('/api/v1/recipes/${widget.recipeId}/reviews')
+              as List<dynamic>;
       if (!mounted) return;
       setState(() {
         _reviews = res.map((e) {
           final m = e as Map<String, dynamic>;
           final createdAt = m['createdAt'] as String?;
-          final date = createdAt != null ? createdAt.substring(0, 10).replaceAll('-', '.') : '';
+          final date = createdAt != null
+              ? createdAt.substring(0, 10).replaceAll('-', '.')
+              : '';
           final rawRating = (m['rating'] ?? m['starRating'] as dynamic);
           return _Review(
             author: m['userNickname'] as String? ?? '사용자',
@@ -116,15 +131,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       });
       await _loadReviews();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('리뷰가 등록되었습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('리뷰가 등록되었습니다.')));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('리뷰 등록에 실패했습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('리뷰 등록에 실패했습니다.')));
       }
     }
   }
@@ -141,27 +156,47 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: ChowColors.gray300, borderRadius: BorderRadius.circular(99))),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: ChowColors.gray300,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
               const SizedBox(height: 16),
-              const Text('리뷰 작성', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+              const Text(
+                '리뷰 작성',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) => GestureDetector(
-                  onTap: () => setSheet(() => selectedRating = i + 1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Icon(
-                      i < selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: ChowColors.yellow500,
-                      size: 36,
+                children: List.generate(
+                  5,
+                  (i) => GestureDetector(
+                    onTap: () => setSheet(() => selectedRating = i + 1),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(
+                        i < selectedRating
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        color: ChowColors.yellow500,
+                        size: 36,
+                      ),
                     ),
                   ),
-                )),
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -169,10 +204,16 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 maxLines: 4,
                 decoration: InputDecoration(
                   hintText: '레시피에 대한 솔직한 리뷰를 남겨주세요...',
-                  hintStyle: const TextStyle(color: ChowColors.gray400, fontSize: 14),
+                  hintStyle: const TextStyle(
+                    color: ChowColors.gray400,
+                    fontSize: 14,
+                  ),
                   filled: true,
                   fillColor: ChowColors.gray50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                   contentPadding: const EdgeInsets.all(14),
                 ),
               ),
@@ -183,14 +224,19 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   style: FilledButton.styleFrom(
                     backgroundColor: ChowCozy.stone500,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () {
                     final text = contentCtrl.text.trim();
                     Navigator.of(ctx).pop();
                     _submitReview(selectedRating, text);
                   },
-                  child: const Text('등록하기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                  child: const Text(
+                    '등록하기',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ],
@@ -202,8 +248,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   Future<void> _loadRecipe() async {
     try {
-      final res = await ApiClient.get('/api/v1/recipes/${widget.recipeId}')
-          as Map<String, dynamic>;
+      final res =
+          await ApiClient.get('/api/v1/recipes/${widget.recipeId}')
+              as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _recipe = _RecipeDetailData.fromJson(res, fallback: _recipe);
@@ -227,10 +274,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   Future<void> _loadSimilarRecipes() async {
     try {
-      final res = await ApiClient.get(
-        '/api/v1/recipes/${widget.recipeId}/similar',
-        auth: false,
-      ) as List<dynamic>;
+      final res =
+          await ApiClient.get(
+                '/api/v1/recipes/${widget.recipeId}/similar',
+                auth: false,
+              )
+              as List<dynamic>;
       if (!mounted) return;
       setState(() {
         _similarRecipes = res.map((e) {
@@ -254,6 +303,112 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     context.go('/');
   }
 
+  Future<void> _shareRecipe(BuildContext shareButtonContext) async {
+    final recipe = _recipe;
+    if (recipe == null || _loading) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('레시피를 불러온 뒤 공유할 수 있어요.')));
+      return;
+    }
+    if (_sharing) return;
+    setState(() => _sharing = true);
+
+    final currentUri = Uri.base;
+    final shareUrl = currentUri.scheme == 'http' || currentUri.scheme == 'https'
+        ? currentUri
+              .replace(path: '/recipes/${widget.recipeId}', query: null)
+              .toString()
+        : null;
+    final text = [
+      '🐾 ${recipe.title}',
+      if (recipe.subtitle.isNotEmpty) recipe.subtitle,
+      if (shareUrl != null) shareUrl,
+      if (shareUrl == null) 'ChowChow 레시피 #${widget.recipeId}',
+    ].join('\n');
+
+    final renderBox = shareButtonContext.findRenderObject() as RenderBox?;
+    final origin = renderBox == null
+        ? null
+        : renderBox.localToGlobal(Offset.zero) & renderBox.size;
+
+    try {
+      final shareImage = await _loadShareImage(recipe.imageUrl);
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          subject: '${recipe.title} - ChowChow 레시피',
+          text: text,
+          files: [
+            XFile.fromData(
+              shareImage.bytes,
+              mimeType: shareImage.mimeType,
+            ),
+          ],
+          fileNameOverrides: [shareImage.fileName],
+          sharePositionOrigin: origin,
+        ),
+      );
+      if (result.status == ShareResultStatus.unavailable) {
+        await _copyShareText(text);
+      }
+    } catch (_) {
+      await _copyShareText(text);
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  Future<_ShareImageData> _loadShareImage(String? imageUrl) async {
+    final uri = imageUrl == null ? null : Uri.tryParse(imageUrl);
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      try {
+        final response = await http.get(uri).timeout(const Duration(seconds: 8));
+        final mimeType = response.headers['content-type']
+            ?.split(';')
+            .first
+            .trim()
+            .toLowerCase();
+        if (response.statusCode == 200 &&
+            mimeType != null &&
+            mimeType.startsWith('image/') &&
+            response.bodyBytes.isNotEmpty &&
+            response.bodyBytes.length <= 12 * 1024 * 1024) {
+          return _ShareImageData(
+            bytes: response.bodyBytes,
+            mimeType: mimeType,
+            fileName: 'chowchow_recipe_${widget.recipeId}.${_imageExtension(mimeType)}',
+          );
+        }
+      } catch (_) {
+        // 네트워크 이미지가 없거나 다운로드할 수 없으면 앱 로고를 첨부한다.
+      }
+    }
+
+    final logo = await rootBundle.load('assets/images/logo.png');
+    return _ShareImageData(
+      bytes: logo.buffer.asUint8List(),
+      mimeType: 'image/png',
+      fileName: 'chowchow_recipe_${widget.recipeId}.png',
+    );
+  }
+
+  String _imageExtension(String mimeType) {
+    return switch (mimeType) {
+      'image/png' => 'png',
+      'image/gif' => 'gif',
+      'image/webp' => 'webp',
+      _ => 'jpg',
+    };
+  }
+
+  Future<void> _copyShareText(String text) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('공유할 내용을 클립보드에 복사했어요.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final recipe = _recipe ?? _RecipeDetailData._empty(widget.recipeId);
@@ -264,7 +419,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         bottom: false,
         child: Column(
           children: [
-            _DetailHeader(onBack: _goBack),
+            _DetailHeader(onBack: _goBack, onShare: _shareRecipe),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 28),
@@ -279,12 +434,18 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   ),
                   if (_loading) const LinearProgressIndicator(minHeight: 2),
                   if (_loadError)
-                    _LoadErrorBanner(onRetry: () {
-                      setState(() => _loading = true);
-                      _loadRecipe();
-                    }),
+                    _LoadErrorBanner(
+                      onRetry: () {
+                        setState(() => _loading = true);
+                        _loadRecipe();
+                      },
+                    ),
                   _TitleSection(recipe: recipe),
-                  _StatsSection(recipe: recipe, likeCount: _likeCount, saveCount: _saveCount),
+                  _StatsSection(
+                    recipe: recipe,
+                    likeCount: _likeCount,
+                    saveCount: _saveCount,
+                  ),
                   _InfoSection(recipe: recipe),
                   _DescriptionSection(description: recipe.description),
                   _Tabs(
@@ -293,9 +454,16 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     onChanged: (tab) => setState(() => _activeTab = tab),
                   ),
                   if (_activeTab == _RecipeDetailTab.recipe) ...[
-                    _IngredientsSection(ingredients: recipe.ingredients, loading: _loading),
-                    _InstructionsSection(steps: recipe.steps, loading: _loading),
-                    if (recipe.nutrition.isNotEmpty) _NutritionSection(items: recipe.nutrition),
+                    _IngredientsSection(
+                      ingredients: recipe.ingredients,
+                      loading: _loading,
+                    ),
+                    _InstructionsSection(
+                      steps: recipe.steps,
+                      loading: _loading,
+                    ),
+                    if (recipe.nutrition.isNotEmpty)
+                      _NutritionSection(items: recipe.nutrition),
                     if (recipe.tips.isNotEmpty) _TipsSection(tips: recipe.tips),
                     if (_similarRecipes.isNotEmpty)
                       _RelatedSection(recipes: _similarRecipes),
@@ -319,12 +487,25 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 }
 
+class _ShareImageData {
+  const _ShareImageData({
+    required this.bytes,
+    required this.mimeType,
+    required this.fileName,
+  });
+
+  final Uint8List bytes;
+  final String mimeType;
+  final String fileName;
+}
+
 enum _RecipeDetailTab { recipe, reviews }
 
 class _DetailHeader extends StatelessWidget {
-  const _DetailHeader({required this.onBack});
+  const _DetailHeader({required this.onBack, required this.onShare});
 
   final VoidCallback onBack;
+  final ValueChanged<BuildContext> onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -349,9 +530,12 @@ class _DetailHeader extends StatelessWidget {
                 ),
               ),
             ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.ios_share, color: ChowColors.gray700),
+            Builder(
+              builder: (buttonContext) => IconButton(
+                tooltip: '레시피 공유',
+                onPressed: () => onShare(buttonContext),
+                icon: const Icon(Icons.ios_share, color: ChowColors.gray700),
+              ),
             ),
           ],
         ),
@@ -367,10 +551,7 @@ class _HeroImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 260,
-      child: ChowNetworkImage(url: imageUrl),
-    );
+    return SizedBox(height: 260, child: ChowNetworkImage(url: imageUrl));
   }
 }
 
@@ -402,7 +583,9 @@ class _InstagramActionBar extends StatelessWidget {
               IconButton(
                 onPressed: onToggleLiked,
                 icon: Icon(
-                  isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  isLiked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
                   color: isLiked ? ChowColors.red500 : ChowColors.gray800,
                   size: 28,
                 ),
@@ -411,7 +594,9 @@ class _InstagramActionBar extends StatelessWidget {
               IconButton(
                 onPressed: onToggleSaved,
                 icon: Icon(
-                  isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  isSaved
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
                   color: isSaved ? ChowCozy.stone500 : ChowColors.gray800,
                   size: 28,
                 ),
@@ -472,8 +657,10 @@ class _TitleSection extends StatelessWidget {
             children: recipe.tags
                 .map(
                   (tag) => Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: ChowCozy.stone100,
                       borderRadius: BorderRadius.circular(999),
@@ -530,7 +717,11 @@ class _TitleSection extends StatelessWidget {
 }
 
 class _StatsSection extends StatelessWidget {
-  const _StatsSection({required this.recipe, required this.likeCount, required this.saveCount});
+  const _StatsSection({
+    required this.recipe,
+    required this.likeCount,
+    required this.saveCount,
+  });
 
   final _RecipeDetailData recipe;
   final int likeCount;
@@ -570,9 +761,21 @@ class _InfoSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              _InfoCell(icon: Icons.schedule, label: '조리시간', value: recipe.cookTime),
-              _InfoCell(icon: Icons.restaurant, label: '난이도', value: recipe.difficulty),
-              _InfoCell(icon: Icons.local_fire_department, label: '칼로리', value: recipe.calories),
+              _InfoCell(
+                icon: Icons.schedule,
+                label: '조리시간',
+                value: recipe.cookTime,
+              ),
+              _InfoCell(
+                icon: Icons.restaurant,
+                label: '난이도',
+                value: recipe.difficulty,
+              ),
+              _InfoCell(
+                icon: Icons.local_fire_department,
+                label: '칼로리',
+                value: recipe.calories,
+              ),
             ],
           ),
           if (recipe.servings.isNotEmpty) ...[
@@ -588,12 +791,20 @@ class _InfoSection extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.group_outlined, color: ChowCozy.stone500, size: 18),
+                  const Icon(
+                    Icons.group_outlined,
+                    color: ChowCozy.stone500,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       recipe.servings,
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF9A3412), height: 1.45),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9A3412),
+                        height: 1.45,
+                      ),
                     ),
                   ),
                 ],
@@ -852,7 +1063,11 @@ class _NutritionSection extends StatelessWidget {
 }
 
 class _SectionSkeleton extends StatelessWidget {
-  const _SectionSkeleton({required this.title, required this.rows, this.rowHeight = 16});
+  const _SectionSkeleton({
+    required this.title,
+    required this.rows,
+    this.rowHeight = 16,
+  });
 
   final String title;
   final int rows;
@@ -905,13 +1120,22 @@ class _LoadErrorBanner extends StatelessWidget {
           const Expanded(
             child: Text(
               '레시피 정보를 불러오지 못했어요',
-              style: TextStyle(color: Color(0xFFB91C1C), fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Color(0xFFB91C1C),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           TextButton(
             onPressed: onRetry,
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
-            child: const Text('다시 시도', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFB91C1C),
+            ),
+            child: const Text(
+              '다시 시도',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
           ),
         ],
       ),
@@ -940,7 +1164,11 @@ class _TipsSection extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.lightbulb_outline, color: ChowCozy.stone500, size: 18),
+                Icon(
+                  Icons.lightbulb_outline,
+                  color: ChowCozy.stone500,
+                  size: 18,
+                ),
                 SizedBox(width: 6),
                 _SectionTitle('조리 팁'),
               ],
@@ -952,10 +1180,7 @@ class _TipsSection extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '•',
-                      style: TextStyle(color: ChowCozy.stone500),
-                    ),
+                    const Text('•', style: TextStyle(color: ChowCozy.stone500)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1076,7 +1301,6 @@ class _ReviewsSection extends StatelessWidget {
   }
 }
 
-
 class _WhiteSection extends StatelessWidget {
   const _WhiteSection({
     required this.child,
@@ -1093,7 +1317,10 @@ class _WhiteSection extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(top: topMargin),
       color: Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 18,
+      ),
       child: child,
     );
   }
@@ -1361,15 +1588,15 @@ class _ReviewTile extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(Icons.thumb_up_alt_outlined,
-                  color: ChowColors.gray500, size: 15),
+              const Icon(
+                Icons.thumb_up_alt_outlined,
+                color: ChowColors.gray500,
+                size: 15,
+              ),
               const SizedBox(width: 5),
               Text(
                 '도움돼요 ${review.likes}',
-                style: const TextStyle(
-                  color: ChowColors.gray500,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: ChowColors.gray500, fontSize: 12),
               ),
             ],
           ),
@@ -1452,7 +1679,12 @@ class _RecipeDetailData {
       subtitle: recipe.recipePurpose ?? recipe.menuCategory ?? '건강한 맞춤 식단',
       description: recipe.recipeDescription ?? '',
       imageUrl: recipe.imageUrl,
-      tags: _buildTags(recipe.petType, recipe.menuCategory, recipe.recipePurpose, isAiGenerated: recipe.isAiGenerated),
+      tags: _buildTags(
+        recipe.petType,
+        recipe.menuCategory,
+        recipe.recipePurpose,
+        isAiGenerated: recipe.isAiGenerated,
+      ),
       ingredients: const [],
       steps: const [],
       nutrition: const [],
@@ -1465,13 +1697,16 @@ class _RecipeDetailData {
     Map<String, dynamic> json, {
     _RecipeDetailData? fallback,
   }) {
-    final base = fallback ?? _RecipeDetailData._empty(json['recipeId'] as int? ?? 0);
-    final ingredients = (json['ingredients'] as List<dynamic>?)
+    final base =
+        fallback ?? _RecipeDetailData._empty(json['recipeId'] as int? ?? 0);
+    final ingredients =
+        (json['ingredients'] as List<dynamic>?)
             ?.map((item) => _Ingredient.fromJson(item as Map<String, dynamic>))
             .where((item) => item.name.isNotEmpty)
             .toList() ??
         const <_Ingredient>[];
-    final steps = (json['steps'] as List<dynamic>?)
+    final steps =
+        (json['steps'] as List<dynamic>?)
             ?.map((item) => _RecipeStep.fromJson(item as Map<String, dynamic>))
             .where((item) => item.description.isNotEmpty)
             .toList()
@@ -1489,16 +1724,56 @@ class _RecipeDetailData {
     final nutritionJson = json['nutrition'] as Map<String, dynamic>?;
     final nutritionItems = <_NutritionItem>[];
     if (nutritionJson != null) {
-      if (nutritionJson['totalCalories'] != null) nutritionItems.add(_NutritionItem(label: '칼로리', value: '${(nutritionJson['totalCalories'] as num).toStringAsFixed(0)}kcal'));
-      if (nutritionJson['proteinG'] != null) nutritionItems.add(_NutritionItem(label: '단백질', value: '${(nutritionJson['proteinG'] as num).toStringAsFixed(1)}g'));
-      if (nutritionJson['fatG'] != null) nutritionItems.add(_NutritionItem(label: '지방', value: '${(nutritionJson['fatG'] as num).toStringAsFixed(1)}g'));
-      if (nutritionJson['carbohydrateG'] != null) nutritionItems.add(_NutritionItem(label: '탄수화물', value: '${(nutritionJson['carbohydrateG'] as num).toStringAsFixed(1)}g'));
-      if (nutritionJson['sodiumMg'] != null) nutritionItems.add(_NutritionItem(label: '나트륨', value: '${(nutritionJson['sodiumMg'] as num).toStringAsFixed(0)}mg'));
+      if (nutritionJson['totalCalories'] != null)
+        nutritionItems.add(
+          _NutritionItem(
+            label: '칼로리',
+            value:
+                '${(nutritionJson['totalCalories'] as num).toStringAsFixed(0)}kcal',
+          ),
+        );
+      if (nutritionJson['proteinG'] != null)
+        nutritionItems.add(
+          _NutritionItem(
+            label: '단백질',
+            value: '${(nutritionJson['proteinG'] as num).toStringAsFixed(1)}g',
+          ),
+        );
+      if (nutritionJson['fatG'] != null)
+        nutritionItems.add(
+          _NutritionItem(
+            label: '지방',
+            value: '${(nutritionJson['fatG'] as num).toStringAsFixed(1)}g',
+          ),
+        );
+      if (nutritionJson['carbohydrateG'] != null)
+        nutritionItems.add(
+          _NutritionItem(
+            label: '탄수화물',
+            value:
+                '${(nutritionJson['carbohydrateG'] as num).toStringAsFixed(1)}g',
+          ),
+        );
+      if (nutritionJson['sodiumMg'] != null)
+        nutritionItems.add(
+          _NutritionItem(
+            label: '나트륨',
+            value: '${(nutritionJson['sodiumMg'] as num).toStringAsFixed(0)}mg',
+          ),
+        );
     }
 
     // 태그 파싱 (API가 tagNames 리스트 반환 시 우선 사용)
-    final apiTags = (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList();
-    final builtTags = _buildTags(petType, category, purpose, fallback: base.tags, isAiGenerated: json['isAiGenerated'] as bool? ?? false);
+    final apiTags = (json['tags'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList();
+    final builtTags = _buildTags(
+      petType,
+      category,
+      purpose,
+      fallback: base.tags,
+      isAiGenerated: json['isAiGenerated'] as bool? ?? false,
+    );
 
     return _RecipeDetailData(
       id: json['recipeId'] as int? ?? base.id,
@@ -1701,7 +1976,10 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
           children: [
             Icon(Icons.check_circle_outline, color: ChowCozy.stone500),
             SizedBox(width: 8),
-            Text('급여 기록', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+            Text(
+              '급여 기록',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
           ],
         ),
         content: Column(
@@ -1710,12 +1988,18 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
           children: [
             Text(
               '"${widget.recipeTitle}" 레시피로 조리를 완료했나요?\n완료 기록이 저장됩니다.',
-              style: const TextStyle(fontSize: 14, color: ChowColors.gray700, height: 1.5),
+              style: const TextStyle(
+                fontSize: 14,
+                color: ChowColors.gray700,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: '실제 급여량 (g, 선택)',
                 border: OutlineInputBorder(),
@@ -1727,12 +2011,17 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('취소', style: TextStyle(color: ChowColors.gray500)),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: ChowColors.gray500),
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: ChowCozy.stone500,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('완료했어요'),
@@ -1753,7 +2042,10 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
         if (amount != null) 'feedingAmountG': amount,
       });
       if (!mounted) return;
-      setState(() { _done = true; _loading = false; });
+      setState(() {
+        _done = true;
+        _loading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('조리 완료 기록이 저장됐어요!'),
@@ -1772,38 +2064,52 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
       child: SizedBox(
         width: double.infinity,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: ChowCozy.stone500))
+            ? const Center(
+                child: CircularProgressIndicator(color: ChowCozy.stone500),
+              )
             : _done
-                ? Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: ChowCozy.stone100,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ChowCozy.stone500),
+            ? Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: ChowCozy.stone100,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: ChowCozy.stone500),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: ChowCozy.stone500,
+                      size: 20,
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle, color: ChowCozy.stone500, size: 20),
-                        SizedBox(width: 8),
-                        Text('조리 완료 기록됨', style: TextStyle(color: ChowCozy.stone500, fontWeight: FontWeight.w500)),
-                      ],
+                    SizedBox(width: 8),
+                    Text(
+                      '조리 완료 기록됨',
+                      style: TextStyle(
+                        color: ChowCozy.stone500,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  )
-                : FilledButton.icon(
-                    onPressed: _confirmAndComplete,
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('조리 완료', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: ChowCozy.stone500,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
+                  ],
+                ),
+              )
+            : FilledButton.icon(
+                onPressed: _confirmAndComplete,
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text(
+                  '조리 완료',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: ChowCozy.stone500,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                ),
+              ),
       ),
     );
   }
 }
-
-
-

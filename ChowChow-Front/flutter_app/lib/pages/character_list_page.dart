@@ -127,18 +127,18 @@ class _CharacterListPageState extends State<CharacterListPage> {
                         tooltip: '새로고침',
                         visualDensity: VisualDensity.compact,
                       ),
-                      FilledButton.icon(
+                      FilledButton(
                         onPressed: () async {
                           final created = await context.push<bool>('/character/new');
                           if (created == true) _load();
                         },
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('새 캐릭터 생성', maxLines: 1, softWrap: false),
                         style: FilledButton.styleFrom(
                           backgroundColor: ChowCozy.stone500,
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           visualDensity: VisualDensity.compact,
+                          alignment: Alignment.center,
                         ),
+                        child: const Text('+ 새 캐릭터 생성', maxLines: 1, softWrap: false),
                       ),
                     ],
                   ),

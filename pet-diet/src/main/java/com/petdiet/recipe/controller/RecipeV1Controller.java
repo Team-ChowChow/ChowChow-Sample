@@ -80,6 +80,8 @@ public class RecipeV1Controller {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String petType,
             @RequestParam(required = false) String tag,
+            @RequestParam(required = false) String purpose,
+            @RequestParam(required = false) String ingredient,
             @RequestParam(required = false) List<Integer> allergyIds,
             @RequestParam(required = false) List<Integer> diseaseIds,
             @RequestParam(defaultValue = "false") Boolean useMyPetFilter,
@@ -109,6 +111,22 @@ public class RecipeV1Controller {
             sql.append(" AND m.\"petType\" = ?");
             params.add(petType.trim());
         }
+        List<String> purposes = splitSearchValues(purpose);
+        if (!purposes.isEmpty()) {
+            sql.append(" AND (");
+            for (int i = 0; i < purposes.size(); i++) {
+                if (i > 0) sql.append(" OR ");
+                sql.append("r.\"recipePurpose\" ILIKE ?");
+                params.add("%" + purposes.get(i) + "%");
+            }
+            sql.append(")");
+        }
+        if (ingredient != null && !ingredient.isBlank()) {
+            sql.append(" AND EXISTS (SELECT 1 FROM \"RecipeIngredients\" ri ")
+                    .append("JOIN \"Ingredients\" i ON ri.\"ingredientId\" = i.\"ingredientId\" ")
+                    .append("WHERE ri.\"recipeId\" = r.\"recipeId\" AND i.\"ingredientName\" ILIKE ?)");
+            params.add("%" + ingredient.trim() + "%");
+        }
         String normalizedSort = normalizeSearchSort(sort);
         sql.append(" GROUP BY r.\"recipeId\"")
                 .append(searchOrderBy(normalizedSort))
@@ -130,6 +148,8 @@ public class RecipeV1Controller {
                 "keyword", keyword == null ? "" : keyword,
                 "tag", tag == null ? "" : tag,
                 "petType", petType == null ? "" : petType,
+                "purpose", purpose == null ? "" : purpose,
+                "ingredient", ingredient == null ? "" : ingredient,
                 "sortType", normalizedSort,
                 "data", results
         ));
@@ -137,6 +157,15 @@ public class RecipeV1Controller {
 
     static String normalizeSearchSort(String sort) {
         return "latest".equalsIgnoreCase(sort) ? "latest" : "popular";
+    }
+
+    static List<String> splitSearchValues(String values) {
+        if (values == null || values.isBlank()) return List.of();
+        return java.util.Arrays.stream(values.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .toList();
     }
 
     static String searchOrderBy(String normalizedSort) {
