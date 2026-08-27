@@ -412,6 +412,9 @@ class MealRecordModel {
   final String? foodImageUrl;
   final bool isUserFood;
 
+  bool get isCompletedRecipe =>
+      recipeId != null && (mealNote?.contains('조리 완료') ?? false);
+
   MealRecordModel({
     required this.mealId,
     this.petId,

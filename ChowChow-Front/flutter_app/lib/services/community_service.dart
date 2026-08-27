@@ -37,6 +37,27 @@ class CommunityService {
     return CommunityPost.fromJson(res as Map<String, dynamic>);
   }
 
+  static Future<List<CommunityPost>> getLikedPosts() async {
+    try {
+      final res = await ApiClient.get('/api/community/posts/liked');
+      final items = res is Map<String, dynamic> ? res['content'] : res;
+      return (items as List<dynamic>)
+          .map((item) => CommunityPost.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      // 새 API가 아직 배포되지 않은 서버에서는 기존 목록의 likedByMe를 사용한다.
+      final res = await ApiClient.get(
+        '/api/community/posts',
+        query: {'page': '0', 'size': '1000'},
+      );
+      final items = res is Map<String, dynamic> ? res['content'] : res;
+      return (items as List<dynamic>)
+          .map((item) => CommunityPost.fromJson(item as Map<String, dynamic>))
+          .where((post) => post.likedByMe)
+          .toList();
+    }
+  }
+
   static Future<void> toggleLike(int postId) async {
     await ApiClient.post('/api/community/posts/$postId/like', {});
   }
@@ -127,9 +148,11 @@ class CommunityComment {
   const CommunityComment({
     required this.id,
     required this.postId,
+    this.userId,
     this.parentCommentId,
     required this.author,
     required this.avatar,
+    this.profileImageUrl,
     required this.timeAgo,
     required this.content,
     this.likes = 0,
@@ -138,9 +161,11 @@ class CommunityComment {
 
   final int id;
   final int postId;
+  final int? userId;
   final int? parentCommentId;
   final String author;
   final String avatar;
+  final String? profileImageUrl;
   final String timeAgo;
   final String content;
   final int likes;
@@ -150,11 +175,14 @@ class CommunityComment {
     return CommunityComment(
       id: json['commentId'] as int? ?? json['id'] as int? ?? 0,
       postId: json['postId'] as int? ?? 0,
+      userId: (json['userId'] as num?)?.toInt(),
       parentCommentId: json['parentCommentId'] as int?,
       author: json['userNickname'] as String? ??
           json['author'] as String? ??
           '사용자 ${json['userId'] ?? ''}'.trim(),
       avatar: json['avatar'] as String? ?? '🙂',
+      profileImageUrl: json['userProfileImg'] as String? ??
+          json['profileImageUrl'] as String?,
       timeAgo: _timeAgo(json['createdAt'] as String?),
       content: json['commentContent'] as String? ??
           json['content'] as String? ??

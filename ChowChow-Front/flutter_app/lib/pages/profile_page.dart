@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/character_service.dart';
@@ -117,8 +114,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   int _savedRecipes = 0;
   int _completedCooking = 0;
-  int _writtenReviews = 0;
-  int _coinBalance = 0;
+  int _writtenPosts = 0;
   String _profileFrameKey = 'frame_orange';
 
   String _petType = '';
@@ -171,16 +167,9 @@ class _ProfilePageState extends State<ProfilePage> {
       final catalog = await ShopService.fetchCatalog();
       if (!mounted) return;
       setState(() {
-        _coinBalance = catalog.balance;
         _profileFrameKey = catalog.equippedProfileFrameKey;
       });
     } catch (_) {}
-  }
-
-  Future<void> _openCoinShop() async {
-    await context.push('/coin-shop');
-    if (!mounted) return;
-    await _loadShopStyle();
   }
 
   Future<void> _loadProfile() async {
@@ -191,6 +180,11 @@ class _ProfilePageState extends State<ProfilePage> {
         ApiClient.get(
           '/api/users/me/stats',
         ).catchError((_) => <String, dynamic>{}),
+        ApiClient.get('/api/meal-records').catchError((_) => <dynamic>[]),
+        ApiClient.get(
+          '/api/community/posts/my',
+          query: {'page': '0', 'size': '1'},
+        ).catchError((_) => <String, dynamic>{}),
         ApiClient.get('/api/notifications').catchError((_) => <dynamic>[]),
         ApiClient.get('/api/v1/allergies').catchError((_) => <dynamic>[]),
       ]);
@@ -198,8 +192,18 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
 
       final stats = results[2] as Map<String, dynamic>? ?? {};
-      final rawNotifs = results[3] as List<dynamic>? ?? [];
-      final rawAllergies = results[4] as List<dynamic>? ?? [];
+      final rawMealRecords = results[3] as List<dynamic>? ?? [];
+      final myPostsPage = results[4] as Map<String, dynamic>? ?? {};
+      final rawNotifs = results[5] as List<dynamic>? ?? [];
+      final rawAllergies = results[6] as List<dynamic>? ?? [];
+      final completedRecipeIds = rawMealRecords
+          .map((item) => MealRecordModel.fromJson(item as Map<String, dynamic>))
+          .where((record) => record.isCompletedRecipe)
+          .map((record) => record.recipeId!)
+          .toSet();
+      final myPostCount = (myPostsPage['totalElements'] as num?)?.toInt() ??
+          (myPostsPage['content'] as List<dynamic>?)?.length ??
+          0;
 
       setState(() {
         _user = UserModel.fromJson(results[0] as Map<String, dynamic>);
@@ -210,8 +214,8 @@ class _ProfilePageState extends State<ProfilePage> {
             .map((e) => AllergyModel.fromJson(e as Map<String, dynamic>))
             .toList();
         _savedRecipes = (stats['savedRecipes'] as num?)?.toInt() ?? 0;
-        _completedCooking = (stats['completedCooking'] as num?)?.toInt() ?? 0;
-        _writtenReviews = (stats['writtenReviews'] as num?)?.toInt() ?? 0;
+        _completedCooking = completedRecipeIds.length;
+        _writtenPosts = myPostCount;
         _notifications = rawNotifs.map((e) {
           final m = e as Map<String, dynamic>;
           final createdAt = m['createdAt'] as String?;
@@ -362,140 +366,161 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _openAddPetSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            void updateForm(VoidCallback callback) {
-              setModalState(callback);
-              setState(() {});
-            }
+  Future<void> _openAddPetPage() async {
+    var pageIsOpen = true;
 
-            return DraggableScrollableSheet(
-              initialChildSize: 0.9,
-              minChildSize: 0.5,
-              maxChildSize: 0.95,
-              builder: (context, scrollController) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setPageState) {
+              void updateForm(VoidCallback callback) {
+                if (!pageIsOpen || !mounted) return;
+                setPageState(callback);
+              }
+
+              return Scaffold(
+                backgroundColor: Colors.white,
+                appBar: AppBar(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF111827),
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  title: const Text(
+                    '반려동물 추가',
+                    style: TextStyle(fontWeight: FontWeight.w500),
                   ),
-                  child: Column(
+                  bottom: const PreferredSize(
+                    preferredSize: Size.fromHeight(1),
+                    child: Divider(height: 1),
+                  ),
+                ),
+                body: SafeArea(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 14, 12, 10),
-                        child: Row(
-                          children: [
-                            const Text(
-                              '반려동물 추가',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(
-                                Icons.close,
-                                color: ChowColors.gray500,
-                              ),
-                            ),
-                          ],
+                      _buildPetTypeSelector(updateForm),
+                      const SizedBox(height: 22),
+                      if (_petType.isNotEmpty) ...[
+                        _buildBreedSelector(updateForm),
+                        const SizedBox(height: 22),
+                      ],
+                      _buildPetInputField(
+                        label: '이름',
+                        required: true,
+                        hintText: '반려동물 이름을 입력하세요',
+                        onChanged: (value) {
+                          updateForm(() => _petName = value);
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _buildBirthdateSelector(updateForm),
+                      const SizedBox(height: 18),
+                      _buildPetWeightBcsField(updateForm),
+                      const SizedBox(height: 18),
+                      _buildPetLifestyleFields(updateForm),
+                      const SizedBox(height: 24),
+                      const Divider(
+                        height: 10,
+                        thickness: 10,
+                        color: ChowColors.gray100,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPreferenceSections(updateForm),
+                      const SizedBox(height: 24),
+                      const Divider(
+                        height: 10,
+                        thickness: 10,
+                        color: ChowColors.gray100,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPetOptionGroup(
+                        label: '가장 중요한 우선순위',
+                        options: const [
+                          '균형 잡힌 식사',
+                          '체중 & 영양',
+                          '실시간 행동',
+                          '건강 추적',
+                        ],
+                        selected: _priorities,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_priorities, value),
                         ),
                       ),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                          children: [
-                            _buildPetTypeSelector(updateForm),
-                            const SizedBox(height: 22),
-                            if (_petType.isNotEmpty) ...[
-                              _buildBreedSelector(updateForm),
-                              const SizedBox(height: 22),
-                            ],
-                            _buildPetInputField(
-                              label: '이름',
-                              required: true,
-                              hintText: '반려동물 이름을 입력하세요',
-                              onChanged: (value) {
-                                updateForm(() => _petName = value);
-                              },
+                      const SizedBox(height: 18),
+                      _buildPetOptionGroup(
+                        label: '주 생활 공간',
+                        options: const ['실내', '마당', '테라스 / 발코니'],
+                        selected: _livingSpaces,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_livingSpaces, value),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildPetOptionGroup(
+                        label: '낮 시간을 보내는 방법',
+                        options: const [
+                          '집에 혼자 있어요',
+                          '유치원에 가요',
+                          '산책 도우미와 함께해요',
+                          '항상 가족과 함께해요',
+                        ],
+                        selected: _daytimeRoutines,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_daytimeRoutines, value),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildPetOptionGroup(
+                        label: '궁금하거나 걱정되는 행동',
+                        options: const [
+                          '분리 불안 / 짖음',
+                          '수면 / 휴식 패턴',
+                          '식이 / 음수 습관',
+                          '전반적 활동량',
+                        ],
+                        selected: _behaviorConcerns,
+                        onChanged: (value) => updateForm(
+                          () => _toggleSingle(_behaviorConcerns, value),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: _isPetFormValid ? _submitPetForm : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ChowCozy.stone500,
+                            disabledBackgroundColor: ChowColors.gray300,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            const SizedBox(height: 18),
-                            _buildBirthdateSelector(updateForm),
-                            const SizedBox(height: 18),
-                            _buildPetWeightBcsField(updateForm),
-                            const SizedBox(height: 18),
-                            _buildPetLifestyleFields(updateForm),
-                            const SizedBox(height: 24),
-                            const Divider(height: 10, thickness: 10, color: ChowColors.gray100),
-                            const SizedBox(height: 24),
-                            _buildPreferenceSections(updateForm),
-                            const SizedBox(height: 24),
-                            const Divider(height: 10, thickness: 10, color: ChowColors.gray100),
-                            const SizedBox(height: 24),
-                            _buildPetOptionGroup(label: '가장 중요한 우선순위', options: const ['균형 잡힌 식사', '체중 & 영양', '실시간 행동', '건강 추적'], selected: _priorities, onChanged: (value) => updateForm(() => _toggleSingle(_priorities, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '주 생활 공간', options: const ['실내', '마당', '테라스 / 발코니'], selected: _livingSpaces, onChanged: (value) => updateForm(() => _toggleSingle(_livingSpaces, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '낮 시간을 보내는 방법', options: const ['집에 혼자 있어요', '유치원에 가요', '산책 도우미와 함께해요', '항상 가족과 함께해요'], selected: _daytimeRoutines, onChanged: (value) => updateForm(() => _toggleSingle(_daytimeRoutines, value))),
-                            const SizedBox(height: 18),
-                            _buildPetOptionGroup(label: '궁금하거나 걱정되는 행동', options: const ['분리 불안 / 짖음', '수면 / 휴식 패턴', '식이 / 음수 습관', '전반적 활동량'], selected: _behaviorConcerns, onChanged: (value) => updateForm(() => _toggleSingle(_behaviorConcerns, value))),
-                            const SizedBox(height: 28),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 52,
-                              child: ElevatedButton(
-                                onPressed: _isPetFormValid
-                                    ? _submitPetForm
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: ChowCozy.stone500,
-                                  disabledBackgroundColor: ChowColors.gray300,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                child: const Text(
-                                  '추가하기',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
+                          ),
+                          child: const Text(
+                            '추가하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ],
                   ),
-                );
-              },
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      if (mounted) {
-        setState(() {
-          _resetPetForm();
-        });
-      }
-    });
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+
+    pageIsOpen = false;
+    if (!mounted) return;
+    setState(_resetPetForm);
   }
 
   Widget _buildPetTypeSelector(void Function(VoidCallback) updateForm) {
@@ -1703,6 +1728,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final userName = _user?.displayName ?? '사용자';
     final userEmail = _user?.authEmail ?? '';
+    final profileImageUrl = _user?.userProfileImg;
     final profileFrame = profileFrameVisualFor(_profileFrameKey);
 
     return ColoredBox(
@@ -1740,11 +1766,21 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               child: CircleAvatar(
                                 backgroundColor: Colors.white,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 34,
-                                  color: Colors.deepPurple.shade300,
-                                ),
+                                child: profileImageUrl != null &&
+                                        profileImageUrl.isNotEmpty
+                                    ? ClipOval(
+                                        child: SizedBox.expand(
+                                          child: ChowNetworkImage(
+                                            url: profileImageUrl,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.person,
+                                        size: 34,
+                                        color: Colors.deepPurple.shade300,
+                                      ),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1777,7 +1813,10 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                             IconButton(
-                              onPressed: () => context.push('/app-settings'),
+                              onPressed: () async {
+                                await context.push('/profile-settings');
+                                if (mounted) await _loadProfile();
+                              },
                               padding: const EdgeInsets.only(top: 4),
                               constraints: const BoxConstraints(
                                 minWidth: 40,
@@ -1792,32 +1831,44 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _StatTile(
-                                icon: Icons.bookmark_border,
-                                value: '$_savedRecipes',
-                                label: '저장한 레시피',
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _StatTile(
+                                  icon: Icons.bookmark_border,
+                                  value: '$_savedRecipes',
+                                  label: '저장한 레시피',
+                                  onTap: () => context.push('/saved-recipes'),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _StatTile(
-                                icon: Icons.check_circle_outline,
-                                value: '$_completedCooking',
-                                label: '조리 완료',
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _StatTile(
+                                  icon: Icons.check_circle_outline,
+                                  value: '$_completedCooking',
+                                  label: '조리 완료',
+                                  onTap: () async {
+                                    await context.push('/completed-recipes');
+                                    if (mounted) await _loadProfile();
+                                  },
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _StatTile(
-                                icon: Icons.rate_review_outlined,
-                                value: '$_writtenReviews',
-                                label: '작성한 리뷰',
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _StatTile(
+                                  icon: Icons.edit_note,
+                                  value: '$_writtenPosts',
+                                  label: '작성한 글',
+                                  onTap: () async {
+                                    await context.push('/my-posts');
+                                    if (mounted) await _loadProfile();
+                                  },
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -1851,7 +1902,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: _openAddPetSheet,
+                                  onPressed: _openAddPetPage,
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,
@@ -1908,6 +1959,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         icon: Icons.bookmark_border,
                         onTap: () => context.push('/saved-posts'),
                       ),
+                      _MenuItem(
+                        label: '좋아한 글',
+                        icon: Icons.favorite_border,
+                        onTap: () => context.push('/liked-posts'),
+                      ),
                     ],
                   ),
                 ),
@@ -1927,19 +1983,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: '앱 설정',
                         icon: Icons.settings_outlined,
                         onTap: () => context.push('/app-settings'),
-                      ),
-                    ],
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _MenuSection(
-                    title: '꾸미기',
-                    items: [
-                      _MenuItem(
-                        label: '코인 상점',
-                        icon: Icons.storefront_outlined,
-                        badge: '🪙 $_coinBalance',
-                        onTap: _openCoinShop,
                       ),
                     ],
                   ),
@@ -2035,46 +2078,52 @@ class _StatTile extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.label,
+    this.onTap,
   });
 
   final IconData icon;
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 88),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.22),
+    return Material(
+      color: Colors.white.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 22),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w500,
-              height: 1,
-            ),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 88),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  fontSize: 10.5,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.88),
-              fontSize: 10.5,
-              height: 1.2,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

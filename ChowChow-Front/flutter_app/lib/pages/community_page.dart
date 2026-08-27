@@ -7,6 +7,7 @@ import '../services/api_client.dart';
 import '../services/community_service.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
+import '../widgets/community_avatar.dart';
 import '../router/app_router.dart';
 
 class CommunityPage extends StatefulWidget {
@@ -36,6 +37,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
   bool _loadError = false;
   Set<int> _bookmarkedIds = {};
   int? _currentUserId;
+  String? _currentUserProfileImage;
 
   List<CommunityPost> get _filteredAndSortedPosts {
     // 카테고리/강아지·고양이 필터링은 _loadPosts()가 서버에 요청할 때 이미 반영됨
@@ -111,9 +113,23 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
   Future<void> _loadCurrentUser() async {
     try {
       final res = await ApiClient.get('/api/users/me');
-      final id = (res as Map<String, dynamic>)['userId'] as int?;
+      final data = res as Map<String, dynamic>;
+      final id = (data['userId'] as num?)?.toInt();
+      final profileImage = (data['userProfileImg'] as String?)?.trim();
       if (!mounted) return;
-      setState(() => _currentUserId = id);
+      setState(() {
+        _currentUserId = id;
+        _currentUserProfileImage = profileImage;
+        if (id != null && profileImage != null && profileImage.isNotEmpty) {
+          _posts = _posts
+              .map((post) => post.userId == id &&
+                      (post.profileImageUrl == null ||
+                          post.profileImageUrl!.isEmpty)
+                  ? post.copyWith(profileImageUrl: profileImage)
+                  : post)
+              .toList();
+        }
+      });
     } catch (_) {}
   }
 
@@ -167,13 +183,22 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
       // SharedPreferences에서 저장된 tags를 복원
       final prefs = await SharedPreferences.getInstance();
       final postsWithTags = posts.map((post) {
+        var resolvedPost = post;
         if (post.tags.isEmpty) {
           final savedTags = prefs.getStringList('post_${post.id}_tags');
           if (savedTags != null && savedTags.isNotEmpty) {
-            return post.copyWith(tags: savedTags);
+            resolvedPost = post.copyWith(tags: savedTags);
           }
         }
-        return post;
+        if (resolvedPost.userId == _currentUserId &&
+            (_currentUserProfileImage?.isNotEmpty ?? false) &&
+            (resolvedPost.profileImageUrl == null ||
+                resolvedPost.profileImageUrl!.isEmpty)) {
+          resolvedPost = resolvedPost.copyWith(
+            profileImageUrl: _currentUserProfileImage,
+          );
+        }
+        return resolvedPost;
       }).toList();
 
       if (!mounted) return;
@@ -409,6 +434,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                         key: ValueKey(post.id),
                         post: post,
                         currentUserId: _currentUserId,
+                        currentUserProfileImage: _currentUserProfileImage,
                         isBookmarked: _bookmarkedIds.contains(post.id),
                         onBookmarkToggle: () => _toggleBookmark(post.id),
                         onDeleted: () => setState(
@@ -509,6 +535,7 @@ class _PostCard extends StatefulWidget {
     super.key,
     required this.post,
     this.currentUserId,
+    this.currentUserProfileImage,
     this.isBookmarked = false,
     this.onBookmarkToggle,
     this.onDeleted,
@@ -517,6 +544,7 @@ class _PostCard extends StatefulWidget {
 
   final CommunityPost post;
   final int? currentUserId;
+  final String? currentUserProfileImage;
   final bool isBookmarked;
   final VoidCallback? onBookmarkToggle;
   final VoidCallback? onDeleted;
@@ -679,10 +707,14 @@ class _PostCardState extends State<_PostCard> {
               padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  CommunityAvatar(
                     radius: 22,
+                    imageUrl: post.profileImageUrl?.isNotEmpty == true
+                        ? post.profileImageUrl
+                        : post.userId == widget.currentUserId
+                            ? widget.currentUserProfileImage
+                            : null,
                     backgroundColor: ChowCozy.stone300,
-                    child: Text(post.avatar, style: const TextStyle(fontSize: 20)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -827,6 +859,8 @@ class _PostCardState extends State<_PostCard> {
                       context,
                       post.id,
                       _comments,
+                      widget.currentUserId,
+                      widget.currentUserProfileImage,
                       _replaceComments,
                       _addComment,
                     ),
@@ -854,6 +888,8 @@ void _showPostCommentsSheet(
   BuildContext context,
   int postId,
   List<_SheetComment> comments,
+  int? currentUserId,
+  String? currentUserProfileImage,
   ValueChanged<List<_SheetComment>> onCommentsLoaded,
   ValueChanged<_SheetComment> onCommentAdded,
 ) {
@@ -869,6 +905,8 @@ void _showPostCommentsSheet(
         child: _PostCommentsSheet(
           postId: postId,
           comments: comments,
+          currentUserId: currentUserId,
+          currentUserProfileImage: currentUserProfileImage,
           onCommentsLoaded: onCommentsLoaded,
           onCommentAdded: onCommentAdded,
         ),
@@ -881,12 +919,16 @@ class _PostCommentsSheet extends StatefulWidget {
   const _PostCommentsSheet({
     required this.postId,
     required this.comments,
+    this.currentUserId,
+    this.currentUserProfileImage,
     required this.onCommentsLoaded,
     required this.onCommentAdded,
   });
 
   final int postId;
   final List<_SheetComment> comments;
+  final int? currentUserId;
+  final String? currentUserProfileImage;
   final ValueChanged<List<_SheetComment>> onCommentsLoaded;
   final ValueChanged<_SheetComment> onCommentAdded;
 
@@ -930,7 +972,13 @@ class _PostCommentsSheetState extends State<_PostCommentsSheet> {
   Future<void> _loadComments() async {
     try {
       final comments = await CommunityService.getComments(widget.postId);
-      final sheetComments = comments.map(_SheetComment.fromCommunity).toList();
+      final sheetComments = comments
+          .map((comment) => _SheetComment.fromCommunity(
+                comment,
+                currentUserId: widget.currentUserId,
+                currentUserProfileImage: widget.currentUserProfileImage,
+              ))
+          .toList();
       if (!mounted) return;
       setState(() {
         _comments
@@ -954,12 +1002,18 @@ class _PostCommentsSheetState extends State<_PostCommentsSheet> {
     late final _SheetComment comment;
     try {
       final created = await CommunityService.createComment(widget.postId, text);
-      comment = _SheetComment.fromCommunity(created);
+      comment = _SheetComment.fromCommunity(
+        created,
+        currentUserId: widget.currentUserId,
+        currentUserProfileImage: widget.currentUserProfileImage,
+      );
     } catch (_) {
       comment = _SheetComment(
         id: DateTime.now().millisecondsSinceEpoch,
+        userId: widget.currentUserId,
         author: '나',
         avatar: '🙂',
+        profileImageUrl: widget.currentUserProfileImage,
         timeAgo: '방금',
         content: text,
         likes: 0,
@@ -1109,10 +1163,10 @@ class _SheetCommentTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
+          CommunityAvatar(
             radius: compact ? 16 : 18,
+            imageUrl: comment.profileImageUrl,
             backgroundColor: compact ? ChowColors.gray200 : ChowCozy.stone100,
-            child: Text(comment.avatar),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1285,28 +1339,39 @@ class _SheetCommentInputState extends State<_SheetCommentInput> {
 class _SheetComment {
   const _SheetComment({
     required this.id,
+    this.userId,
     this.parentId,
     required this.author,
     required this.avatar,
+    this.profileImageUrl,
     required this.timeAgo,
     required this.content,
     required this.likes,
   });
 
   final int id;
+  final int? userId;
   final int? parentId;
   final String author;
   final String avatar;
+  final String? profileImageUrl;
   final String timeAgo;
   final String content;
   final int likes;
 
-  factory _SheetComment.fromCommunity(CommunityComment comment) {
+  factory _SheetComment.fromCommunity(
+    CommunityComment comment, {
+    int? currentUserId,
+    String? currentUserProfileImage,
+  }) {
     return _SheetComment(
       id: comment.id,
+      userId: comment.userId,
       parentId: comment.parentCommentId,
       author: comment.author,
       avatar: comment.avatar,
+      profileImageUrl: comment.profileImageUrl ??
+          (comment.userId == currentUserId ? currentUserProfileImage : null),
       timeAgo: comment.timeAgo,
       content: comment.content,
       likes: comment.likes,

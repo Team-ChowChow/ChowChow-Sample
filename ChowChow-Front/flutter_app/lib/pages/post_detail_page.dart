@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import '../services/community_service.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
+import '../widgets/community_avatar.dart';
 
 class PostDetailPage extends StatefulWidget {
   const PostDetailPage({
@@ -28,6 +29,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   bool _isLiked = false;
   bool _loadError = false;
   int? _currentUserId;
+  String? _currentUserProfileImage;
 
   int get _commentCount => _comments.length;
 
@@ -45,9 +47,26 @@ class _PostDetailPageState extends State<PostDetailPage> {
   Future<void> _loadCurrentUser() async {
     try {
       final res = await ApiClient.get('/api/users/me');
-      final id = (res as Map<String, dynamic>)['userId'] as int?;
+      final data = res as Map<String, dynamic>;
+      final id = (data['userId'] as num?)?.toInt();
+      final profileImage = (data['userProfileImg'] as String?)?.trim();
       if (!mounted) return;
-      setState(() => _currentUserId = id);
+      setState(() {
+        _currentUserId = id;
+        _currentUserProfileImage = profileImage;
+        if (_post?.userId == id &&
+            (profileImage?.isNotEmpty ?? false) &&
+            (_post!.profileImageUrl == null || _post!.profileImageUrl!.isEmpty)) {
+          _post = _post!.copyWith(profileImageUrl: profileImage);
+        }
+        _comments = _comments
+            .map((comment) => comment.userId == id &&
+                    (comment.profileImageUrl == null ||
+                        comment.profileImageUrl!.isEmpty)
+                ? comment.copyWith(profileImageUrl: profileImage)
+                : comment)
+            .toList();
+      });
     } catch (_) {}
   }
 
@@ -104,14 +123,28 @@ class _PostDetailPageState extends State<PostDetailPage> {
       // 백엔드가 tagNames를 응답에 포함하지 않으면,
       // 이전 _post의 tags를 유지
       final previousTags = _post?.tags ?? [];
-      final finalPost = (post.tags.isEmpty && previousTags.isNotEmpty)
+      var finalPost = (post.tags.isEmpty && previousTags.isNotEmpty)
           ? post.copyWith(tags: previousTags)
           : post;
+      if (finalPost.userId == _currentUserId &&
+          (_currentUserProfileImage?.isNotEmpty ?? false) &&
+          (finalPost.profileImageUrl == null ||
+              finalPost.profileImageUrl!.isEmpty)) {
+        finalPost = finalPost.copyWith(
+          profileImageUrl: _currentUserProfileImage,
+        );
+      }
 
       setState(() {
         _post = finalPost;
         _isLiked = post.likedByMe;
-        _comments = apiComments.map(_PostComment.fromApiComment).toList();
+        _comments = apiComments
+            .map((comment) => _PostComment.fromApiComment(
+                  comment,
+                  currentUserId: _currentUserId,
+                  currentUserProfileImage: _currentUserProfileImage,
+                ))
+            .toList();
         _loadError = false;
       });
     } catch (_) {
@@ -166,14 +199,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
     try {
       final created = await CommunityService.createComment(widget.postId, text);
       if (!mounted) return;
-      setState(() => _comments.add(_PostComment.fromApiComment(created)));
+      setState(() => _comments.add(_PostComment.fromApiComment(
+            created,
+            currentUserId: _currentUserId,
+            currentUserProfileImage: _currentUserProfileImage,
+          )));
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _comments.add(_PostComment(
           id: DateTime.now().millisecondsSinceEpoch,
+          userId: _currentUserId,
           author: '나',
           avatar: '🙂',
+          profileImageUrl: _currentUserProfileImage,
           timeAgo: '방금',
           content: text,
           likes: 0,
@@ -324,10 +363,10 @@ class _PostContentSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
             child: Row(
               children: [
-                CircleAvatar(
+                CommunityAvatar(
                   radius: 24,
+                  imageUrl: post.profileImageUrl,
                   backgroundColor: ChowCozy.stone300,
-                  child: Text(post.avatar, style: const TextStyle(fontSize: 23)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -731,10 +770,10 @@ class _CommentTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
+          CommunityAvatar(
             radius: compact ? 16 : 18,
+            imageUrl: comment.profileImageUrl,
             backgroundColor: compact ? ChowColors.gray200 : ChowColors.gray100,
-            child: Text(comment.avatar),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -909,8 +948,10 @@ class _CommentInputBarState extends State<_CommentInputBar> {
 class _PostComment {
   const _PostComment({
     required this.id,
+    this.userId,
     required this.author,
     required this.avatar,
+    this.profileImageUrl,
     required this.timeAgo,
     required this.content,
     required this.likes,
@@ -918,18 +959,28 @@ class _PostComment {
     this.replies = const [],
   });
 
-  factory _PostComment.fromApiComment(CommunityComment c) => _PostComment(
+  factory _PostComment.fromApiComment(
+    CommunityComment c, {
+    int? currentUserId,
+    String? currentUserProfileImage,
+  }) =>
+      _PostComment(
         id: c.id,
+        userId: c.userId,
         author: c.author,
         avatar: c.avatar,
+        profileImageUrl: c.profileImageUrl ??
+            (c.userId == currentUserId ? currentUserProfileImage : null),
         timeAgo: c.timeAgo,
         content: c.content,
         likes: c.likes,
       );
 
   final int id;
+  final int? userId;
   final String author;
   final String avatar;
+  final String? profileImageUrl;
   final String timeAgo;
   final String content;
   final int likes;
@@ -947,11 +998,14 @@ class _PostComment {
     int? likes,
     bool? isLiked,
     List<_PostComment>? replies,
+    String? profileImageUrl,
   }) {
     return _PostComment(
       id: id,
+      userId: userId,
       author: author,
       avatar: avatar,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       timeAgo: timeAgo,
       content: content,
       likes: likes ?? this.likes,

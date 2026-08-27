@@ -12,6 +12,7 @@ import '../pages/coin_shop_page.dart';
 import '../pages/pet_raising_3d_page.dart';
 import '../pages/character_raise_page.dart';
 import '../pages/community_page.dart';
+import '../pages/completed_recipes_page.dart';
 import '../pages/find_id_page.dart';
 import '../pages/find_password_page.dart';
 import '../pages/home_page.dart';
@@ -21,6 +22,7 @@ import '../pages/login_page.dart';
 import '../pages/notices_page.dart';
 import '../pages/post_detail_page.dart';
 import '../pages/profile_page.dart';
+import '../pages/profile_settings_page.dart';
 import '../pages/recipe_detail_page.dart';
 import '../pages/recipe_generation_page.dart';
 import '../pages/search_page.dart';
@@ -162,6 +164,11 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
+        path: '/profile-settings',
+        builder: (context, state) => const ProfileSettingsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
         path: '/notification-settings',
         builder: (context, state) => const NotificationSettingsPage(),
       ),
@@ -224,6 +231,23 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         path: '/saved-posts',
         builder: (context, state) =>
             const MyPostsPage(mode: MyPostsMode.savedPosts),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/liked-posts',
+        builder: (context, state) =>
+            const MyPostsPage(mode: MyPostsMode.likedPosts),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/saved-recipes',
+        builder: (context, state) =>
+            const MyPostsPage(mode: MyPostsMode.savedRecipes),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/completed-recipes',
+        builder: (context, state) => const CompletedRecipesPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

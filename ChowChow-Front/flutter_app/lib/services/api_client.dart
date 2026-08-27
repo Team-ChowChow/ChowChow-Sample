@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -174,6 +175,34 @@ class ApiClient {
         streamed = await retryReq.send();
       }
     }
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
+      return (jsonDecode(body) as Map<String, dynamic>)['url'] as String;
+    }
+    throw ApiException(streamed.statusCode, 'Upload failed: $body');
+  }
+
+  static Future<String> uploadImageBytes(
+    Uint8List bytes, {
+    required String filename,
+    String type = 'recipe',
+  }) async {
+    final uri = Uri.parse('$_baseUrl/api/common/upload?type=$type');
+
+    Future<http.StreamedResponse> send(String? token) async {
+      final request = http.MultipartRequest('POST', uri);
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
+      return request.send();
+    }
+
+    var streamed = await send(await getToken());
+    if (streamed.statusCode == 401 && await _tryRefresh()) {
+      streamed = await send(await getToken());
+    }
+
     final body = await streamed.stream.bytesToString();
     if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
       return (jsonDecode(body) as Map<String, dynamic>)['url'] as String;

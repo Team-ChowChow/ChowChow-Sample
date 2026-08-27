@@ -25,7 +25,7 @@ class _SearchPageState extends State<SearchPage> {
   bool _searchFocused = false;
   String? _selectedTag; // 카테고리 칩으로 선택된 태그
 
-  String? _petTypeFilter; // DOG | CAT | ETC | null
+  String? _petTypeFilter; // DOG | CAT | null
   List<String> _purposeFilters = [];
   String? _ingredientFilter;
   _SearchSort _sort = _SearchSort.popular;
@@ -1142,14 +1142,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       label: '고양이',
                       selected: _petType == 'CAT',
                       onTap: () => setState(() => _petType = 'CAT'),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: _FilterChoiceButton(
-                      label: '기타',
-                      selected: _petType == 'ETC',
-                      onTap: () => setState(() => _petType = 'ETC'),
                     ),
                   ),
                 ],

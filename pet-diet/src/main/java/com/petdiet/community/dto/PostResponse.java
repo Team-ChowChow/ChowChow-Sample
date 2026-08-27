@@ -13,6 +13,7 @@ public class PostResponse {
     private Integer postId;
     private Integer userId;
     private String userNickname;
+    private String userProfileImg;
     private Integer petId;
     private Integer recipeId;
     private String petType;
@@ -35,6 +36,7 @@ public class PostResponse {
                 .postId(post.getPostId())
                 .userId(post.getUser().getUserId())
                 .userNickname(post.getUser().getUserNickname())
+                .userProfileImg(post.getUser().getUserProfileImg())
                 .petId(post.getPetId())
                 .recipeId(post.getRecipeId())
                 .petType(post.getPetType())
