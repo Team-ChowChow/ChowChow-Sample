@@ -610,35 +610,109 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ),
                       builder: (context) {
-                        return SafeArea(
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            itemCount: _availableBreeds.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) {
-                              final breed = _availableBreeds[index];
-                              return ListTile(
-                                title: Text(
-                                  breed.displayName,
-                                  style: const TextStyle(fontSize: 15),
-                                ),
-                                trailing: _breedId == breed.breedId
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: ChowCozy.stone500,
-                                      )
-                                    : null,
-                                onTap: () {
-                                  updateForm(() {
-                                    _breedId = breed.breedId;
-                                    _breedDisplayName = breed.displayName;
-                                  });
-                                  Navigator.of(context).pop();
-                                },
-                              );
-                            },
-                          ),
+                        String searchQuery = '';
+                        return StatefulBuilder(
+                          builder: (context, setSheet) {
+                            final filteredBreeds = _availableBreeds
+                                .where((breed) => breed.displayName
+                                    .toLowerCase()
+                                    .contains(searchQuery.toLowerCase()))
+                                .toList();
+
+                            return SafeArea(
+                              child: Column(
+                                children: [
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                                    child: TextField(
+                                      onChanged: (value) {
+                                        setSheet(() => searchQuery = value);
+                                      },
+                                      decoration: InputDecoration(
+                                        hintText: '품종 검색...',
+                                        hintStyle: const TextStyle(
+                                            color: ChowColors.gray400),
+                                        prefixIcon:
+                                            const Icon(Icons.search, size: 20),
+                                        suffixIcon: searchQuery.isNotEmpty
+                                            ? GestureDetector(
+                                                onTap: () {
+                                                  setSheet(
+                                                      () => searchQuery = '');
+                                                },
+                                                child: const Icon(
+                                                  Icons.clear,
+                                                  size: 20,
+                                                  color: ChowColors.gray400,
+                                                ),
+                                              )
+                                            : null,
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: ChowColors.gray300,
+                                          ),
+                                        ),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                vertical: 12),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: filteredBreeds.isEmpty
+                                        ? Center(
+                                            child: Text(
+                                              searchQuery.isEmpty
+                                                  ? '품종이 없습니다'
+                                                  : '일치하는 품종이 없습니다',
+                                              style: const TextStyle(
+                                                color: ChowColors.gray500,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          )
+                                        : ListView.separated(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 8),
+                                            itemCount: filteredBreeds.length,
+                                            separatorBuilder: (_, _) =>
+                                                const Divider(height: 1),
+                                            itemBuilder: (context, index) {
+                                              final breed =
+                                                  filteredBreeds[index];
+                                              return ListTile(
+                                                title: Text(
+                                                  breed.displayName,
+                                                  style: const TextStyle(
+                                                      fontSize: 15),
+                                                ),
+                                                trailing:
+                                                    _breedId == breed.breedId
+                                                        ? const Icon(
+                                                            Icons.check,
+                                                            color: ChowCozy
+                                                                .stone500,
+                                                          )
+                                                        : null,
+                                                onTap: () {
+                                                  updateForm(() {
+                                                    _breedId = breed.breedId;
+                                                    _breedDisplayName =
+                                                        breed.displayName;
+                                                  });
+                                                  Navigator.of(context).pop();
+                                                },
+                                              );
+                                            },
+                                          ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       },
                     );
@@ -2094,6 +2168,36 @@ class _PetRowState extends State<_PetRow> {
 
   PetModel get pet => widget.pet;
 
+  String _resolveImageUrl(String? url) {
+    if (url == null || url.isEmpty) {
+      if (pet.petType == 'CAT') {
+        if (pet.groupName == 'Longhair') {
+          return 'assets/images/characters/character_group_8.png';
+        } else if (pet.groupName == 'Shorthair') {
+          return 'assets/images/characters/character_group_9.png';
+        } else if (pet.groupName == 'Hairless') {
+          return 'assets/images/characters/character_group_10.png';
+        } else {
+          return 'assets/images/characters/character_group_8.png';
+        }
+      }
+      return 'assets/images/characters/character_group_1.png';
+    }
+    if (!url.contains('/') && url.contains('character_group')) {
+      return 'assets/images/characters/$url.png';
+    }
+    return url;
+  }
+
+  Widget _buildPetImage() {
+    final resolvedUrl = _resolveImageUrl(pet.petProfileImg);
+    if (resolvedUrl.startsWith('assets/')) {
+      return Image.asset(resolvedUrl, fit: BoxFit.cover);
+    } else {
+      return ChowNetworkImage(url: resolvedUrl);
+    }
+  }
+
   String get _breedAgeLine {
     final breed = pet.breedName?.isNotEmpty == true ? pet.breedName : pet.displayType;
     final group = pet.groupName?.isNotEmpty == true ? pet.groupName : null;
@@ -2471,9 +2575,7 @@ class _PetRowState extends State<_PetRow> {
                           child: SizedBox(
                             width: 76,
                             height: 76,
-                            child: ChowNetworkImage(
-                              url: pet.petProfileImg ?? _placeholder,
-                            ),
+                            child: _buildPetImage(),
                           ),
                         ),
                         Positioned(

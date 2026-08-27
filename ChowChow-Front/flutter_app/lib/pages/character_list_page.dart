@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/api_client.dart';
 import '../services/character_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
@@ -228,7 +229,7 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _CharacterCard extends StatelessWidget {
+class _CharacterCard extends StatefulWidget {
   const _CharacterCard({
     required this.character,
     required this.onTap,
@@ -244,8 +245,66 @@ class _CharacterCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
+  State<_CharacterCard> createState() => _CharacterCardState();
+}
+
+class _CharacterCardState extends State<_CharacterCard> {
+  String? _loadedGroupName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGroupName();
+  }
+
+  Future<void> _loadGroupName() async {
+    if (widget.character.groupName != null) {
+      setState(() => _loadedGroupName = widget.character.groupName);
+      return;
+    }
+    try {
+      final pet = await ApiClient.get('/api/pets/${widget.character.petId}') as Map<String, dynamic>;
+      final groupName = pet['groupName'] as String? ?? pet['group_name'] as String?;
+      if (mounted) {
+        setState(() => _loadedGroupName = groupName);
+        debugPrint('✅ [CharacterCard] Loaded groupName=$groupName for petId=${widget.character.petId}');
+      }
+    } catch (e) {
+      debugPrint('❌ [CharacterCard] Failed to load groupName: $e');
+    }
+  }
+
+  String _resolveImageUrl(String? url) {
+    final groupName = _loadedGroupName ?? widget.character.groupName;
+    debugPrint('🖼️ [CharacterCard] url=$url, petType=${widget.character.petType}, groupName=$groupName');
+    if (url == null || url.isEmpty) {
+      if (widget.character.petType == 'CAT') {
+        if (groupName == 'Longhair') {
+          return 'assets/images/characters/character_group_8.png';
+        } else if (groupName == 'Shorthair') {
+          return 'assets/images/characters/character_group_9.png';
+        } else if (groupName == 'Hairless') {
+          return 'assets/images/characters/character_group_10.png';
+        } else {
+          debugPrint('⚠️ [CharacterCard] CAT but no groupName, defaulting to group_8');
+          return 'assets/images/characters/character_group_8.png';
+        }
+      }
+      return 'assets/images/characters/character_group_1.png';
+    }
+    if (!url.contains('/') && url.contains('character_group')) {
+      final resolved = 'assets/images/characters/$url.png';
+      debugPrint('✅ [CharacterCard] Resolved: $resolved');
+      return resolved;
+    }
+    debugPrint('📡 [CharacterCard] Network URL: $url');
+    return url;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final img = character.characterImageUrl;
+    final img = widget.character.characterImageUrl;
+    final resolvedUrl = _resolveImageUrl(img);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
@@ -254,7 +313,7 @@ class _CharacterCard extends StatelessWidget {
         side: const BorderSide(color: ChowColors.gray200),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -263,29 +322,25 @@ class _CharacterCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: img != null && img.isNotEmpty
-                        ? ClipOval(child: ChowNetworkImage(url: img, fit: BoxFit.cover))
-                        : const CircleAvatar(
-                            radius: 32,
-                            backgroundColor: ChowCozy.stone300,
-                            child: Icon(Icons.pets, color: ChowCozy.stone500, size: 32),
-                          ),
-                  ),
+                  widget.character.characterImageUrl != null && widget.character.characterImageUrl!.isNotEmpty
+                      ? SizedBox(
+                          width: 64,
+                          height: 64,
+                          child: ClipOval(child: ChowNetworkImage(url: widget.character.characterImageUrl!, fit: BoxFit.cover)),
+                        )
+                      : const SizedBox.shrink(),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          character.characterName,
+                          widget.character.characterName,
                           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ChowColors.gray800),
                         ),
-                        if (character.typeBreedLine.isNotEmpty)
+                        if (widget.character.typeBreedLine.isNotEmpty)
                           Text(
-                            character.typeBreedLine,
+                            widget.character.typeBreedLine,
                             style: const TextStyle(fontSize: 13, color: ChowColors.gray500),
                           ),
                         const SizedBox(height: 6),
@@ -296,7 +351,7 @@ class _CharacterCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '레벨 ${character.level}',
+                            '레벨 ${widget.character.level}',
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ChowCozy.stone700),
                           ),
                         ),
@@ -309,7 +364,7 @@ class _CharacterCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'EXP ${character.exp} / ${character.requiredExp}',
+                    'EXP ${widget.character.exp} / ${widget.character.requiredExp}',
                     style: const TextStyle(fontSize: 12, color: ChowColors.gray600),
                   ),
                 ],
@@ -318,7 +373,7 @@ class _CharacterCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: character.expFraction,
+                  value: widget.character.expFraction,
                   minHeight: 6,
                   backgroundColor: ChowColors.gray200,
                   color: ChowCozy.stone500,
@@ -328,9 +383,9 @@ class _CharacterCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _StatChip(icon: Icons.favorite, label: '건강', value: character.health, color: ChowColors.red500),
-                  _StatChip(icon: Icons.auto_awesome, label: '행복', value: character.happiness, color: ChowColors.yellow500),
-                  _StatChip(icon: Icons.restaurant, label: '배고픔', value: character.hunger, color: ChowCozy.stone500),
+                  _StatChip(icon: Icons.favorite, label: '건강', value: widget.character.health, color: ChowColors.red500),
+                  _StatChip(icon: Icons.auto_awesome, label: '행복', value: widget.character.happiness, color: ChowColors.yellow500),
+                  _StatChip(icon: Icons.restaurant, label: '배고픔', value: widget.character.hunger, color: ChowCozy.stone500),
                 ],
               ),
               const SizedBox(height: 14),
@@ -338,7 +393,7 @@ class _CharacterCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: FilledButton(
-                      onPressed: onRaise,
+                      onPressed: widget.onRaise,
                       style: FilledButton.styleFrom(
                         backgroundColor: ChowCozy.stone500,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -350,7 +405,7 @@ class _CharacterCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: onEdit,
+                      onPressed: widget.onEdit,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         minimumSize: const Size(0, 44),
@@ -361,7 +416,7 @@ class _CharacterCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: onDelete,
+                      onPressed: widget.onDelete,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: ChowColors.red500,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
