@@ -2089,10 +2089,12 @@ class _PetRow extends StatefulWidget {
 }
 
 class _PetRowState extends State<_PetRow> {
-  static const _placeholder =
-      'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=400&q=80';
-
   PetModel get pet => widget.pet;
+
+  // 사진을 등록하지 않은 반려동물은 종에 맞는 기본 캐릭터 이미지를 보여준다
+  // (예전엔 종류 상관없이 강아지 사진 하나로 고정돼 있었음).
+  String get _placeholder =>
+      pet.petType == 'CAT' ? 'character_group_8' : 'character_group_1';
 
   String get _breedAgeLine {
     final breed = pet.breedName?.isNotEmpty == true ? pet.breedName : pet.displayType;
