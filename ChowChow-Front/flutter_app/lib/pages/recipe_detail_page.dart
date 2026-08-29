@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
+import '../services/recipe_share_content.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
 
@@ -314,18 +315,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     if (_sharing) return;
     setState(() => _sharing = true);
 
-    final currentUri = Uri.base;
-    final shareUrl = currentUri.scheme == 'http' || currentUri.scheme == 'https'
-        ? currentUri
-              .replace(path: '/recipes/${widget.recipeId}', query: null)
-              .toString()
-        : null;
-    final text = [
-      '🐾 ${recipe.title}',
-      if (recipe.subtitle.isNotEmpty) recipe.subtitle,
-      if (shareUrl != null) shareUrl,
-      if (shareUrl == null) 'ChowChow 레시피 #${widget.recipeId}',
-    ].join('\n');
+    final text = RecipeShareContent.shareText(
+      title: recipe.title,
+      subtitle: recipe.subtitle,
+      description: recipe.description,
+    );
 
     final renderBox = shareButtonContext.findRenderObject() as RenderBox?;
     final origin = renderBox == null
@@ -334,23 +328,17 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
     try {
       final shareImage = await _loadShareImage(recipe.imageUrl);
-      final result = await SharePlus.instance.share(
+      await SharePlus.instance.share(
         ShareParams(
           subject: '${recipe.title} - ChowChow 레시피',
           text: text,
           files: [
-            XFile.fromData(
-              shareImage.bytes,
-              mimeType: shareImage.mimeType,
-            ),
+            XFile.fromData(shareImage.bytes, mimeType: shareImage.mimeType),
           ],
           fileNameOverrides: [shareImage.fileName],
           sharePositionOrigin: origin,
         ),
       );
-      if (result.status == ShareResultStatus.unavailable) {
-        await _copyShareText(text);
-      }
     } catch (_) {
       await _copyShareText(text);
     } finally {
@@ -362,7 +350,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     final uri = imageUrl == null ? null : Uri.tryParse(imageUrl);
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
       try {
-        final response = await http.get(uri).timeout(const Duration(seconds: 8));
+        final response = await http
+            .get(uri)
+            .timeout(const Duration(seconds: 8));
         final mimeType = response.headers['content-type']
             ?.split(';')
             .first
@@ -376,7 +366,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           return _ShareImageData(
             bytes: response.bodyBytes,
             mimeType: mimeType,
-            fileName: 'chowchow_recipe_${widget.recipeId}.${_imageExtension(mimeType)}',
+            fileName:
+                'chowchow_recipe_${widget.recipeId}.${_imageExtension(mimeType)}',
           );
         }
       } catch (_) {
@@ -419,7 +410,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         bottom: false,
         child: Column(
           children: [
-            _DetailHeader(onBack: _goBack, onShare: _shareRecipe),
+            _DetailHeader(
+              onBack: _goBack,
+              onShare: _shareRecipe,
+              isSharing: _sharing,
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 28),
@@ -502,10 +497,15 @@ class _ShareImageData {
 enum _RecipeDetailTab { recipe, reviews }
 
 class _DetailHeader extends StatelessWidget {
-  const _DetailHeader({required this.onBack, required this.onShare});
+  const _DetailHeader({
+    required this.onBack,
+    required this.onShare,
+    required this.isSharing,
+  });
 
   final VoidCallback onBack;
   final ValueChanged<BuildContext> onShare;
+  final bool isSharing;
 
   @override
   Widget build(BuildContext context) {
@@ -533,8 +533,13 @@ class _DetailHeader extends StatelessWidget {
             Builder(
               builder: (buttonContext) => IconButton(
                 tooltip: '레시피 공유',
-                onPressed: () => onShare(buttonContext),
-                icon: const Icon(Icons.ios_share, color: ChowColors.gray700),
+                onPressed: isSharing ? null : () => onShare(buttonContext),
+                icon: isSharing
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.ios_share, color: ChowColors.gray700),
               ),
             ),
           ],
