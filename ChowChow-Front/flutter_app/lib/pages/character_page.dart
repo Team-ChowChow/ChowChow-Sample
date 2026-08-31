@@ -1206,7 +1206,7 @@ class _CharacterPageState extends State<CharacterPage>
                         statusLabel: usesCooldown
                             ? (cooldown ?? '3시간마다')
                             : null,
-                        enabled: cooldown == null,
+                        enabled: cooldown == null && !_isInteracting,
                         onTap: () => _handleActivity(a),
                       ),
                     );
