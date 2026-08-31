@@ -114,7 +114,8 @@ class _CharacterPageState extends State<CharacterPage>
         _missionsLoading = false;
         _coins = summary.balance;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('❌ 성장미션 로드 실패: $e');
       if (mounted) setState(() => _missionsLoading = false);
     }
   }
@@ -814,7 +815,7 @@ class _CharacterPageState extends State<CharacterPage>
   Widget _buildShortcuts() {
     final shortcuts = [
       _ShortcutData(Icons.event_available, '출석체크', true, _openAttendanceSheet),
-      _ShortcutData(Icons.track_changes, '성장미션', true, _openMissionSheet),
+      _ShortcutData(Icons.track_changes, '성장미션', false, _openMissionSheet), // TODO: 백엔드 배포 후 활성화
       _ShortcutData(Icons.directions_walk, '산책', false, _openWalk),
       _ShortcutData(Icons.auto_awesome, '꾸미기', false, _openThemeSheet),
       _ShortcutData(Icons.auto_fix_high, '제작소', false, _openCraftSheet),
