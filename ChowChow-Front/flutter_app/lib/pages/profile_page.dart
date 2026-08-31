@@ -2414,6 +2414,7 @@ class _PetRowState extends State<_PetRow> {
                         height: 120,
                         child: ChowNetworkImage(
                           url: pet.petProfileImg ?? _placeholder,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -2662,6 +2663,7 @@ class _PetRowState extends State<_PetRow> {
                             height: 76,
                             child: ChowNetworkImage(
                               url: pet.petProfileImg ?? _placeholder,
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
