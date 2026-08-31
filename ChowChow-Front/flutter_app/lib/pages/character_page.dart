@@ -190,7 +190,7 @@ class _CharacterPageState extends State<CharacterPage>
   /// 강아지/고양이 GIF 캔버스의 여백 비율이 서로 달라(강아지는 세로로 긴 캔버스에
   /// 여백이 많고, 고양이는 캔버스를 꽉 채움) 같은 프레임에 넣어도 고양이가 훨씬 커
   /// 보인다. 실측한 캐릭터 픽셀 비율을 기준으로 둘의 중간 크기로 보정한다.
-  double get _speciesSizeScale => _petType == 'CAT' ? 0.65 : 1.35;
+  double get _speciesSizeScale => _petType == 'CAT' ? 0.8 : 1.35;
 
   String _getGifPath() {
     final anim = _currentAnimation;
