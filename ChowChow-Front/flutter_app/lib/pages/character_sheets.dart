@@ -637,6 +637,7 @@ class _CraftItem {
   final String name;
   final int totalSec;
   int remainSec;
+  DateTime? lastReduceTime;
 }
 
 class _CraftSheetState extends State<CraftSheet> {
@@ -802,14 +803,21 @@ class _CraftSheetState extends State<CraftSheet> {
                                 color: Colors.transparent,
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(999),
-                                  onTap: item.remainSec <= 0
+                                  onTap: item.remainSec <= 0 ||
+                                          (item.lastReduceTime != null &&
+                                              DateTime.now()
+                                                  .difference(item.lastReduceTime!)
+                                                  .inHours <
+                                              1)
                                       ? null
                                       : () => setState(
-                                          () => item.remainSec =
-                                              (item.remainSec - 3600).clamp(
-                                                0,
-                                                item.totalSec,
-                                              ),
+                                          () {
+                                            item.remainSec = (item.remainSec -
+                                                    3600)
+                                                .clamp(0, item.totalSec);
+                                            item.lastReduceTime =
+                                                DateTime.now();
+                                          },
                                         ),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
