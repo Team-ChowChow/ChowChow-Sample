@@ -2278,10 +2278,12 @@ class _PetRow extends StatefulWidget {
 class _PetRowState extends State<_PetRow> {
   PetModel get pet => widget.pet;
 
-  // 사진을 등록하지 않은 반려동물은 종에 맞는 기본 캐릭터 이미지를 보여준다
+  // 사진을 등록하지 않은 반려동물은 종에 맞는 기본 프로필 이미지를 보여준다
   // (예전엔 종류 상관없이 강아지 사진 하나로 고정돼 있었음).
   String get _placeholder =>
-      pet.petType == 'CAT' ? 'character_group_8' : 'character_group_1';
+      pet.petType == 'CAT'
+          ? 'assets/images/base_cat.png'
+          : 'assets/images/base_dog.png';
 
   String get _breedAgeLine {
     final breed = pet.breedName?.isNotEmpty == true ? pet.breedName : pet.displayType;
@@ -2412,12 +2414,9 @@ class _PetRowState extends State<_PetRow> {
                       child: SizedBox(
                         width: 120,
                         height: 120,
-                        child: Transform.scale(
-                          scale: pet.petType == 'CAT' ? 0.8 : 1.0,
-                          child: ChowNetworkImage(
-                            url: pet.petProfileImg ?? _placeholder,
-                            fit: BoxFit.contain,
-                          ),
+                        child: ChowNetworkImage(
+                          url: pet.petProfileImg ?? _placeholder,
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
@@ -2664,12 +2663,9 @@ class _PetRowState extends State<_PetRow> {
                           child: SizedBox(
                             width: 76,
                             height: 76,
-                            child: Transform.scale(
-                              scale: pet.petType == 'CAT' ? 0.8 : 1.0,
-                              child: ChowNetworkImage(
-                                url: pet.petProfileImg ?? _placeholder,
-                                fit: BoxFit.contain,
-                              ),
+                            child: ChowNetworkImage(
+                              url: pet.petProfileImg ?? _placeholder,
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
