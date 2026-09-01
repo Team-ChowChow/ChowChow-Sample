@@ -62,6 +62,19 @@ class CommunityService {
     await ApiClient.post('/api/community/posts/$postId/like', {});
   }
 
+  static Future<List<CommunityPost>> getBookmarkedPosts() async {
+    final res = await ApiClient.get('/api/community/posts/bookmarked');
+    final items = res is Map<String, dynamic> ? res['content'] : res;
+    return (items as List<dynamic>)
+        .map((item) => CommunityPost.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<bool> toggleBookmark(int postId) async {
+    final res = await ApiClient.post('/api/community/posts/$postId/bookmark', {}) as Map<String, dynamic>;
+    return res['bookmarked'] as bool? ?? false;
+  }
+
   static Future<List<CommunityComment>> getComments(int postId) async {
     final res = await ApiClient.get('/api/community/posts/$postId/comments');
     return (res as List<dynamic>)

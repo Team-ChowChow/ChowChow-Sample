@@ -81,7 +81,6 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
   void initState() {
     super.initState();
     _loadPosts();
-    _loadBookmarks();
     _loadCurrentUser();
   }
 
@@ -133,35 +132,45 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
     } catch (_) {}
   }
 
-  Future<void> _loadBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final ids = prefs.getStringList('bookmarkedPostIds') ?? [];
-    if (!mounted) return;
-    setState(() {
-      _bookmarkedIds = ids.map(int.parse).toSet();
-    });
-  }
-
   Future<void> _toggleBookmark(int postId) async {
-    final prefs = await SharedPreferences.getInstance();
+    final wasBookmarked = _bookmarkedIds.contains(postId);
     setState(() {
-      if (_bookmarkedIds.contains(postId)) {
+      if (wasBookmarked) {
         _bookmarkedIds.remove(postId);
       } else {
         _bookmarkedIds.add(postId);
       }
     });
-    await prefs.setStringList(
-      'bookmarkedPostIds',
-      _bookmarkedIds.map((id) => id.toString()).toList(),
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_bookmarkedIds.contains(postId) ? '게시글을 저장했습니다.' : '저장을 취소했습니다.'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
+    try {
+      final nowBookmarked = await CommunityService.toggleBookmark(postId);
+      if (!mounted) return;
+      setState(() {
+        if (nowBookmarked) {
+          _bookmarkedIds.add(postId);
+        } else {
+          _bookmarkedIds.remove(postId);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(nowBookmarked ? '게시글을 저장했습니다.' : '저장을 취소했습니다.'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        // 실패 시 낙관적 업데이트 되돌리기
+        if (wasBookmarked) {
+          _bookmarkedIds.add(postId);
+        } else {
+          _bookmarkedIds.remove(postId);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장에 실패했어요. 다시 시도해주세요.')),
+      );
+    }
   }
 
   Future<void> _loadPosts() async {
@@ -204,6 +213,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
       if (!mounted) return;
       setState(() {
         _posts = postsWithTags;
+        _bookmarkedIds = postsWithTags.where((p) => p.bookmarkedByMe).map((p) => p.id).toSet();
         _isLoading = false;
       });
     } catch (e) {

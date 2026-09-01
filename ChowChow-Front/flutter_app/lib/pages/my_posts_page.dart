@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/sample_data.dart';
 import '../services/api_client.dart';
@@ -70,26 +69,12 @@ class _MyPostsPageState extends State<MyPostsPage> {
   }
 
   Future<void> _loadSavedPosts() async {
-    // 커뮤니티 저장 글 (로컬)
-    final prefs = await SharedPreferences.getInstance();
-    final ids = prefs.getStringList('bookmarkedPostIds') ?? [];
-    final postResults = await Future.wait(
-      ids.map((id) async {
-        try {
-          final res = await ApiClient.get('/api/community/posts/$id');
-          return CommunityPost.fromJson(res as Map<String, dynamic>);
-        } catch (_) {
-          return null;
-        }
-      }),
-    );
-
-    if (mounted) {
-      setState(() {
-        _posts = postResults.whereType<CommunityPost>().toList();
-        _savedRecipes = [];
-      });
-    }
+    final posts = await CommunityService.getBookmarkedPosts();
+    if (!mounted) return;
+    setState(() {
+      _posts = posts;
+      _savedRecipes = [];
+    });
   }
 
   Future<void> _loadSavedRecipes() async {

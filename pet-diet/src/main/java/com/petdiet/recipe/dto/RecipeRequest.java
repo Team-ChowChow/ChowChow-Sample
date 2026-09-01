@@ -20,6 +20,7 @@ public class RecipeRequest {
     private String recipePurpose;
     private String feedingAmount;
     private Boolean isPublic;
+    private String imageUrl;
 
     private List<RecipeIngredientDto> ingredients;
     private List<RecipeStepDto> steps;

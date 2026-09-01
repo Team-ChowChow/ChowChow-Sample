@@ -22,6 +22,24 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final UserSettingsRepository userSettingsRepository;
 
+    /** 좋아요/댓글 등에서 호출하는 알림 생성. 수신자가 알림을 꺼뒀으면 만들지 않는다. */
+    @Transactional
+    public void createNotification(User recipient, String type, String title, String content,
+                                    String targetType, Integer targetId, Integer relatedId) {
+        UserSettings settings = userSettingsRepository.findById(recipient.getUserId()).orElse(null);
+        if (settings != null && Boolean.FALSE.equals(settings.getIsNotificationEnabled())) return;
+
+        notificationRepository.save(Notification.builder()
+                .user(recipient)
+                .notificationType(type)
+                .notificationTitle(title)
+                .notificationContent(content)
+                .targetType(targetType)
+                .targetId(targetId)
+                .relatedId(relatedId)
+                .build());
+    }
+
     @Transactional(readOnly = true)
     public List<NotificationResponse> getNotifications(UUID authUuid) {
         User user = findUser(authUuid);

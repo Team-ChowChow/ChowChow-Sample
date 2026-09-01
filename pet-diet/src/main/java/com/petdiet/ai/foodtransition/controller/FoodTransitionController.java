@@ -21,6 +21,8 @@ public class FoodTransitionController {
             @AuthenticationPrincipal SupabasePrincipal principal,
             @RequestBody FoodTransitionRequest request) {
         return ResponseEntity.ok(foodTransitionService.recommend(
-                principal.authUuid(), request.getPetId(), request.getCurrentFoodId(), request.getTargetFoodId()));
+                principal.authUuid(), request.getPetId(),
+                request.getCurrentFoodId(), request.getCurrentUserFoodId(),
+                request.getTargetFoodId(), request.getTargetUserFoodId()));
     }
 }

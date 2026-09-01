@@ -7,7 +7,12 @@ import '../widgets/chow_card.dart';
 import '../widgets/chow_network_image.dart';
 
 class FoodInfoPage extends StatefulWidget {
-  const FoodInfoPage({super.key, this.selectMode = false, this.allowUserFoods = true});
+  const FoodInfoPage({
+    super.key,
+    this.selectMode = false,
+    this.allowUserFoods = true,
+    this.lockedPetType,
+  });
 
   /// true면 카드를 눌렀을 때 화면을 열람만 하지 않고 선택한 사료를 pop으로 반환한다.
   final bool selectMode;
@@ -15,6 +20,10 @@ class FoodInfoPage extends StatefulWidget {
   /// 사료 교체 가이드처럼 두 공식 제품을 정확히 비교해야 하는 화면에서는
   /// 사용자가 직접 입력한(영양 정보가 부정확할 수 있는) 사료를 고르지 못하게 숨긴다.
   final bool allowUserFoods;
+
+  /// 'DOG' 또는 'CAT'을 넘기면 종 필터를 그 값으로 고정하고 전환 UI를 숨긴다.
+  /// (예: 강아지를 급여 중인데 실수로 고양이 사료를 골라 위험한 조합이 되는 것을 방지)
+  final String? lockedPetType;
 
   @override
   State<FoodInfoPage> createState() => _FoodInfoPageState();
@@ -39,6 +48,11 @@ class _FoodInfoPageState extends State<FoodInfoPage> {
   @override
   void initState() {
     super.initState();
+    _filter = switch (widget.lockedPetType) {
+      'DOG' => _PetTypeFilter.dog,
+      'CAT' => _PetTypeFilter.cat,
+      _ => _PetTypeFilter.all,
+    };
     _loadBrands();
     _search();
   }
@@ -315,29 +329,46 @@ class _FoodInfoPageState extends State<FoodInfoPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              const Text('반려동물 종류', style: TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  _PetTypeChip(
-                    label: '전체',
-                    selected: _filter == _PetTypeFilter.all,
-                    onTap: () => _onPetTypeSelected(_PetTypeFilter.all),
-                  ),
-                  const SizedBox(width: 8),
-                  _PetTypeChip(
-                    label: '🐶 강아지',
-                    selected: _filter == _PetTypeFilter.dog,
-                    onTap: () => _onPetTypeSelected(_PetTypeFilter.dog),
-                  ),
-                  const SizedBox(width: 8),
-                  _PetTypeChip(
-                    label: '🐱 고양이',
-                    selected: _filter == _PetTypeFilter.cat,
-                    onTap: () => _onPetTypeSelected(_PetTypeFilter.cat),
-                  ),
-                ],
-              ),
+              if (widget.lockedPetType != null) ...[
+                Row(
+                  children: [
+                    Icon(
+                      widget.lockedPetType == 'CAT' ? Icons.pets : Icons.pets_outlined,
+                      size: 16,
+                      color: ChowColors.gray500,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.lockedPetType == 'CAT' ? '고양이 사료만 표시 중이에요' : '강아지 사료만 표시 중이에요',
+                      style: const TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const Text('반려동물 종류', style: TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    _PetTypeChip(
+                      label: '전체',
+                      selected: _filter == _PetTypeFilter.all,
+                      onTap: () => _onPetTypeSelected(_PetTypeFilter.all),
+                    ),
+                    const SizedBox(width: 8),
+                    _PetTypeChip(
+                      label: '🐶 강아지',
+                      selected: _filter == _PetTypeFilter.dog,
+                      onTap: () => _onPetTypeSelected(_PetTypeFilter.dog),
+                    ),
+                    const SizedBox(width: 8),
+                    _PetTypeChip(
+                      label: '🐱 고양이',
+                      selected: _filter == _PetTypeFilter.cat,
+                      onTap: () => _onPetTypeSelected(_PetTypeFilter.cat),
+                    ),
+                  ],
+                ),
+              ],
               if (_brands.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 const Text('브랜드', style: TextStyle(fontSize: 12, color: ChowColors.gray500, fontWeight: FontWeight.w500)),

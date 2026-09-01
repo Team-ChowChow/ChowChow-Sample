@@ -27,6 +27,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   CommunityPost? _post;
   List<_PostComment> _comments = [];
   bool _isLiked = false;
+  bool _isBookmarked = false;
   bool _loadError = false;
   int? _currentUserId;
   String? _currentUserProfileImage;
@@ -39,6 +40,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     if (widget.initialPost != null) {
       _post = widget.initialPost;
       _isLiked = widget.initialPost!.likedByMe;
+      _isBookmarked = widget.initialPost!.bookmarkedByMe;
     }
     _loadData();
     _loadCurrentUser();
@@ -138,6 +140,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
       setState(() {
         _post = finalPost;
         _isLiked = post.likedByMe;
+        _isBookmarked = post.bookmarkedByMe;
         _comments = apiComments
             .map((comment) => _PostComment.fromApiComment(
                   comment,
@@ -189,6 +192,24 @@ class _PostDetailPageState extends State<PostDetailPage> {
       await CommunityService.toggleLike(widget.postId);
     } catch (_) {
       if (mounted) setState(() => _isLiked = !_isLiked);
+    }
+  }
+
+  Future<void> _toggleBookmark() async {
+    setState(() => _isBookmarked = !_isBookmarked);
+    try {
+      final nowBookmarked = await CommunityService.toggleBookmark(widget.postId);
+      if (mounted) setState(() => _isBookmarked = nowBookmarked);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(nowBookmarked ? '게시글을 저장했습니다.' : '저장을 취소했습니다.'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isBookmarked = !_isBookmarked);
     }
   }
 
@@ -266,6 +287,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     commentCount: _commentCount,
                     currentUserId: _currentUserId,
                     onToggleLike: _togglePostLike,
+                    isBookmarked: _isBookmarked,
+                    onToggleBookmark: _toggleBookmark,
                     onEdit: _handleEdit,
                     onDelete: _handleDelete,
                   ),
@@ -338,6 +361,8 @@ class _PostContentSection extends StatelessWidget {
     required this.likes,
     required this.commentCount,
     required this.onToggleLike,
+    required this.isBookmarked,
+    required this.onToggleBookmark,
     this.currentUserId,
     this.onEdit,
     this.onDelete,
@@ -348,6 +373,8 @@ class _PostContentSection extends StatelessWidget {
   final int likes;
   final int commentCount;
   final VoidCallback onToggleLike;
+  final bool isBookmarked;
+  final VoidCallback onToggleBookmark;
   final int? currentUserId;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -411,6 +438,8 @@ class _PostContentSection extends StatelessWidget {
                 ),
                 _PostMenuButton(
                   isOwner: currentUserId != null && post.userId == currentUserId,
+                  isBookmarked: isBookmarked,
+                  onToggleBookmark: onToggleBookmark,
                   onEdit: onEdit,
                   onDelete: onDelete,
                 ),
@@ -513,11 +542,15 @@ enum _PostMenuAction { save, share, edit, delete }
 class _PostMenuButton extends StatelessWidget {
   const _PostMenuButton({
     required this.isOwner,
+    required this.isBookmarked,
+    required this.onToggleBookmark,
     this.onEdit,
     this.onDelete,
   });
 
   final bool isOwner;
+  final bool isBookmarked;
+  final VoidCallback onToggleBookmark;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -530,9 +563,12 @@ class _PostMenuButton extends StatelessWidget {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       itemBuilder: (context) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: _PostMenuAction.save,
-          child: _PostMenuItem(icon: Icons.bookmark_border, label: '저장하기'),
+          child: _PostMenuItem(
+            icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            label: isBookmarked ? '저장 취소하기' : '저장하기',
+          ),
         ),
         const PopupMenuItem(
           value: _PostMenuAction.share,
@@ -555,6 +591,8 @@ class _PostMenuButton extends StatelessWidget {
       ],
       onSelected: (action) {
         switch (action) {
+          case _PostMenuAction.save:
+            onToggleBookmark();
           case _PostMenuAction.edit:
             onEdit?.call();
           case _PostMenuAction.delete:
