@@ -1,6 +1,6 @@
 package com.petdiet.user.repository;
 
-import com.petdiet.user.entity.User;
+import com.petdiet.auth.entity.User;
 import com.petdiet.user.entity.UserFollow;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

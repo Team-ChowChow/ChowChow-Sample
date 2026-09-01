@@ -1,5 +1,6 @@
 package com.petdiet.user.entity;
 
+import com.petdiet.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
