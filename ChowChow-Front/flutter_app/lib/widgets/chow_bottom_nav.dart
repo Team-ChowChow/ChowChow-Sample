@@ -46,115 +46,128 @@ class _ChowBottomNavState extends State<ChowBottomNav>
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: ChowCozy.card,
-        border: Border(top: BorderSide(color: ChowCozy.border)),
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: SizedBox(
-        height: 60 + bottom,
-        child: Padding(
-          padding: EdgeInsets.only(
-            top: 6,
-            bottom: bottom + 6,
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: _NavItem(
-                      active: _active('/'),
-                      icon: Icons.home_outlined,
-                      activeIcon: Icons.home,
-                      label: '홈',
-                      onTap: () => context.go('/'),
-                      align: CrossAxisAlignment.center,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      active: _active('/search'),
-                      icon: Icons.search,
-                      activeIcon: Icons.search,
-                      label: '검색',
-                      filled: true,
-                      onTap: () => context.go('/search'),
-                      align: CrossAxisAlignment.center,
-                    ),
-                  ),
+    const protrusion = 28.0;
+    final barHeight = 60 + bottom;
 
-                  // 가운데 발바닥 버튼 자리
-                  const Expanded(child: SizedBox()),
-
-                  Expanded(
-                    child: _NavItem(
-                      active: _active('/community'),
-                      icon: Icons.groups_outlined,
-                      activeIcon: Icons.groups,
-                      label: '커뮤니티',
-                      filled: true,
-                      onTap: () => context.go('/community'),
-                      align: CrossAxisAlignment.center,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      active: _active('/profile'),
-                      icon: Icons.person_outline,
-                      activeIcon: Icons.person,
-                      label: '프로필',
-                      onTap: () => context.go('/profile'),
-                      align: CrossAxisAlignment.center,
-                    ),
-                  ),
-                ],
+    return SizedBox(
+      height: protrusion + barHeight,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned(
+            top: protrusion,
+            left: 0,
+            right: 0,
+            height: barHeight,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: ChowCozy.card,
+                border: Border(top: BorderSide(color: ChowCozy.border)),
               ),
-              Positioned(
-                top: -28,
-                child: ScaleTransition(
-                  scale: _fabScale,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        await _pulseFab();
-                        if (context.mounted) context.go('/character');
-                      },
-                      customBorder: const CircleBorder(),
-                      child: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              blurRadius: 12,
-                              offset: Offset(0, 4),
-                              color: Color(0x33000000),
-                            ),
-                          ],
+              child: Material(
+                type: MaterialType.transparency,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    top: 6,
+                    bottom: bottom + 6,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: _NavItem(
+                          active: _active('/'),
+                          icon: Icons.home_outlined,
+                          activeIcon: Icons.home,
+                          label: '홈',
+                          onTap: () => context.go('/'),
+                          align: CrossAxisAlignment.center,
                         ),
-                        child: ClipOval(
-                          child: Image.asset(
+                      ),
+                      Expanded(
+                        child: _NavItem(
+                          active: _active('/search'),
+                          icon: Icons.search,
+                          activeIcon: Icons.search,
+                          label: '검색',
+                          filled: true,
+                          onTap: () => context.go('/search'),
+                          align: CrossAxisAlignment.center,
+                        ),
+                      ),
+
+                      // 가운데 발바닥 버튼 자리
+                      const Expanded(child: SizedBox()),
+
+                      Expanded(
+                        child: _NavItem(
+                          active: _active('/community'),
+                          icon: Icons.groups_outlined,
+                          activeIcon: Icons.groups,
+                          label: '커뮤니티',
+                          filled: true,
+                          onTap: () => context.go('/community'),
+                          align: CrossAxisAlignment.center,
+                        ),
+                      ),
+                      Expanded(
+                        child: _NavItem(
+                          active: _active('/profile'),
+                          icon: Icons.person_outline,
+                          activeIcon: Icons.person,
+                          label: '프로필',
+                          onTap: () => context.go('/profile'),
+                          align: CrossAxisAlignment.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: ScaleTransition(
+              scale: _fabScale,
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                      color: Color(0x33000000),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () async {
+                      await _pulseFab();
+                      if (context.mounted) context.go('/character');
+                    },
+                    child: Ink(
+                      decoration: const BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage(
                             'assets/images/pet_home_icon.png',
-                            fit: BoxFit.cover,
                           ),
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-        ),
+        ],
       ),
     );
   }

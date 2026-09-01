@@ -18,10 +18,10 @@ class TipDetailPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios, color: ChowColors.gray800),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('오늘의 팁', style: TextStyle(color: ChowColors.gray800, fontWeight: FontWeight.w500)),
+        title: const Text('오늘의 팁', style: ChowPageStyles.title),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

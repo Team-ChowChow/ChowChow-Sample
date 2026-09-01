@@ -427,15 +427,11 @@ class _WalkPageState extends State<WalkPage> {
                             color: ChowCozy.stone700,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
                             '🚶 산책',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: ChowCozy.stone900,
-                            ),
+                            style: ChowPageStyles.title,
                           ),
                         ),
                         if (!_isWalking && _status != _WalkStatus.saving)
@@ -451,6 +447,7 @@ class _WalkPageState extends State<WalkPage> {
                           const SizedBox(width: 48),
                       ],
                     ),
+                    const SizedBox(height: 8),
                     if (_loadMessage != null)
                       Container(
                         margin: const EdgeInsets.only(bottom: 12),

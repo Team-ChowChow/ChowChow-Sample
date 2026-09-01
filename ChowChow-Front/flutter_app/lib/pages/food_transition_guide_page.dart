@@ -87,7 +87,7 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
       backgroundColor: ChowColors.gray50,
       appBar: AppBar(
         backgroundColor: ChowColors.gray50,
-        centerTitle: true,
+        centerTitle: false,
         title: const Text('사료 교체 가이드'),
       ),
       body: _loadingPets

@@ -109,7 +109,7 @@ class _AiChatPageState extends State<AiChatPage> {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 16, 14),
+                padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
                 child: Row(
                   children: [
                     IconButton(
@@ -127,7 +127,7 @@ class _AiChatPageState extends State<AiChatPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('AI 셰프', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500)),
+                          Text('AI 셰프', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w500)),
                           Text('맞춤 레시피 상담', style: TextStyle(color: Color(0xCCFFFFFF), fontSize: 12)),
                         ],
                       ),
@@ -239,7 +239,7 @@ class _AiChatPageState extends State<AiChatPage> {
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                 child: Row(
                   children: [
                     Expanded(

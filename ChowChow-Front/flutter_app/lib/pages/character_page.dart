@@ -682,12 +682,16 @@ class _CharacterPageState extends State<CharacterPage>
   Widget build(BuildContext context) {
     final roomStyle = roomVisualFor(_roomBackgroundKey);
     final sceneAsset = _sceneAssetFor(_scene);
+    // 구매/장착한 테마 이미지가 있으면, 밥주기/쓰다듬기 등 상호작용 중에도
+    // 기본 씬 이미지로 바꾸지 않고 테마 배경을 그대로 유지한다.
+    final hasThemeBg = roomStyle.imagePath != null;
+    final showActivityScene = !hasThemeBg && _scene != _Scene.none;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 기본 방 배경(코인 상점에서 고른 색상) — 항상 깔려 있고, 씬 이미지가 그 위를 덮는다.
+          // 기본 방 배경(코인 상점에서 고른 색상) — 항상 깔려 있고, 그 위를 테마/씬 이미지가 덮는다.
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -701,10 +705,23 @@ class _CharacterPageState extends State<CharacterPage>
               ),
             ),
           ),
-          // 기본 배경과 활동별 배경 — 활동 시 해당 씬으로 페이드 전환
+          // 구매/장착한 테마 이미지(궁전/크리스마스/별빛 캠핑 등) — 상호작용 중에도 계속 유지된다.
+          if (hasThemeBg)
+            IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: 1,
+                duration: const Duration(milliseconds: 400),
+                child: Image.asset(
+                  roomStyle.imagePath!,
+                  key: ValueKey(roomStyle.imagePath),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          // 활동별 배경 — 테마 미장착 상태에서 밥주기/쓰다듬기/운동하기/목욕시키기 중일 때만 해당 씬으로 페이드 전환
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: 1,
+              opacity: showActivityScene ? 1 : 0,
               duration: const Duration(milliseconds: 550),
               curve: Curves.easeInOut,
               child: Image.asset(
@@ -718,7 +735,7 @@ class _CharacterPageState extends State<CharacterPage>
           // 씬 이미지 위 은은한 그림자 오버레이(상단 UI 가독성 유지)
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: 1,
+              opacity: showActivityScene ? 1 : 0,
               duration: const Duration(milliseconds: 400),
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -1070,7 +1087,7 @@ class _CharacterPageState extends State<CharacterPage>
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

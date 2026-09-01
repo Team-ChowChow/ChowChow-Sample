@@ -149,7 +149,7 @@ class _SignupPageState extends State<SignupPage> {
         title: const Text('회원가입'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
         children: [
           TextField(
             controller: _nameCtrl,

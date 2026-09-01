@@ -174,6 +174,17 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
       final body = <String, dynamic>{
         if (_selectedPet != null) 'petId': _selectedPet!.petId,
         if (notes.isNotEmpty) 'userNotes': notes,
+        if (_selectedPet != null) ...{
+          'petName': _selectedPet!.petName,
+          'petType': _selectedPet!.petType,
+          'breedName': _selectedPet!.breedName,
+          'petGender': _selectedPet!.petGender,
+          'petWeight': _selectedPet!.petWeight,
+          'petActivityLevel': _selectedPet!.petActivityLevel,
+          'petBodyConditionScore': _selectedPet!.petBodyConditionScore,
+          'allergyIds': _selectedPet!.allergyIds,
+          'healthFocusAreas': _selectedPet!.healthFocusAreas,
+        }
       };
       final res = await ApiClient.post(
         '/api/ai/diet/recommend-and-save?generateImage=true',
@@ -261,14 +272,15 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
               child: Row(
                 children: [
                   IconButton(
                     onPressed: () => context.pop(),
                     icon: const Icon(Icons.arrow_back),
                   ),
-                  const Text('AI 레시피 생성', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+                  const SizedBox(width: 20),
+                  const Text('AI 레시피 생성', style: ChowPageStyles.title),
                 ],
               ),
             ),
@@ -287,7 +299,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
 
   Widget _buildNoPetsView() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -377,7 +389,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
 
   Widget _buildPetSelectView() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -487,7 +499,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
       ),
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
@@ -704,19 +716,16 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(4, 8, 16, 8),
               child: Row(
                 children: [
                   IconButton(
                     onPressed: () => context.pop(),
                     icon: const Icon(Icons.arrow_back),
                   ),
+                  const SizedBox(width: 20),
                   const Expanded(
-                    child: Text(
-                      '생성된 레시피',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                      textAlign: TextAlign.center,
-                    ),
+                    child: Text('생성된 레시피', style: ChowPageStyles.title),
                   ),
                   const SizedBox(width: 48),
                 ],
@@ -724,7 +733,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

@@ -39,6 +39,8 @@ import '../pages/custom_recipe_form_page.dart';
 import '../pages/feeding_guideline_page.dart';
 import '../pages/food_info_page.dart';
 import '../pages/food_transition_guide_page.dart';
+import '../pages/follow_list_page.dart';
+import '../services/follow_service.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
@@ -249,6 +251,20 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
         parentNavigatorKey: rootNavigatorKey,
         path: '/completed-recipes',
         builder: (context, state) => const CompletedRecipesPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile/followers',
+        builder: (context, state) => const FollowListPage(
+          type: FollowListType.followers,
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/profile/following',
+        builder: (context, state) => const FollowListPage(
+          type: FollowListType.following,
+        ),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

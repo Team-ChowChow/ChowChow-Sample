@@ -321,7 +321,7 @@ class _DetailHeader extends StatelessWidget {
     return Material(
       color: Colors.white,
       child: Container(
-        height: 58,
+        height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: ChowColors.gray200)),
@@ -332,15 +332,11 @@ class _DetailHeader extends StatelessWidget {
               onPressed: onBack,
               icon: const Icon(Icons.arrow_back, color: ChowColors.gray700),
             ),
+            const SizedBox(width: 16),
             const Expanded(
               child: Text(
                 '게시글',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ChowColors.gray900,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: ChowPageStyles.title,
               ),
             ),
             IconButton(
@@ -387,7 +383,7 @@ class _PostContentSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
+            padding: const EdgeInsets.fromLTRB(16, 18, 12, 14),
             child: Row(
               children: [
                 CommunityAvatar(
@@ -449,7 +445,7 @@ class _PostContentSection extends StatelessWidget {
           // 제목
           if (post.title != null && post.title!.isNotEmpty) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
                 post.title!,
                 style: const TextStyle(
@@ -461,13 +457,13 @@ class _PostContentSection extends StatelessWidget {
               ),
             ),
             const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Divider(color: ChowColors.gray200, height: 1),
             ),
           ],
           // 내용
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             child: Text(
               post.content,
               style: const TextStyle(
@@ -479,7 +475,7 @@ class _PostContentSection extends StatelessWidget {
           ),
           if (post.recipeId != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
               child: OutlinedButton.icon(
                 onPressed: () => context.push('/recipes/${post.recipeId}'),
                 icon: const Icon(Icons.restaurant_menu_outlined, size: 18),
@@ -491,7 +487,7 @@ class _PostContentSection extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             child: Wrap(
               spacing: 8,
               runSpacing: 6,
@@ -512,7 +508,7 @@ class _PostContentSection extends StatelessWidget {
           if (post.image.isNotEmpty)
             _PostImageGrid(images: [post.image]),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Row(
               children: [
                 _PostStatButton(
@@ -727,7 +723,7 @@ class _CommentsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
             child: Text.rich(
               TextSpan(
                 text: '댓글 ',
@@ -804,7 +800,7 @@ class _CommentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(compact ? 18 : 20, 14, 20, 14),
+      padding: EdgeInsets.fromLTRB(compact ? 18 : 16, 14, 16, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

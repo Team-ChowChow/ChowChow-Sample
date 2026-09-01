@@ -202,7 +202,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      height: 60,
+      height: 64,
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
@@ -221,16 +221,11 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               size: 24,
             ),
           ),
+          const SizedBox(width: 16),
           const Expanded(
-            child: Center(
-              child: Text(
-                '알림 설정',
-                style: TextStyle(
-                  color: ChowColors.gray900,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('알림 설정', style: ChowPageStyles.title),
             ),
           ),
           const SizedBox(width: 48),
@@ -249,7 +244,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
     return Container(
       width: double.infinity,
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
         children: [
           Row(
@@ -361,7 +356,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   Widget _buildInfoBox() {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFEFF6FF),

@@ -194,7 +194,7 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
           : _generatingImage
               ? _GeneratingImageOverlay(petName: _selectedPet?.petName ?? '')
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -332,9 +332,11 @@ class _PetCard extends StatelessWidget {
   final bool hasCharacter;
   final VoidCallback onTap;
 
-  // 사진을 등록하지 않은 반려동물은 종에 맞는 기본 캐릭터 이미지를 보여준다.
+  // 사진을 등록하지 않은 반려동물은 종에 맞는 기본 프로필 이미지를 보여준다.
   String get _placeholder =>
-      pet.petType == 'CAT' ? 'character_group_8' : 'character_group_1';
+      pet.petType == 'CAT'
+          ? 'assets/images/base_cat.png'
+          : 'assets/images/base_dog.png';
 
   @override
   Widget build(BuildContext context) {
