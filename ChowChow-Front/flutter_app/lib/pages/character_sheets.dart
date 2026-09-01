@@ -539,6 +539,7 @@ class _ThemeTile extends StatelessWidget {
                   Container(
                     width: 34,
                     height: 34,
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -548,14 +549,16 @@ class _ThemeTile extends StatelessWidget {
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      item.emoji,
-                      style: const TextStyle(fontSize: 15),
-                    ),
+                    child: style.imagePath != null
+                        ? Image.asset(style.imagePath!, fit: BoxFit.cover)
+                        : Text(
+                            item.emoji,
+                            style: const TextStyle(fontSize: 15),
+                          ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    item.name,
+                    style.label,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,

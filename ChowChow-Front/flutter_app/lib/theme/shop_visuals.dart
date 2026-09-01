@@ -8,12 +8,17 @@ class RoomVisualStyle {
     required this.floorColor,
     required this.accentColor,
     required this.label,
+    this.imagePath,
   });
 
   final List<Color> wallColors;
   final Color floorColor;
   final Color accentColor;
   final String label;
+
+  /// 구매/장착하면 캐릭터 화면 배경 전체를 덮는 일러스트 이미지.
+  /// null이면 기존처럼 wallColors/floorColor 그라디언트만 쓴다.
+  final String? imagePath;
 }
 
 RoomVisualStyle roomVisualFor(String? itemKey) {
@@ -22,19 +27,29 @@ RoomVisualStyle roomVisualFor(String? itemKey) {
       wallColors: [Color(0xFFDDF4FF), Color(0xFFF3FBFF)],
       floorColor: Color(0xFFD9C5A5),
       accentColor: Color(0xFF38A5DB),
-      label: '구름 창가',
+      label: '궁전',
+      imagePath: 'assets/images/themes/theme_palace.png',
     ),
     'room_forest' => const RoomVisualStyle(
       wallColors: [Color(0xFFDDF4DE), Color(0xFFF7FBEE)],
       floorColor: Color(0xFFD6C09A),
       accentColor: Color(0xFF5A9C68),
-      label: '초록 정원',
+      label: '크리스마스',
+      imagePath: 'assets/images/themes/theme_christmas.png',
     ),
     'room_night' => const RoomVisualStyle(
       wallColors: [Color(0xFF24324A), Color(0xFF4D5E7D)],
       floorColor: Color(0xFF493D51),
       accentColor: Color(0xFFF4C95D),
       label: '별빛 캠핑',
+      imagePath: 'assets/images/themes/theme_camping.png',
+    ),
+    'room_summer' => const RoomVisualStyle(
+      wallColors: [Color(0xFFFFE8B0), Color(0xFFFFF6E0)],
+      floorColor: Color(0xFFF2C879),
+      accentColor: Color(0xFFFF9F43),
+      label: '여름날 방',
+      imagePath: 'assets/images/themes/theme_summer.png',
     ),
     _ => const RoomVisualStyle(
       wallColors: [ChowCozy.stone300, ChowCozy.stone50],

@@ -14,8 +14,9 @@ public final class ShopCatalog {
     private static final List<Item> ITEMS = List.of(
             new Item(DEFAULT_BACKGROUND, "햇살 가득한 방", "따뜻한 크림색 기본 방", ROOM_BACKGROUND, 0, "🏡", true),
             new Item("room_sky", "구름 창가", "파란 하늘이 보이는 산뜻한 방", ROOM_BACKGROUND, 80, "🪟", false),
-            new Item("room_forest", "초록 정원", "식물과 햇살이 가득한 포근한 방", ROOM_BACKGROUND, 150, "🌿", true),
+            new Item("room_forest", "크리스마스", "트리와 장식이 가득한 포근한 방", ROOM_BACKGROUND, 150, "🎄", true),
             new Item("room_night", "별빛 캠핑", "별이 반짝이는 차분한 밤의 방", ROOM_BACKGROUND, 240, "🌙", false),
+            new Item("room_summer", "여름날 방", "여름 햇살이 가득한 싱그러운 방", ROOM_BACKGROUND, 180, "🏖️", false),
             new Item("decor_plant", "몬스테라 화분", "방 한쪽을 채우는 싱그러운 화분", ROOM_DECOR, 90, "🪴", true),
             new Item("decor_lamp", "포근한 스탠드", "은은한 빛의 플로어 스탠드", ROOM_DECOR, 120, "💡", false),
             new Item("decor_cushion", "말랑 쿠션", "캐릭터가 좋아하는 푹신한 쿠션", ROOM_DECOR, 70, "🧸", false),
