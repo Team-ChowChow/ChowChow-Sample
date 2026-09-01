@@ -223,8 +223,8 @@ class _NoticesPageState extends State<NoticesPage> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      height: 65,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(
@@ -245,17 +245,11 @@ class _NoticesPageState extends State<NoticesPage> {
               }
             },
           ),
+          const SizedBox(width: 24),
           const Expanded(
-            child: Center(
-              child: Text(
-                '공지사항',
-                style: TextStyle(
-                  color: Color(0xFF111827),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  height: 1.2,
-                ),
-              ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('공지사항', style: ChowPageStyles.title),
             ),
           ),
           const SizedBox(width: 40),
@@ -266,7 +260,7 @@ class _NoticesPageState extends State<NoticesPage> {
 
   Widget _buildNoticeCount() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: RichText(
         text: TextSpan(
           style: const TextStyle(
@@ -293,7 +287,7 @@ class _NoticesPageState extends State<NoticesPage> {
 
   Widget _buildEmptyState() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
         Container(
           padding: const EdgeInsets.all(32),
@@ -373,7 +367,7 @@ class _NoticeTile extends StatelessWidget {
               highlightColor: const Color(0xFFF9FAFB),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
+                  horizontal: 16,
                   vertical: 16,
                 ),
                 child: Row(
@@ -418,7 +412,7 @@ class _NoticeTile extends StatelessWidget {
                 ),
               ),
               padding: const EdgeInsets.symmetric(
-                horizontal: 20,
+                horizontal: 16,
                 vertical: 16,
               ),
               child: Text(

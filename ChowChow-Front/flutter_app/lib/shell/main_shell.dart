@@ -12,6 +12,7 @@ class MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final path = GoRouterState.of(context).uri.path;
     return Scaffold(
+      extendBody: true,
       body: child,
       bottomNavigationBar: ChowBottomNav(currentPath: path),
     );

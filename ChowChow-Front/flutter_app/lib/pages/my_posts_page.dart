@@ -129,14 +129,10 @@ class _MyPostsPageState extends State<MyPostsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         title: Text(
           _title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF111827),
-          ),
+          style: ChowPageStyles.title,
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: Color(0xFF111827)),

@@ -163,7 +163,7 @@ class _DietLogPageState extends State<DietLogPage> {
       backgroundColor: ChowColors.gray50,
       appBar: AppBar(
         backgroundColor: ChowColors.gray50,
-        centerTitle: true,
+        centerTitle: false,
         title: const Text('식단 기록'),
       ),
       floatingActionButton: _selectedPet == null

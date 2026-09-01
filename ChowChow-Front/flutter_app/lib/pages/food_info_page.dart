@@ -241,7 +241,7 @@ class _FoodInfoPageState extends State<FoodInfoPage> {
       backgroundColor: ChowColors.gray50,
       appBar: AppBar(
         backgroundColor: ChowColors.gray50,
-        centerTitle: true,
+        centerTitle: false,
         title: Text(widget.selectMode ? '사료 선택' : '사료 정보'),
       ),
       body: Padding(

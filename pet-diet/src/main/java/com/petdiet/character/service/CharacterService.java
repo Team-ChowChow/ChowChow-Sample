@@ -70,12 +70,9 @@ public class CharacterService {
             if (characterRepository.existsByPet(pet)) {
                 throw new IllegalStateException("이미 캐릭터가 존재하는 반려동물입니다.");
             }
-            if (req.getCharacterName() != null) pet.update(req.getCharacterName(), null, null, null, null, null, req.getBreedId(), null, null, null);
-            if (req.getPetType() != null && req.getBreedId() != null) {
-                // pet type is immutable in entity - only update breed/name/image via update
-            }
+            if (req.getCharacterName() != null) pet.update(req.getCharacterName(), null, null, null, null, null, null, req.getBreedId(), null, null, null);
             if (req.getCharacterImageUrl() != null) {
-                pet.update(null, null, null, null, null, req.getCharacterImageUrl(), null, null, null, null);
+                pet.update(null, null, null, null, null, null, req.getCharacterImageUrl(), null, null, null, null);
             }
             userPetRepository.save(pet);
         } else {
@@ -111,7 +108,7 @@ public class CharacterService {
         UserPet pet = findPet(petId, findUser(authUuid));
         PetCharacter character = findByPet(pet);
         character.updateName(characterName);
-        pet.update(characterName, null, null, null, null, null, null, null, null, null);
+        pet.update(characterName, null, null, null, null, null, null, null, null, null, null);
         userPetRepository.save(pet);
         return toResponse(characterRepository.save(character));
     }
@@ -219,6 +216,7 @@ public class CharacterService {
         if (request.getCharacterName() != null || request.getBreedId() != null || request.getCharacterImageUrl() != null) {
             pet.update(
                     request.getCharacterName(),
+                    null,
                     null,
                     null,
                     null,

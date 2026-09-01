@@ -89,13 +89,13 @@ class _CharacterListPageState extends State<CharacterListPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              padding: ChowPageStyles.titlePadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     '캐릭터 키우기',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: ChowColors.gray800),
+                    style: ChowPageStyles.title,
                   ),
                   const SizedBox(height: 4),
                   Row(

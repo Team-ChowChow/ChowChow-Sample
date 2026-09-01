@@ -235,36 +235,26 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
           color: ChowColors.gray50,
           child: CustomScrollView(
             slivers: [
-              SliverAppBar(
-                pinned: false,
-                backgroundColor: Colors.white,
-                surfaceTintColor: Colors.transparent,
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '커뮤니티',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(color: ChowColors.gray800),
-                    ),
-                    const Text(
-                      '반려동물 식단에 대한 이야기를 나눠보세요',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: ChowColors.gray500,
-                        fontWeight: FontWeight.normal,
+              SliverToBoxAdapter(
+                child: ColoredBox(
+                  color: Colors.white,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: ChowPageStyles.titlePadding,
+                      child: const Text(
+                        '커뮤니티',
+                        style: ChowPageStyles.title,
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
               // 검색창
               SliverToBoxAdapter(
                 child: Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: TextField(
                     onChanged: (value) {
                       setState(() => _searchKeyword = value);
@@ -297,7 +287,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
               SliverToBoxAdapter(
                 child: Container(
                   color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -434,7 +424,7 @@ class _CommunityPageState extends State<CommunityPage> with RouteAware {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
                   sliver: SliverList.separated(
                     itemCount: posts.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),

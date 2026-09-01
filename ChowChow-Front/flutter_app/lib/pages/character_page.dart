@@ -1087,7 +1087,7 @@ class _CharacterPageState extends State<CharacterPage>
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

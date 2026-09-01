@@ -84,14 +84,10 @@ class _CompletedRecipesPageState extends State<CompletedRecipesPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         title: const Text(
           '조리 완료한 레시피',
-          style: TextStyle(
-            color: Color(0xFF111827),
-            fontSize: 17,
-            fontWeight: FontWeight.w500,
-          ),
+          style: ChowPageStyles.title,
         ),
         leading: IconButton(
           onPressed: () => context.pop(),

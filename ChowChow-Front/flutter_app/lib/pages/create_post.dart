@@ -238,7 +238,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 430),
@@ -387,7 +387,7 @@ class _CreatePostHeader extends StatelessWidget {
       elevation: 0,
       child: Container(
         height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: const BoxDecoration(
           border: Border(
             bottom: BorderSide(color: ChowColors.gray200, width: 1),
@@ -400,14 +400,10 @@ class _CreatePostHeader extends StatelessWidget {
               icon: const Icon(Icons.close, color: ChowColors.gray600, size: 26),
               visualDensity: VisualDensity.compact,
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
             Text(
               isEditMode ? '글 수정' : '글쓰기',
-              style: const TextStyle(
-                fontSize: 18,
-                color: ChowColors.gray800,
-                fontWeight: FontWeight.w500,
-              ),
+              style: ChowPageStyles.title,
             ),
             const Spacer(),
             SizedBox(

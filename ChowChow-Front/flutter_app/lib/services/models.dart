@@ -104,11 +104,14 @@ class PetModel {
   final int petId;
   final String petName;
   final String? petType;
+  final int? breedId;
   final String? breedName;
+  final String? breedNameKo;
   final String? groupName;
   final String? petGender;
   final String? petBirthdate;
   final double? petWeight;
+  final bool? isNeutered;
   final String? petProfileImg;
   final List<int> allergyIds;
   final int? petBodyConditionScore;
@@ -119,11 +122,14 @@ class PetModel {
     required this.petId,
     required this.petName,
     this.petType,
+    this.breedId,
     this.breedName,
+    this.breedNameKo,
     this.groupName,
     this.petGender,
     this.petBirthdate,
     this.petWeight,
+    this.isNeutered,
     this.petProfileImg,
     required this.allergyIds,
     this.petBodyConditionScore,
@@ -135,11 +141,14 @@ class PetModel {
         petId: j['petId'] as int,
         petName: j['petName'] as String,
         petType: j['petType'] as String?,
+        breedId: (j['breedId'] as num?)?.toInt(),
         breedName: j['breedName'] as String?,
+        breedNameKo: j['breedNameKo'] as String?,
         groupName: j['groupName'] as String?,
         petGender: j['petGender'] as String?,
         petBirthdate: j['petBirthdate'] as String?,
         petWeight: (j['petWeight'] as num?)?.toDouble(),
+        isNeutered: j['isNeutered'] as bool?,
         petProfileImg: j['petProfileImageUrl'] as String? ?? j['petProfileImg'] as String?,
         allergyIds: (j['allergyIds'] as List<dynamic>?)?.cast<int>() ?? [],
         petBodyConditionScore: (j['petBodyConditionScore'] as num?)?.toInt(),
