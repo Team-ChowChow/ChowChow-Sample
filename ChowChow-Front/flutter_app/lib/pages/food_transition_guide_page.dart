@@ -58,8 +58,10 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
         '/api/ai/food-transition/recommend',
         {
           if (_selectedPet != null) 'petId': _selectedPet!.petId,
-          'currentFoodId': _currentFood!.foodId,
-          'targetFoodId': _targetFood!.foodId,
+          if (!_currentFood!.isUserFood) 'currentFoodId': _currentFood!.foodId,
+          if (_currentFood!.isUserFood) 'currentUserFoodId': _currentFood!.foodId,
+          if (!_targetFood!.isUserFood) 'targetFoodId': _targetFood!.foodId,
+          if (_targetFood!.isUserFood) 'targetUserFoodId': _targetFood!.foodId,
         },
         timeout: const Duration(seconds: 90),
       ) as Map<String, dynamic>;
@@ -113,6 +115,7 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
                 _FoodPickerField(
                   label: '현재 급여 중인 사료',
                   selected: _currentFood,
+                  petType: _selectedPet?.petType,
                   onSelected: (f) => setState(() => _currentFood = f),
                   onClear: () => setState(() => _currentFood = null),
                 ),
@@ -120,6 +123,7 @@ class _FoodTransitionGuidePageState extends State<FoodTransitionGuidePage> {
                 _FoodPickerField(
                   label: '바꿀 사료',
                   selected: _targetFood,
+                  petType: _selectedPet?.petType,
                   onSelected: (f) => setState(() => _targetFood = f),
                   onClear: () => setState(() => _targetFood = null),
                 ),
@@ -159,17 +163,19 @@ class _FoodPickerField extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     required this.onClear,
+    this.petType,
   });
 
   final String label;
   final CommercialFoodModel? selected;
   final ValueChanged<CommercialFoodModel> onSelected;
   final VoidCallback onClear;
+  final String? petType;
 
   Future<void> _pick(BuildContext context) async {
     final picked = await context.push<CommercialFoodModel>(
       '/food-info',
-      extra: {'selectMode': true, 'allowUserFoods': false},
+      extra: {'selectMode': true, 'allowUserFoods': true, 'lockedPetType': petType},
     );
     if (picked != null) onSelected(picked);
   }

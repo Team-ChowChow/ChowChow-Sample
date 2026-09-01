@@ -5,7 +5,9 @@ import com.petdiet.ai.foodtransition.dto.FoodTransitionStepDto;
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
 import com.petdiet.food.entity.CommercialFood;
+import com.petdiet.food.entity.UserFood;
 import com.petdiet.food.repository.CommercialFoodRepository;
+import com.petdiet.food.repository.UserFoodRepository;
 import com.petdiet.master.entity.Allergy;
 import com.petdiet.master.repository.AllergyRepository;
 import com.petdiet.pet.entity.UserPet;
@@ -47,19 +49,38 @@ public class FoodTransitionService {
     private final UserPetRepository userPetRepository;
     private final AllergyRepository allergyRepository;
     private final CommercialFoodRepository commercialFoodRepository;
+    private final UserFoodRepository userFoodRepository;
+
+    /** 공식 사료(CommercialFood)와 사용자 등록 사료(UserFood)를 같은 방식으로 다루기 위한 공통 뷰 */
+    private record FoodProfile(String productName, String petType, BigDecimal caloriesPer100g,
+                                BigDecimal proteinG, BigDecimal fatG) {}
+
+    private FoodProfile resolveFood(User user, Integer commercialFoodId, Integer userFoodId, String label) {
+        if (commercialFoodId != null) {
+            CommercialFood f = commercialFoodRepository.findById(commercialFoodId)
+                    .orElseThrow(() -> new IllegalArgumentException(label + " 사료를 찾을 수 없습니다."));
+            return new FoodProfile(f.getProductName(), f.getPetType(), f.getCaloriesPer100g(), f.getProteinG(), f.getFatG());
+        }
+        if (userFoodId != null) {
+            UserFood f = userFoodRepository.findByUserFoodIdAndUser(userFoodId, user)
+                    .orElseThrow(() -> new IllegalArgumentException(label + " 사료를 찾을 수 없습니다."));
+            return new FoodProfile(f.getProductName(), f.getPetType(), f.getCaloriesPer100g(), f.getProteinG(), f.getFatG());
+        }
+        throw new IllegalArgumentException(label + " 사료를 선택해주세요.");
+    }
 
     @Transactional(readOnly = true)
-    public FoodTransitionResponse recommend(UUID authUuid, Integer petId, Integer currentFoodId, Integer targetFoodId) {
+    public FoodTransitionResponse recommend(UUID authUuid, Integer petId,
+                                             Integer currentFoodId, Integer currentUserFoodId,
+                                             Integer targetFoodId, Integer targetUserFoodId) {
         User user = userRepository.findByAuthUuid(authUuid)
                 .orElseThrow(() -> new IllegalStateException("유저를 찾을 수 없습니다."));
 
-        CommercialFood currentFood = commercialFoodRepository.findById(currentFoodId)
-                .orElseThrow(() -> new IllegalArgumentException("현재 급여 중인 사료를 찾을 수 없습니다."));
-        CommercialFood targetFood = commercialFoodRepository.findById(targetFoodId)
-                .orElseThrow(() -> new IllegalArgumentException("바꿀 사료를 찾을 수 없습니다."));
+        FoodProfile currentFood = resolveFood(user, currentFoodId, currentUserFoodId, "현재 급여 중인");
+        FoodProfile targetFood = resolveFood(user, targetFoodId, targetUserFoodId, "바꿀");
 
-        if (currentFood.getPetType() != null && targetFood.getPetType() != null
-                && !currentFood.getPetType().equals(targetFood.getPetType())) {
+        if (currentFood.petType() != null && targetFood.petType() != null
+                && !currentFood.petType().equals(targetFood.petType())) {
             throw new IllegalArgumentException("강아지 사료와 고양이 사료는 서로 전환할 수 없어요. 같은 동물용 사료를 선택해주세요.");
         }
 
@@ -68,7 +89,7 @@ public class FoodTransitionService {
         if (petId != null) {
             pet = userPetRepository.findByPetIdAndUser(petId, user).orElse(null);
             if (pet != null) {
-                if (currentFood.getPetType() != null && !currentFood.getPetType().equals(pet.getPetType())) {
+                if (currentFood.petType() != null && !currentFood.petType().equals(pet.getPetType())) {
                     throw new IllegalArgumentException("선택한 사료가 반려동물의 종(강아지/고양이)과 맞지 않아요.");
                 }
                 List<Integer> allergyIds = pet.getAllergies().stream().map(a -> a.getAllergyId()).toList();
@@ -82,7 +103,7 @@ public class FoodTransitionService {
         List<String> warnings = buildWarnings(allergies, currentFood, targetFood);
         String summary = String.format(
                 "%s에서 %s로 %d일에 걸쳐 점진적으로 전환합니다.",
-                currentFood.getProductName(), targetFood.getProductName(), totalDays);
+                currentFood.productName(), targetFood.productName(), totalDays);
 
         return FoodTransitionResponse.builder()
                 .summary(summary)
@@ -92,10 +113,10 @@ public class FoodTransitionService {
                 .build();
     }
 
-    private boolean isBigDifference(CommercialFood a, CommercialFood b) {
-        if (macroDiffExceeds(a.getCaloriesPer100g(), b.getCaloriesPer100g(), null, CALORIE_DIFF_RATIO_THRESHOLD)) return true;
-        if (macroDiffExceeds(a.getProteinG(), b.getProteinG(), MACRO_DIFF_THRESHOLD, null)) return true;
-        return macroDiffExceeds(a.getFatG(), b.getFatG(), MACRO_DIFF_THRESHOLD, null);
+    private boolean isBigDifference(FoodProfile a, FoodProfile b) {
+        if (macroDiffExceeds(a.caloriesPer100g(), b.caloriesPer100g(), null, CALORIE_DIFF_RATIO_THRESHOLD)) return true;
+        if (macroDiffExceeds(a.proteinG(), b.proteinG(), MACRO_DIFF_THRESHOLD, null)) return true;
+        return macroDiffExceeds(a.fatG(), b.fatG(), MACRO_DIFF_THRESHOLD, null);
     }
 
     /** absThreshold(절대값 g) 또는 ratioThreshold(비율) 중 주어진 쪽 기준으로 차이가 임계값을 넘는지 확인 */
@@ -162,14 +183,14 @@ public class FoodTransitionService {
     private static final BigDecimal CALORIE_MENTION_RATIO = new BigDecimal("0.10");
     private static final BigDecimal MACRO_MENTION_THRESHOLD = new BigDecimal("5");
 
-    private List<String> buildWarnings(List<Allergy> allergies, CommercialFood currentFood, CommercialFood targetFood) {
+    private List<String> buildWarnings(List<Allergy> allergies, FoodProfile currentFood, FoodProfile targetFood) {
         List<String> warnings = new ArrayList<>();
         warnings.add("급여 중 설사, 구토 등의 이상 반응이 발생하면 이전 단계로 되돌아가세요.");
 
-        addCalorieWarning(warnings, currentFood.getCaloriesPer100g(), targetFood.getCaloriesPer100g());
-        addMacroWarning(warnings, "단백질", currentFood.getProteinG(), targetFood.getProteinG(),
+        addCalorieWarning(warnings, currentFood.caloriesPer100g(), targetFood.caloriesPer100g());
+        addMacroWarning(warnings, "단백질", currentFood.proteinG(), targetFood.proteinG(),
                 "신장이나 간 질환이 있다면 수의사와 상담 후 진행하세요.");
-        addMacroWarning(warnings, "지방", currentFood.getFatG(), targetFood.getFatG(),
+        addMacroWarning(warnings, "지방", currentFood.fatG(), targetFood.fatG(),
                 "췌장염 등 지방에 민감한 질환이 있다면 단계를 더 천천히 늘려주세요.");
 
         if (!allergies.isEmpty()) {

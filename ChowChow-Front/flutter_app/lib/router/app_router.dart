@@ -120,6 +120,7 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
           return FoodInfoPage(
             selectMode: extra?['selectMode'] as bool? ?? false,
             allowUserFoods: extra?['allowUserFoods'] as bool? ?? true,
+            lockedPetType: extra?['lockedPetType'] as String?,
           );
         },
       ),

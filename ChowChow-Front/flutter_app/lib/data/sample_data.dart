@@ -17,6 +17,7 @@ class CommunityPost {
     this.recipeId,
     this.petType,
     this.likedByMe = false,
+    this.bookmarkedByMe = false,
   });
   final int id;
   final int? userId; // 서버에서 받은 게시글 작성자 ID
@@ -35,6 +36,7 @@ class CommunityPost {
   final String? title; // 게시글 제목
   final String? petType; // 'DOG' 또는 'CAT'
   final bool likedByMe;
+  final bool bookmarkedByMe;
 
   factory CommunityPost.fromJson(Map<String, dynamic> json) {
     // 태그 파싱 (tagNames 또는 tags 필드 모두 지원)
@@ -85,6 +87,7 @@ class CommunityPost {
       recipeId: json['recipeId'] as int?,
       petType: json['petType'] as String?,
       likedByMe: json['likedByMe'] as bool? ?? false,
+      bookmarkedByMe: json['bookmarkedByMe'] as bool? ?? false,
     );
   }
 
@@ -92,6 +95,7 @@ class CommunityPost {
     int? likes,
     int? comments,
     bool? likedByMe,
+    bool? bookmarkedByMe,
     String? title,
     int? recipeId,
     String? petType,
@@ -116,6 +120,7 @@ class CommunityPost {
       recipeId: recipeId ?? this.recipeId,
       petType: petType ?? this.petType,
       likedByMe: likedByMe ?? this.likedByMe,
+      bookmarkedByMe: bookmarkedByMe ?? this.bookmarkedByMe,
     );
   }
 }

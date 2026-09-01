@@ -210,10 +210,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
         if (mounted) context.pop(postWithTags); // post를 반환해서 부모에서 처리
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
+        final base = _isEditMode ? '수정에 실패했습니다.' : '게시글 등록에 실패했습니다.';
+        final detail = e is ApiException ? ' (${e.message})' : '';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEditMode ? '수정에 실패했습니다.' : '게시글 등록에 실패했습니다.')),
+          SnackBar(content: Text('$base$detail')),
         );
       }
     } finally {

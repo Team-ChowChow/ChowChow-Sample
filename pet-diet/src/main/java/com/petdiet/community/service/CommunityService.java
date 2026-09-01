@@ -10,9 +10,12 @@ import com.petdiet.community.dto.PostResponse;
 import com.petdiet.community.entity.CommunityComment;
 import com.petdiet.community.entity.CommunityLike;
 import com.petdiet.community.entity.CommunityPost;
+import com.petdiet.community.entity.CommunityPostBookmark;
 import com.petdiet.community.repository.CommunityCommentRepository;
 import com.petdiet.community.repository.CommunityLikeRepository;
+import com.petdiet.community.repository.CommunityPostBookmarkRepository;
 import com.petdiet.community.repository.CommunityPostRepository;
+import com.petdiet.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -29,8 +33,10 @@ public class CommunityService {
     private final CommunityPostRepository postRepository;
     private final CommunityCommentRepository commentRepository;
     private final CommunityLikeRepository likeRepository;
+    private final CommunityPostBookmarkRepository bookmarkRepository;
     private final UserRepository userRepository;
     private final CoinService coinService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Page<PostResponse> getPosts(UUID authUuid, String category, String petType, Pageable pageable) {
@@ -49,7 +55,8 @@ public class CommunityService {
             posts = postRepository.findAllByPostStatus("ACTIVE", pageable);
         }
 
-        return posts.map(post -> PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user)));
+        return posts.map(post -> PostResponse.from(post, post.getLikeCount(),
+                likeRepository.existsByPostAndUser(post, user), bookmarkRepository.existsByPostAndUser(post, user)));
     }
 
     @Transactional
@@ -58,14 +65,44 @@ public class CommunityService {
         CommunityPost post = postRepository.findByPostIdAndPostStatus(postId, "ACTIVE")
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
         post.incrementViewCount();
-        return PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user));
+        return PostResponse.from(post, post.getLikeCount(),
+                likeRepository.existsByPostAndUser(post, user), bookmarkRepository.existsByPostAndUser(post, user));
     }
 
     @Transactional(readOnly = true)
     public Page<PostResponse> getMyPosts(UUID authUuid, Pageable pageable) {
         User user = getUser(authUuid);
         return postRepository.findAllByUserAndPostStatus(user, "ACTIVE", pageable)
-                .map(post -> PostResponse.from(post, post.getLikeCount(), likeRepository.existsByPostAndUser(post, user)));
+                .map(post -> PostResponse.from(post, post.getLikeCount(),
+                        likeRepository.existsByPostAndUser(post, user), bookmarkRepository.existsByPostAndUser(post, user)));
+    }
+
+    @Transactional
+    public Map<String, Object> toggleBookmark(UUID authUuid, Integer postId) {
+        User user = getUser(authUuid);
+        CommunityPost post = getActivePost(postId);
+        boolean nowBookmarked;
+        var existing = bookmarkRepository.findByPostAndUser(post, user);
+        if (existing.isPresent()) {
+            bookmarkRepository.delete(existing.get());
+            nowBookmarked = false;
+        } else {
+            bookmarkRepository.save(CommunityPostBookmark.builder().post(post).user(user).build());
+            nowBookmarked = true;
+        }
+        return Map.of("postId", postId, "bookmarked", nowBookmarked);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostResponse> getBookmarkedPosts(UUID authUuid) {
+        User user = getUser(authUuid);
+        return bookmarkRepository.findAllByUserOrderByCreatedAtDesc(user).stream()
+                .map(bm -> {
+                    CommunityPost post = bm.getPost();
+                    return PostResponse.from(post, post.getLikeCount(),
+                            likeRepository.existsByPostAndUser(post, user), true);
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -140,6 +177,12 @@ public class CommunityService {
                             authUuid,
                             CoinService.COMMUNITY_LIKE_REWARD,
                             "커뮤니티 좋아요 #" + postId);
+                    if (!post.getUser().getUserId().equals(user.getUserId())) {
+                        notificationService.createNotification(
+                                post.getUser(), "LIKE", "새 좋아요",
+                                (user.getUserNickname() != null ? user.getUserNickname() : "누군가") + "님이 회원님의 글을 좋아합니다.",
+                                "POST", postId, postId);
+                    }
                 }
         );
     }
@@ -169,6 +212,12 @@ public class CommunityService {
                 authUuid,
                 CoinService.COMMUNITY_COMMENT_REWARD,
                 "커뮤니티 댓글 #" + comment.getCommentId());
+        if (!post.getUser().getUserId().equals(user.getUserId())) {
+            notificationService.createNotification(
+                    post.getUser(), "COMMENT", "새 댓글",
+                    (user.getUserNickname() != null ? user.getUserNickname() : "누군가") + "님이 회원님의 글에 댓글을 남겼습니다.",
+                    "POST", postId, comment.getCommentId());
+        }
         return CommentResponse.from(comment, true);
     }
 

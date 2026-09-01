@@ -6,7 +6,9 @@ import com.petdiet.coin.service.CoinService;
 import com.petdiet.community.entity.CommunityPost;
 import com.petdiet.community.repository.CommunityCommentRepository;
 import com.petdiet.community.repository.CommunityLikeRepository;
+import com.petdiet.community.repository.CommunityPostBookmarkRepository;
 import com.petdiet.community.repository.CommunityPostRepository;
+import com.petdiet.notification.service.NotificationService;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -29,14 +31,18 @@ class CommunityServiceTest {
         CommunityPostRepository postRepository = mock(CommunityPostRepository.class);
         CommunityCommentRepository commentRepository = mock(CommunityCommentRepository.class);
         CommunityLikeRepository likeRepository = mock(CommunityLikeRepository.class);
+        CommunityPostBookmarkRepository bookmarkRepository = mock(CommunityPostBookmarkRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         CoinService coinService = mock(CoinService.class);
+        NotificationService notificationService = mock(NotificationService.class);
         CommunityService service = new CommunityService(
                 postRepository,
                 commentRepository,
                 likeRepository,
+                bookmarkRepository,
                 userRepository,
-                coinService);
+                coinService,
+                notificationService);
 
         when(userRepository.findByAuthUuid(authUuid)).thenReturn(Optional.of(user));
         when(postRepository.findByPostIdAndPostStatus(10, "ACTIVE"))

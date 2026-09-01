@@ -27,11 +27,16 @@ public class PostResponse {
     private Integer commentCount;
     private String postStatus;
     private Boolean likedByMe;
+    private Boolean bookmarkedByMe;
     private List<String> tagNames;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 
     public static PostResponse from(CommunityPost post, long likeCount, boolean likedByMe) {
+        return from(post, likeCount, likedByMe, false);
+    }
+
+    public static PostResponse from(CommunityPost post, long likeCount, boolean likedByMe, boolean bookmarkedByMe) {
         return PostResponse.builder()
                 .postId(post.getPostId())
                 .userId(post.getUser().getUserId())
@@ -51,6 +56,7 @@ public class PostResponse {
                 .commentCount(post.getCommentCount())
                 .postStatus(post.getPostStatus())
                 .likedByMe(likedByMe)
+                .bookmarkedByMe(bookmarkedByMe)
                 .tagNames(List.of())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())

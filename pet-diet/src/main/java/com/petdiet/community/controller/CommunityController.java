@@ -50,6 +50,19 @@ public class CommunityController {
         return ResponseEntity.ok(communityService.getLikedPosts(principal.authUuid()));
     }
 
+    @GetMapping("/posts/bookmarked")
+    public ResponseEntity<List<PostResponse>> getBookmarkedPosts(
+            @AuthenticationPrincipal SupabasePrincipal principal) {
+        return ResponseEntity.ok(communityService.getBookmarkedPosts(principal.authUuid()));
+    }
+
+    @PostMapping("/posts/{postId}/bookmark")
+    public ResponseEntity<?> toggleBookmark(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PathVariable Integer postId) {
+        return ResponseEntity.ok(communityService.toggleBookmark(principal.authUuid(), postId));
+    }
+
     @PostMapping("/posts")
     public ResponseEntity<PostResponse> createPost(
             @AuthenticationPrincipal SupabasePrincipal principal,

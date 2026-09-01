@@ -86,9 +86,27 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
     });
     try {
       final recipesRes = await ApiClient.get('/api/v1/recipes/by-pet/$petId') as List<dynamic>;
+      final byPet = recipesRes.map((e) => RecipeModel.fromJson(e as Map<String, dynamic>)).toList();
+
+      // 이 반려동물 앞으로 만든 레시피뿐 아니라, 사용자가 저장(북마크)해둔 레시피도
+      // 종이 맞으면 함께 골라 쓸 수 있게 합친다.
+      List<RecipeModel> bookmarked = [];
+      try {
+        final bookmarksRes = await ApiClient.get('/api/v1/recipes/me/bookmarks') as Map<String, dynamic>;
+        final petType = _selectedPet?.petType;
+        bookmarked = (bookmarksRes['bookmarks'] as List<dynamic>? ?? [])
+            .map((e) => RecipeModel.fromJson(e as Map<String, dynamic>))
+            .where((r) => petType == null || r.petType == null || r.petType == petType)
+            .toList();
+      } catch (_) {}
+
       if (!mounted) return;
+      final merged = <int, RecipeModel>{};
+      for (final r in [...byPet, ...bookmarked]) {
+        merged[r.recipeId] = r;
+      }
       setState(() {
-        _recipes = recipesRes.map((e) => RecipeModel.fromJson(e as Map<String, dynamic>)).toList();
+        _recipes = merged.values.toList();
       });
     } catch (_) {}
   }
@@ -559,19 +577,49 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
         if (_dietType == _DietType.recipe) ...[
           const Text('레시피 선택', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 8),
-          _card(
-            child: _recipes.isEmpty
-                ? const Text('이 아이를 위해 생성된 AI 레시피가 없어요. AI 레시피를 먼저 생성해보세요.', style: TextStyle(color: ChowColors.gray500))
-                : DropdownButtonFormField<RecipeModel>(
-                    initialValue: _selectedRecipe,
-                    isExpanded: true,
-                    decoration: const InputDecoration(border: InputBorder.none),
-                    items: _recipes
-                        .map((r) => DropdownMenuItem(value: r, child: Text(r.recipeTitle, overflow: TextOverflow.ellipsis)))
-                        .toList(),
-                    onChanged: (r) => setState(() => _selectedRecipe = r),
+          if (_recipes.isEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _card(
+                  child: const Text(
+                    '이 아이를 위한 식단이 아직 없어요. AI 레시피를 생성하거나 직접 만든 레시피를 추가해보세요.',
+                    style: TextStyle(color: ChowColors.gray500),
                   ),
-          ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _selectedPet == null
+                      ? null
+                      : () async {
+                          final saved = await context.push<bool>(
+                            '/diet-log/new-recipe',
+                            extra: {'petId': _selectedPet!.petId, 'petType': _selectedPet!.petType},
+                          );
+                          if (saved == true) _loadRecipesForPet(_selectedPet!.petId);
+                        },
+                  icon: const Icon(Icons.add),
+                  label: const Text('내 레시피 추가하기'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: ChowColors.orange500),
+                    foregroundColor: ChowColors.orange500,
+                  ),
+                ),
+              ],
+            )
+          else
+            _card(
+              child: DropdownButtonFormField<RecipeModel>(
+                initialValue: _selectedRecipe,
+                isExpanded: true,
+                decoration: const InputDecoration(border: InputBorder.none),
+                items: _recipes
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r.recipeTitle, overflow: TextOverflow.ellipsis)))
+                    .toList(),
+                onChanged: (r) => setState(() => _selectedRecipe = r),
+              ),
+            ),
         ] else ...[
           const Text('사료 선택', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15)),
           const SizedBox(height: 8),

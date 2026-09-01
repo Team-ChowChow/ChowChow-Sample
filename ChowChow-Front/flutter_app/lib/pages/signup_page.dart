@@ -76,12 +76,23 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  void _confirmEmailVerified() {
-    setState(() => _emailVerified = true);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이메일 인증이 완료되었습니다.')),
+  Future<void> _verifyCode() async {
+    if (_codeCtrl.text.length != 6) return;
+    final email = _emailCtrl.text.trim();
+    setState(() { _verifyingCode = true; _errorMessage = null; });
+    try {
+      await ApiClient.post(
+        '/api/auth/verify-signup-code',
+        {'email': email, 'code': _codeCtrl.text.trim()},
+        auth: false,
       );
+      setState(() => _emailVerified = true);
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _errorMessage = '인증번호를 확인할 수 없습니다.');
+    } finally {
+      if (mounted) setState(() => _verifyingCode = false);
     }
   }
 
@@ -228,39 +239,40 @@ class _SignupPageState extends State<SignupPage> {
             ],
           ),
           if (_emailSent && !_emailVerified) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF4),
-                border: Border.all(color: const Color(0xFF22C55E)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '✓ 인증 이메일이 발송되었습니다',
-                    style: TextStyle(fontSize: 13, color: Color(0xFF16A34A), fontWeight: FontWeight.w500),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _codeCtrl,
+                    decoration: const InputDecoration(labelText: '인증번호 6자리 입력'),
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '메일의 "인증 완료하기" 링크를 클릭한 후, 아래 버튼을 눌러주세요.',
-                    style: TextStyle(fontSize: 12, color: ChowColors.gray600),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF22C55E),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      onPressed: _confirmEmailVerified,
-                      child: const Text('인증 완료하기'),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF22C55E),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                     ),
+                    onPressed: (_verifyingCode || _codeCtrl.text.length != 6) ? null : _verifyCode,
+                    child: _verifyingCode
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('확인', style: TextStyle(fontSize: 13)),
                   ),
-                ],
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                '⏱️ 인증번호는 5분간 유효합니다',
+                style: TextStyle(fontSize: 12, color: ChowColors.gray500),
               ),
             ),
           ],

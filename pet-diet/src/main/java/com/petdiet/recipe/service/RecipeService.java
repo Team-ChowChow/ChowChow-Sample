@@ -174,6 +174,7 @@ public class RecipeService {
                 .recipePurpose(req.getRecipePurpose())
                 .feedingAmount(req.getFeedingAmount())
                 .isPublic(req.getIsPublic() != null ? req.getIsPublic() : true)
+                .imageUrl(req.getImageUrl())
                 .build());
 
         addIngredients(recipe, req.getIngredients());

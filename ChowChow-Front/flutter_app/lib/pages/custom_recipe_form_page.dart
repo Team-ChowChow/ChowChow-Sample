@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
@@ -31,6 +34,9 @@ class _CustomRecipeFormPageState extends State<CustomRecipeFormPage> {
   bool _loadingMenus = true;
   bool _saving = false;
 
+  final _picker = ImagePicker();
+  String? _imagePath;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +62,12 @@ class _CustomRecipeFormPageState extends State<CustomRecipeFormPage> {
       debugPrint('MENU_LOAD_ERROR: $e');
       setState(() => _loadingMenus = false);
     }
+  }
+
+  Future<void> _pickImage() async {
+    final image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (image == null) return;
+    setState(() => _imagePath = image.path);
   }
 
   Future<void> _save() async {
@@ -93,12 +105,17 @@ class _CustomRecipeFormPageState extends State<CustomRecipeFormPage> {
 
     setState(() => _saving = true);
     try {
+      String? imageUrl;
+      if (_imagePath != null) {
+        imageUrl = await ApiClient.uploadImage(File(_imagePath!), type: 'recipe');
+      }
       await ApiClient.post('/api/v1/recipes', {
         'petId': widget.petId,
         'menuId': _selectedMenuId,
         'recipeTitle': _titleCtrl.text.trim(),
         'recipeDescription': _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         'isPublic': false,
+        if (imageUrl != null) 'imageUrl': imageUrl,
         'ingredients': ingredients,
         'steps': steps,
       });
@@ -149,6 +166,49 @@ class _CustomRecipeFormPageState extends State<CustomRecipeFormPage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                const Text('레시피 사진', style: TextStyle(fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: _pickImage,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    height: 140,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ChowColors.gray300),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _imagePath != null
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.file(File(_imagePath!), fit: BoxFit.cover),
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: IconButton.filled(
+                                  onPressed: () => setState(() => _imagePath = null),
+                                  icon: const Icon(Icons.close, size: 18),
+                                  style: IconButton.styleFrom(backgroundColor: Colors.black45),
+                                ),
+                              ),
+                            ],
+                          )
+                        : const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add_a_photo_outlined, color: ChowColors.gray500),
+                                SizedBox(height: 6),
+                                Text('사진 추가 (선택)', style: TextStyle(color: ChowColors.gray500, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 const Text('레시피 이름 *', style: TextStyle(fontWeight: FontWeight.w500)),
                 const SizedBox(height: 8),
                 TextField(controller: _titleCtrl, decoration: _dec('예) 닭가슴살 야채죽')),
