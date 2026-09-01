@@ -2412,8 +2412,12 @@ class _PetRowState extends State<_PetRow> {
                       child: SizedBox(
                         width: 120,
                         height: 120,
-                        child: ChowNetworkImage(
-                          url: pet.petProfileImg ?? _placeholder,
+                        child: Transform.scale(
+                          scale: pet.petType == 'CAT' ? 0.8 : 1.0,
+                          child: ChowNetworkImage(
+                            url: pet.petProfileImg ?? _placeholder,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
@@ -2660,8 +2664,12 @@ class _PetRowState extends State<_PetRow> {
                           child: SizedBox(
                             width: 76,
                             height: 76,
-                            child: ChowNetworkImage(
-                              url: pet.petProfileImg ?? _placeholder,
+                            child: Transform.scale(
+                              scale: pet.petType == 'CAT' ? 0.8 : 1.0,
+                              child: ChowNetworkImage(
+                                url: pet.petProfileImg ?? _placeholder,
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
                         ),

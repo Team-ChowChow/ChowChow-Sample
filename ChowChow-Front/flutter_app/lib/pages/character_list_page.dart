@@ -267,7 +267,10 @@ class _CharacterCard extends StatelessWidget {
                     width: 64,
                     height: 64,
                     child: img != null && img.isNotEmpty
-                        ? ClipOval(child: ChowNetworkImage(url: img, fit: BoxFit.cover))
+                        ? Transform.scale(
+                            scale: character.petType == 'CAT' ? 0.8 : 1.0,
+                            child: ClipOval(child: ChowNetworkImage(url: img, fit: BoxFit.cover)),
+                          )
                         : const CircleAvatar(
                             radius: 32,
                             backgroundColor: ChowCozy.stone300,
