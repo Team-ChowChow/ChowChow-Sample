@@ -174,6 +174,17 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
       final body = <String, dynamic>{
         if (_selectedPet != null) 'petId': _selectedPet!.petId,
         if (notes.isNotEmpty) 'userNotes': notes,
+        if (_selectedPet != null) ...{
+          'petName': _selectedPet!.petName,
+          'petType': _selectedPet!.petType,
+          'breedName': _selectedPet!.breedName,
+          'petGender': _selectedPet!.petGender,
+          'petWeight': _selectedPet!.petWeight,
+          'petActivityLevel': _selectedPet!.petActivityLevel,
+          'petBodyConditionScore': _selectedPet!.petBodyConditionScore,
+          'allergyIds': _selectedPet!.allergyIds,
+          'healthFocusAreas': _selectedPet!.healthFocusAreas,
+        }
       };
       final res = await ApiClient.post(
         '/api/ai/diet/recommend-and-save?generateImage=true',
