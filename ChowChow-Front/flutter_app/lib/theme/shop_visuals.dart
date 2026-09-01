@@ -51,6 +51,13 @@ RoomVisualStyle roomVisualFor(String? itemKey) {
       label: '여름날 방',
       imagePath: 'assets/images/themes/theme_summer.png',
     ),
+    'room_ocean' => const RoomVisualStyle(
+      wallColors: [Color(0xFFB8ECFF), Color(0xFFE6FBFF)],
+      floorColor: Color(0xFFF2E0B0),
+      accentColor: Color(0xFF1FB6D6),
+      label: '해변',
+      imagePath: 'assets/images/themes/theme_ocean.png',
+    ),
     _ => const RoomVisualStyle(
       wallColors: [ChowCozy.stone300, ChowCozy.stone50],
       floorColor: Color(0xFFE8CDA8),
