@@ -687,7 +687,7 @@ class _CharacterPageState extends State<CharacterPage>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 기본 방 배경(코인 상점에서 고른 색상) — 항상 깔려 있고, 씬 이미지가 그 위를 덮는다.
+          // 기본 방 배경(코인 상점에서 고른 색상) — 항상 깔려 있고, 그 위를 테마/씬 이미지가 덮는다.
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -701,10 +701,23 @@ class _CharacterPageState extends State<CharacterPage>
               ),
             ),
           ),
-          // 기본 배경과 활동별 배경 — 활동 시 해당 씬으로 페이드 전환
+          // 구매/장착한 테마 이미지(궁전/크리스마스/별빛 캠핑 등) — 활동 중이 아닐 때 기본 배경으로 보인다.
+          if (roomStyle.imagePath != null)
+            IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _scene == _Scene.none ? 1 : 0,
+                duration: const Duration(milliseconds: 400),
+                child: Image.asset(
+                  roomStyle.imagePath!,
+                  key: ValueKey(roomStyle.imagePath),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          // 활동별 배경 — 밥주기/쓰다듬기/운동하기/목욕시키기 중일 때만 해당 씬으로 페이드 전환
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: 1,
+              opacity: _scene == _Scene.none ? 0 : 1,
               duration: const Duration(milliseconds: 550),
               curve: Curves.easeInOut,
               child: Image.asset(
@@ -718,7 +731,7 @@ class _CharacterPageState extends State<CharacterPage>
           // 씬 이미지 위 은은한 그림자 오버레이(상단 UI 가독성 유지)
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: 1,
+              opacity: _scene == _Scene.none ? 0 : 1,
               duration: const Duration(milliseconds: 400),
               child: DecoratedBox(
                 decoration: BoxDecoration(

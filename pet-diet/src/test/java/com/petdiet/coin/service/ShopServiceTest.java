@@ -46,12 +46,12 @@ class ShopServiceTest {
     void purchaseUsesServerCatalogPrice() {
         when(shopItemRepository.findByUserAndItemKey(user, "room_forest"))
                 .thenReturn(Optional.empty());
-        when(coinService.spendCoins(authUuid, 150, "상점 구매: 초록 정원"))
+        when(coinService.spendCoins(authUuid, 150, "상점 구매: 크리스마스"))
                 .thenReturn(true);
 
         var result = shopService.purchase(authUuid, "room_forest");
 
-        verify(coinService).spendCoins(authUuid, 150, "상점 구매: 초록 정원");
+        verify(coinService).spendCoins(authUuid, 150, "상점 구매: 크리스마스");
         verify(shopItemRepository, atLeastOnce()).save(any(UserShopItem.class));
         assertEquals(500, result.balance());
     }
