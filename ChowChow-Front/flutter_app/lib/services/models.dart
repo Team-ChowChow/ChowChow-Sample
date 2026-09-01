@@ -352,6 +352,7 @@ class CommercialFoodModel {
   final double? carbohydrateG;
   final String? features;
   final String? imageUrl;
+  final String? purchaseUrl;
   /// true면 공식 카탈로그가 아니라 사용자가 직접 등록한 사료(`UserFoods`)다.
   final bool isUserFood;
 
@@ -366,6 +367,7 @@ class CommercialFoodModel {
     this.carbohydrateG,
     this.features,
     this.imageUrl,
+    this.purchaseUrl,
     this.isUserFood = false,
   });
 
@@ -380,6 +382,7 @@ class CommercialFoodModel {
         carbohydrateG: (j['carbohydrateG'] as num?)?.toDouble(),
         features: j['features'] as String?,
         imageUrl: j['imageUrl'] as String?,
+        purchaseUrl: j['purchaseUrl'] as String?,
       );
 
   factory CommercialFoodModel.fromUserFoodJson(Map<String, dynamic> j) => CommercialFoodModel(

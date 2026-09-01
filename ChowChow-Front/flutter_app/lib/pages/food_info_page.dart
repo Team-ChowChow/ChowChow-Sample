@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_client.dart';
 import '../services/models.dart';
@@ -533,11 +534,36 @@ class _FoodCard extends StatelessWidget {
               ],
             ),
           ),
+          if (food.purchaseUrl != null) ...[
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: () => _openPurchaseUrl(context, food.purchaseUrl!),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                side: const BorderSide(color: ChowColors.orange500),
+                foregroundColor: ChowColors.orange500,
+              ),
+              child: const Text('가격 확인', style: TextStyle(fontSize: 13)),
+            ),
+          ],
         ],
       ),
     );
     if (onTap == null) return card;
     return InkWell(borderRadius: BorderRadius.circular(14), onTap: onTap, child: card);
+  }
+
+  Future<void> _openPurchaseUrl(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('구매 페이지를 열 수 없어요.')),
+        );
+      }
+    }
   }
 }
 

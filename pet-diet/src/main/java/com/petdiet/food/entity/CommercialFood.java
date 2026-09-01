@@ -60,6 +60,9 @@ public class CommercialFood {
     @Column(name = "\"imageUrl\"")
     private String imageUrl;
 
+    @Column(name = "\"purchaseUrl\"", columnDefinition = "TEXT")
+    private String purchaseUrl;
+
     @CreationTimestamp
     @Column(name = "\"createdAt\"", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
