@@ -682,6 +682,10 @@ class _CharacterPageState extends State<CharacterPage>
   Widget build(BuildContext context) {
     final roomStyle = roomVisualFor(_roomBackgroundKey);
     final sceneAsset = _sceneAssetFor(_scene);
+    // 구매/장착한 테마 이미지가 있으면, 밥주기/쓰다듬기 등 상호작용 중에도
+    // 기본 씬 이미지로 바꾸지 않고 테마 배경을 그대로 유지한다.
+    final hasThemeBg = roomStyle.imagePath != null;
+    final showActivityScene = !hasThemeBg && _scene != _Scene.none;
 
     return Scaffold(
       body: Stack(
@@ -701,11 +705,11 @@ class _CharacterPageState extends State<CharacterPage>
               ),
             ),
           ),
-          // 구매/장착한 테마 이미지(궁전/크리스마스/별빛 캠핑 등) — 활동 중이 아닐 때 기본 배경으로 보인다.
-          if (roomStyle.imagePath != null)
+          // 구매/장착한 테마 이미지(궁전/크리스마스/별빛 캠핑 등) — 상호작용 중에도 계속 유지된다.
+          if (hasThemeBg)
             IgnorePointer(
               child: AnimatedOpacity(
-                opacity: _scene == _Scene.none ? 1 : 0,
+                opacity: 1,
                 duration: const Duration(milliseconds: 400),
                 child: Image.asset(
                   roomStyle.imagePath!,
@@ -714,10 +718,10 @@ class _CharacterPageState extends State<CharacterPage>
                 ),
               ),
             ),
-          // 활동별 배경 — 밥주기/쓰다듬기/운동하기/목욕시키기 중일 때만 해당 씬으로 페이드 전환
+          // 활동별 배경 — 테마 미장착 상태에서 밥주기/쓰다듬기/운동하기/목욕시키기 중일 때만 해당 씬으로 페이드 전환
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _scene == _Scene.none ? 0 : 1,
+              opacity: showActivityScene ? 1 : 0,
               duration: const Duration(milliseconds: 550),
               curve: Curves.easeInOut,
               child: Image.asset(
@@ -731,7 +735,7 @@ class _CharacterPageState extends State<CharacterPage>
           // 씬 이미지 위 은은한 그림자 오버레이(상단 UI 가독성 유지)
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _scene == _Scene.none ? 0 : 1,
+              opacity: showActivityScene ? 1 : 0,
               duration: const Duration(milliseconds: 400),
               child: DecoratedBox(
                 decoration: BoxDecoration(
