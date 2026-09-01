@@ -685,7 +685,9 @@ class _CharacterPageState extends State<CharacterPage>
     // 구매/장착한 테마 이미지가 있으면, 밥주기/쓰다듬기 등 상호작용 중에도
     // 기본 씬 이미지로 바꾸지 않고 테마 배경을 그대로 유지한다.
     final hasThemeBg = roomStyle.imagePath != null;
-    final showActivityScene = !hasThemeBg && _scene != _Scene.none;
+    // 테마 미장착 상태(기본 방)라면 흰 배경 대신 항상 씬 이미지를 깔아준다.
+    // 상호작용 전(_Scene.none)에는 scene_pet 사진이, 상호작용 중엔 해당 활동 사진이 뜬다.
+    final showActivityScene = !hasThemeBg;
 
     return Scaffold(
       body: Stack(
