@@ -287,7 +287,9 @@ class _HomePageState extends State<HomePage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           gradient: const LinearGradient(
-                            colors: [ChowColors.blue500, ChowColors.purple500],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [ChowCozy.secondary, ChowCozy.primary],
                           ),
                         ),
                         child: Column(
@@ -563,15 +565,12 @@ class _HeaderState extends State<_Header> {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Row(
             children: [
               Text(
                 '멍냥밥상',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: ChowCozy.secondary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                style: ChowPageStyles.title.copyWith(color: ChowCozy.secondary),
               ),
               const Spacer(),
               IconButton(

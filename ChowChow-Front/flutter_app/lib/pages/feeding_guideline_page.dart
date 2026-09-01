@@ -412,8 +412,8 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _goBack),
-        title: const Text('급여량 계산기', style: TextStyle(fontWeight: FontWeight.w500)),
-        centerTitle: true,
+        title: const Text('급여량 계산기', style: ChowPageStyles.title),
+        centerTitle: false,
       ),
       body: _loadingPets
           ? const Center(child: CircularProgressIndicator())
@@ -433,7 +433,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
 
   Widget _buildProgressDots() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
         children: List.generate(3, (i) {
           final active = i <= _step;
@@ -508,7 +508,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
   }) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: SizedBox(
           width: double.infinity,
           height: 52,
@@ -532,7 +532,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
 
   Widget _buildDietStep() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         Text(
           '${_selectedPet?.petName ?? ''}이(가)\n먹는 건 뭔가요?',
@@ -686,7 +686,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
 
   Widget _buildFeedingTimesStep() {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         const Text(
           '하루 몇 번\n급여하나요?',
@@ -778,7 +778,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
   Widget _buildPetInfoStep() {
     final pet = _selectedPet;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         Text(
           '${pet?.petName ?? ''}의 정보를\n확인해요',
@@ -848,7 +848,7 @@ class _FeedingGuidelinePageState extends State<FeedingGuidelinePage> {
         : null;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
       children: [
         const Text(
           '권장 급여량이에요',

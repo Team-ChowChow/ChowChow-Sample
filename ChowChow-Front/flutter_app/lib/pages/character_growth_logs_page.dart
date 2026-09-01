@@ -90,7 +90,7 @@ class _CharacterGrowthLogsPageState extends State<CharacterGrowthLogsPage> {
             height: 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               itemCount: _filters.length,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (_, i) {

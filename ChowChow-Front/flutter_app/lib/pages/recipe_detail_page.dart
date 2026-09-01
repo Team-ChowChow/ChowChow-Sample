@@ -512,22 +512,18 @@ class _DetailHeader extends StatelessWidget {
     return Material(
       color: Colors.white,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
             IconButton(
               onPressed: onBack,
               icon: const Icon(Icons.arrow_back, color: ChowColors.gray700),
             ),
+            const SizedBox(width: 16),
             const Expanded(
               child: Text(
                 '레시피',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ChowColors.gray900,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: ChowPageStyles.title,
               ),
             ),
             Builder(
@@ -865,7 +861,7 @@ class _Tabs extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 12),
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Row(
         children: [
           _TabButton(
@@ -1111,7 +1107,7 @@ class _LoadErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFFEF2F2),
@@ -1258,7 +1254,7 @@ class _ReviewsSection extends StatelessWidget {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             child: Row(
               children: [
                 Column(
@@ -1310,7 +1306,7 @@ class _WhiteSection extends StatelessWidget {
   const _WhiteSection({
     required this.child,
     this.topMargin = 12,
-    this.horizontalPadding = 20,
+    this.horizontalPadding = 16,
   });
 
   final Widget child;
@@ -1525,7 +1521,7 @@ class _ReviewTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2065,7 +2061,7 @@ class _CookingCompleteButtonState extends State<_CookingCompleteButton> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: SizedBox(
         width: double.infinity,
         child: _loading

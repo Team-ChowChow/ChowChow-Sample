@@ -194,7 +194,7 @@ class _CharacterFormPageState extends State<CharacterFormPage> {
           : _generatingImage
               ? _GeneratingImageOverlay(petName: _selectedPet?.petName ?? '')
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

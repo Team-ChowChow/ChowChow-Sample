@@ -82,10 +82,11 @@ public class UserPet {
     @OneToMany(mappedBy = "pet", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PetDisease> diseases = new ArrayList<>();
 
-    public void update(String petName, String petGender, LocalDate petBirthdate,
+    public void update(String petName, String petType, String petGender, LocalDate petBirthdate,
                        BigDecimal petWeight, Boolean isNeutered, String petProfileImg, Integer breedId,
                        Integer petBodyConditionScore, Integer petActivityLevel, String healthFocusAreas) {
         if (petName != null) this.petName = petName;
+        if (petType != null) this.petType = petType;
         if (petGender != null) this.petGender = petGender;
         if (petBirthdate != null) this.petBirthdate = petBirthdate;
         if (petWeight != null) this.petWeight = petWeight;

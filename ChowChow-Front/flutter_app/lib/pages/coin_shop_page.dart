@@ -238,7 +238,7 @@ class _CoinShopPageState extends State<CoinShopPage> {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: ChowCozy.stone200)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -256,14 +256,14 @@ class _CoinShopPageState extends State<CoinShopPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 20),
               const Text(
                 '코인상점',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: ChowCozy.stone900),
+                style: ChowPageStyles.title,
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           // 보유 코인 카드
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

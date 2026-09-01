@@ -30,7 +30,7 @@ class AuthAccountScaffold extends StatelessWidget {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -71,15 +71,11 @@ class AuthPageHeader extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: ChowColors.gray900,
-              ),
+              style: ChowPageStyles.title,
             ),
           ),
           const SizedBox(width: 48),

@@ -34,6 +34,9 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       _nicknameController.text.trim().length >= 2 &&
       _nicknameController.text.trim().length <= 20;
 
+  bool get _hasProfileImage =>
+      _selectedImageBytes != null || (_profileImageUrl?.isNotEmpty ?? false);
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +122,15 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
     }
   }
 
+  void _removeProfileImage() {
+    setState(() {
+      _selectedImageBytes = null;
+      _selectedImageName = null;
+      _profileImageUrl = '';
+      _errorMessage = null;
+    });
+  }
+
   Future<void> _saveProfile() async {
     if (!_isValid || _saving) return;
     setState(() {
@@ -165,14 +177,10 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         title: const Text(
           '프로필 설정',
-          style: TextStyle(
-            color: Color(0xFF111827),
-            fontSize: 17,
-            fontWeight: FontWeight.w500,
-          ),
+          style: ChowPageStyles.title,
         ),
         leading: IconButton(
           onPressed: () => context.pop(),
@@ -188,7 +196,7 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
               child: CircularProgressIndicator(color: ChowCozy.stone500),
             )
           : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
               children: [
                 Center(
                   child: _ProfileImageEditor(
@@ -199,13 +207,28 @@ class _ProfileSettingsPageState extends State<ProfileSettingsPage> {
                 ),
                 const SizedBox(height: 12),
                 Center(
-                  child: TextButton.icon(
-                    onPressed: _pickProfileImage,
-                    icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                    label: const Text('프로필 사진 변경'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: ChowCozy.stone500,
-                    ),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _saving ? null : _pickProfileImage,
+                        icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                        label: const Text('프로필 사진 변경'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: ChowCozy.stone500,
+                        ),
+                      ),
+                      if (_hasProfileImage)
+                        TextButton.icon(
+                          onPressed: _saving ? null : _removeProfileImage,
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          label: const Text('사진 삭제'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: ChowColors.red500,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),

@@ -78,6 +78,17 @@ class ChowCozy {
   static const radius = 10.0; // 0.625rem
 }
 
+class ChowPageStyles {
+  ChowPageStyles._();
+
+  static const titlePadding = EdgeInsets.fromLTRB(16, 16, 16, 8);
+  static const title = TextStyle(
+    color: ChowColors.gray800,
+    fontSize: 22,
+    fontWeight: FontWeight.w500,
+  );
+}
+
 ThemeData buildChowTheme() {
   const seed = ChowCozy.primary;
   final baseTextTheme = GoogleFonts.juaTextTheme();
@@ -103,9 +114,13 @@ ThemeData buildChowTheme() {
       scrolledUnderElevation: 0,
       backgroundColor: ChowCozy.background,
       foregroundColor: ChowCozy.foreground,
+      centerTitle: false,
+      titleSpacing: 16,
+      toolbarHeight: 64,
       titleTextStyle: GoogleFonts.jua(
-        color: ChowCozy.foreground,
-        fontSize: 18,
+        color: ChowColors.gray800,
+        fontSize: 22,
+        fontWeight: FontWeight.w500,
       ),
     ),
     cardTheme: CardThemeData(

@@ -62,14 +62,14 @@ public class PetService {
 
         addAllergies(pet, req.getAllergyIds());
         addDiseases(pet, req.getDiseaseIds());
-        return PetResponse.from(userPetRepository.save(pet));
+        return buildPetResponse(userPetRepository.save(pet));
     }
 
     @Transactional
     public PetResponse updatePet(UUID authUuid, Integer petId, PetRequest req) {
         User user = findUser(authUuid);
         UserPet pet = findPet(petId, user);
-        pet.update(req.getPetName(), req.getPetGender(), req.getPetBirthdate(),
+        pet.update(req.getPetName(), req.getPetType(), req.getPetGender(), req.getPetBirthdate(),
                 req.getPetWeight(), req.getIsNeutered(), req.getPetProfileImg(), req.getBreedId(),
                 req.getPetBodyConditionScore(), req.getPetActivityLevel(),
                 joinHealthFocusAreas(req.getHealthFocusAreas()));
@@ -82,7 +82,7 @@ public class PetService {
             pet.getDiseases().clear();
             addDiseases(pet, req.getDiseaseIds());
         }
-        return PetResponse.from(userPetRepository.save(pet));
+        return buildPetResponse(userPetRepository.save(pet));
     }
 
     @Transactional
@@ -146,6 +146,7 @@ public class PetService {
             Optional<Breed> breed = breedRepository.findById(pet.getBreedId());
             if (breed.isPresent()) {
                 builder.breedName(breed.get().getBreedName())
+                        .breedNameKo(breed.get().getBreedNameKo())
                         .groupName(breed.get().getGroupName());
             }
         }

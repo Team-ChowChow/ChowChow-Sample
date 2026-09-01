@@ -4,9 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../services/api_client.dart';
 import '../services/character_service.dart';
 import '../services/models.dart';
-import '../services/shop_service.dart';
 import '../theme/chow_theme.dart';
-import '../theme/shop_visuals.dart';
 import '../widgets/chow_network_image.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -115,7 +113,8 @@ class _ProfilePageState extends State<ProfilePage> {
   int _savedRecipes = 0;
   int _completedCooking = 0;
   int _writtenPosts = 0;
-  String _profileFrameKey = 'frame_orange';
+  int _followerCount = 0;
+  int _followingCount = 0;
 
   String _petType = '';
   int? _breedId;
@@ -142,6 +141,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _noFavoriteFood = false;
   bool _noAllergy = false;
   bool _noDisease = false;
+  int? _editingPetId;
   final List<String> _priorities = [];
   final List<String> _livingSpaces = [];
   final List<String> _daytimeRoutines = [];
@@ -159,17 +159,6 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadProfile();
-    _loadShopStyle();
-  }
-
-  Future<void> _loadShopStyle() async {
-    try {
-      final catalog = await ShopService.fetchCatalog();
-      if (!mounted) return;
-      setState(() {
-        _profileFrameKey = catalog.equippedProfileFrameKey;
-      });
-    } catch (_) {}
   }
 
   Future<void> _loadProfile() async {
@@ -216,6 +205,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _savedRecipes = (stats['savedRecipes'] as num?)?.toInt() ?? 0;
         _completedCooking = completedRecipeIds.length;
         _writtenPosts = myPostCount;
+        _followerCount = (stats['followerCount'] as num?)?.toInt() ?? 0;
+        _followingCount = (stats['followingCount'] as num?)?.toInt() ?? 0;
         _notifications = rawNotifs.map((e) {
           final m = e as Map<String, dynamic>;
           final createdAt = m['createdAt'] as String?;
@@ -269,6 +260,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _resetPetForm() {
+    _editingPetId = null;
     _petType = '';
     _breedId = null;
     _breedDisplayName = '';
@@ -336,16 +328,21 @@ class _ProfilePageState extends State<ProfilePage> {
         'petBirthdate': _formatBirthdateForApi(_petBirthdate!)
       else if (!_isExactBirthdate)
         'petBirthdate': _approximateBirthdate(),
-      if (_selectedAllergyIds.isNotEmpty) 'allergyIds': _selectedAllergyIds,
+      'allergyIds': _selectedAllergyIds,
       if (_petGender != null) 'petGender': _petGender,
       'isNeutered': _isNeutered,
       if (_bodyConditionScore != null) 'petBodyConditionScore': _bodyConditionScore,
       if (_activityLevel != null) 'petActivityLevel': _activityLevel,
-      if (_healthFocusAreas.isNotEmpty) 'healthFocusAreas': _healthFocusAreas,
+      'healthFocusAreas': _healthFocusAreas,
     };
 
     try {
-      await ApiClient.post('/api/pets', body, auth: true);
+      final editingPetId = _editingPetId;
+      if (editingPetId == null) {
+        await ApiClient.post('/api/pets', body, auth: true);
+      } else {
+        await ApiClient.patch('/api/pets/$editingPetId', body, auth: true);
+      }
 
       if (!mounted) return;
 
@@ -361,12 +358,68 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('반려동물 추가에 실패했습니다. 잠시 후 다시 시도해주세요.')),
+        SnackBar(
+          content: Text(
+            _editingPetId == null
+                ? '반려동물 추가에 실패했습니다. 잠시 후 다시 시도해주세요.'
+                : '반려동물 수정에 실패했습니다. 잠시 후 다시 시도해주세요.',
+          ),
+        ),
       );
     }
   }
 
-  Future<void> _openAddPetPage() async {
+  Future<void> _preparePetEditForm(PetModel pet) async {
+    _resetPetForm();
+    _editingPetId = pet.petId;
+    _petType = pet.petType == 'CAT' ? 'cat' : 'dog';
+    _breedId = pet.breedId;
+    _petName = pet.petName;
+    _petBirthdate = DateTime.tryParse(pet.petBirthdate ?? '');
+    _petWeight = pet.petWeight?.toString() ?? '';
+    _selectedAllergyIds = List<int>.from(pet.allergyIds);
+    _petGender = pet.petGender;
+    _isNeutered = pet.isNeutered ?? false;
+    _bodyConditionScore = pet.petBodyConditionScore;
+    _activityLevel = pet.petActivityLevel;
+    _healthFocusAreas.addAll(pet.healthFocusAreas);
+    _noAllergy = _selectedAllergyIds.isEmpty;
+    _noHealthFocus = _healthFocusAreas.isEmpty;
+
+    final petType = pet.petType == 'CAT' ? 'CAT' : 'DOG';
+    try {
+      final breeds = await CharacterService.fetchBreeds(petType);
+      _availableBreeds = breeds;
+      for (final breed in breeds) {
+        if (breed.breedId == pet.breedId) {
+          _breedDisplayName = breed.displayName;
+          break;
+        }
+      }
+    } catch (_) {
+      _availableBreeds = [];
+    }
+    if (_breedDisplayName.isEmpty) {
+      _breedDisplayName = pet.breedNameKo?.isNotEmpty == true
+          ? pet.breedNameKo!
+          : pet.breedName ?? '';
+    }
+  }
+
+  Future<void> _openAddPetPage() => _openPetFormPage();
+
+  Future<void> _openEditPetPage(PetModel pet) =>
+      _openPetFormPage(editingPet: pet);
+
+  Future<void> _openPetFormPage({PetModel? editingPet}) async {
+    if (editingPet == null) {
+      _resetPetForm();
+    } else {
+      await _preparePetEditForm(editingPet);
+      if (!mounted) return;
+    }
+
+    final isEditing = editingPet != null;
     var pageIsOpen = true;
 
     await Navigator.of(context).push<void>(
@@ -386,9 +439,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   foregroundColor: const Color(0xFF111827),
                   elevation: 0,
                   scrolledUnderElevation: 0,
-                  title: const Text(
-                    '반려동물 추가',
-                    style: TextStyle(fontWeight: FontWeight.w500),
+                  title: Text(
+                    isEditing ? '반려동물 수정' : '반려동물 추가',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                   bottom: const PreferredSize(
                     preferredSize: Size.fromHeight(1),
@@ -397,7 +450,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 body: SafeArea(
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
                     children: [
                       _buildPetTypeSelector(updateForm),
                       const SizedBox(height: 22),
@@ -409,6 +462,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         label: '이름',
                         required: true,
                         hintText: '반려동물 이름을 입력하세요',
+                        initialValue: _petName,
                         onChanged: (value) {
                           updateForm(() => _petName = value);
                         },
@@ -499,9 +553,9 @@ class _ProfilePageState extends State<ProfilePage> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: const Text(
-                            '추가하기',
-                            style: TextStyle(
+                          child: Text(
+                            isEditing ? '수정하기' : '추가하기',
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1423,6 +1477,7 @@ class _ProfilePageState extends State<ProfilePage> {
     required bool required,
     required String hintText,
     String? helperText,
+    String? initialValue,
     TextInputType? keyboardType,
     required ValueChanged<String> onChanged,
   }) {
@@ -1431,7 +1486,8 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         _buildPetLabel(label, required: required),
         const SizedBox(height: 8),
-        TextField(
+        TextFormField(
+          initialValue: initialValue,
           keyboardType: keyboardType,
           onChanged: onChanged,
           decoration: InputDecoration(
@@ -1706,9 +1762,10 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final userName = _user?.displayName ?? '사용자';
-    final userEmail = _user?.authEmail ?? '';
     final profileImageUrl = _user?.userProfileImg;
-    final profileFrame = profileFrameVisualFor(_profileFrameKey);
+    final topSafeArea = MediaQuery.paddingOf(context).top;
+    // 기존 세로 여백 총합은 유지하고 위아래에 균등하게 나눈다.
+    final profileContentVerticalPadding = (topSafeArea + 16 + 40) / 2;
 
     return ColoredBox(
       color: ChowColors.gray50,
@@ -1720,7 +1777,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Container(
                     width: double.infinity,
                     color: ChowCozy.stone500,
-                    padding: const EdgeInsets.fromLTRB(20, 48, 8, 40),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      profileContentVerticalPadding,
+                      8,
+                      profileContentVerticalPadding,
+                    ),
                     child: Column(
                       children: [
                         Row(
@@ -1730,18 +1792,9 @@ class _ProfilePageState extends State<ProfilePage> {
                               width: 70,
                               height: 70,
                               padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: profileFrame.colors,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: profileFrame.shadowColor,
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                                color: ChowCozy.primary,
                               ),
                               child: CircleAvatar(
                                 backgroundColor: Colors.white,
@@ -1755,10 +1808,10 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ),
                                         ),
                                       )
-                                    : Icon(
+                                    : const Icon(
                                         Icons.person,
                                         size: 34,
-                                        color: Colors.deepPurple.shade300,
+                                        color: ChowCozy.stone500,
                                       ),
                               ),
                             ),
@@ -1778,14 +1831,33 @@ class _ProfilePageState extends State<ProfilePage> {
                                         height: 1.2,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      userEmail,
-                                      style: const TextStyle(
-                                        color: Color(0xD9FFFFFF),
-                                        fontSize: 13,
-                                        height: 1.2,
-                                      ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        _FollowCountButton(
+                                          value: _followerCount,
+                                          label: '팔로워',
+                                          onTap: () async {
+                                            await context.push('/profile/followers');
+                                            if (mounted) await _loadProfile();
+                                          },
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 1,
+                                          height: 16,
+                                          color: Colors.white.withValues(alpha: 0.35),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _FollowCountButton(
+                                          value: _followingCount,
+                                          label: '팔로잉',
+                                          onTap: () async {
+                                            await context.push('/profile/following');
+                                            if (mounted) await _loadProfile();
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -1809,7 +1881,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                         Padding(
                           padding: const EdgeInsets.only(right: 12),
                           child: Row(
@@ -1858,9 +1930,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     padding: const EdgeInsets.only(top: 16),
                     child: Material(
                       color: Colors.white,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
                       elevation: 2,
                       shadowColor: Color(0x14000000),
                       child: Padding(
@@ -1916,6 +1985,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   pet: pet,
                                   onDeleted: _loadProfile,
                                   onUpdated: _loadProfile,
+                                  onEdit: _openEditPetPage,
                                 ),
                               ),
                           ],
@@ -1926,7 +1996,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SliverToBoxAdapter(
                   child: _MenuSection(
-                    title: '내 활동',
+                    title: '커뮤니티 활동',
                     items: [
                       _MenuItem(
                         label: '내가 작성한 글',
@@ -1987,7 +2057,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Container(
                     margin: const EdgeInsets.only(top: 8),
                     color: Colors.white,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                     child: Column(
                       children: [
                         const Text(
@@ -2033,7 +2103,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                     child: OutlinedButton.icon(
                       onPressed: _handleLogout,
                       style: OutlinedButton.styleFrom(
@@ -2266,16 +2336,74 @@ class _StatTile extends StatelessWidget {
   }
 }
 
+class _FollowCountButton extends StatelessWidget {
+  const _FollowCountButton({
+    required this.value,
+    required this.label,
+    required this.onTap,
+  });
+
+  final int value;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$value',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PetRow extends StatefulWidget {
-  const _PetRow({required this.pet, this.onDeleted, this.onUpdated});
+  const _PetRow({
+    required this.pet,
+    this.onDeleted,
+    this.onUpdated,
+    this.onEdit,
+  });
   final PetModel pet;
   final VoidCallback? onDeleted;
   final VoidCallback? onUpdated;
+  final Future<void> Function(PetModel pet)? onEdit;
   @override
   State<_PetRow> createState() => _PetRowState();
 }
 
 class _PetRowState extends State<_PetRow> {
+  static const _breedNameFallbacks = <String, String>{
+    'pungsan': '풍산개',
+    'alaskan husky': '알래스칸 허스키',
+  };
+
   PetModel get pet => widget.pet;
 
   // 사진을 등록하지 않은 반려동물은 종에 맞는 기본 프로필 이미지를 보여준다
@@ -2286,23 +2414,34 @@ class _PetRowState extends State<_PetRow> {
           : 'assets/images/base_dog.png';
 
   String get _breedAgeLine {
-    final breed = pet.breedName?.isNotEmpty == true ? pet.breedName : pet.displayType;
-    final group = pet.groupName?.isNotEmpty == true ? pet.groupName : null;
     final age = _ageLabel;
-
-    List<String> parts = [];
-
-    if (breed != null && breed.isNotEmpty) {
-      parts.add(breed);
-    }
-    if (group != null && group.isNotEmpty) {
-      parts.add(group);
-    }
+    final parts = <String>[_localizedBreedName, _neuteredGenderLabel];
     if (age != null && age.isNotEmpty) {
       parts.add(age);
     }
 
-    return parts.isNotEmpty ? parts.join(' • ') : pet.displayType;
+    return parts.join(' • ');
+  }
+
+  String get _localizedBreedName {
+    final koreanName = pet.breedNameKo?.trim() ?? '';
+    if (RegExp(r'[가-힣]').hasMatch(koreanName)) return koreanName;
+
+    final englishName = pet.breedName?.trim() ?? '';
+    final fallback = _breedNameFallbacks[englishName.toLowerCase()];
+    if (fallback != null) return fallback;
+
+    return pet.petType == 'CAT' ? '기타 묘종' : '기타 견종';
+  }
+
+  String get _neuteredGenderLabel {
+    final neutered = pet.isNeutered == true ? '중성화' : '미중성화';
+    final gender = switch (pet.petGender?.trim().toUpperCase()) {
+      'MALE' => '수컷',
+      'FEMALE' => '암컷',
+      _ => '성별 미등록',
+    };
+    return '$neutered $gender';
   }
 
   String? get _ageLabel {
@@ -2470,13 +2609,13 @@ class _PetRowState extends State<_PetRow> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.of(ctx).pop();
-                    _openEditCharacteristicsSheet(context);
+                    await widget.onEdit?.call(pet);
                   },
-                  icon: const Icon(Icons.tune, color: ChowCozy.stone500),
+                  icon: const Icon(Icons.edit_outlined, color: ChowCozy.stone500),
                   label: const Text(
-                    '특징 수정',
+                    '정보 수정',
                     style: TextStyle(color: ChowCozy.stone500),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -2511,124 +2650,6 @@ class _PetRowState extends State<_PetRow> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  static const _activityLabels = ['매우 적음', '적음', '보통', '많음', '매우 많음'];
-  static const _healthFocusOptions = [
-    '피부/모질', '관절', '소화기', '비뇨기', '치아/구강', '눈/귀', '체중 관리', '심장',
-  ];
-
-  void _openEditCharacteristicsSheet(BuildContext context) {
-    int bcs = pet.petBodyConditionScore ?? 5;
-    int activity = pet.petActivityLevel ?? 3;
-    List<String> healthFocus = List.from(pet.healthFocusAreas);
-    bool saving = false;
-
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('반려동물 특징 수정', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 20),
-                Text('체형 점수 (BCS): $bcs / 9', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                const Text('1(마름) ~ 5(적정) ~ 9(비만)', style: TextStyle(fontSize: 12, color: ChowColors.gray500)),
-                Slider(
-                  value: bcs.toDouble(),
-                  min: 1,
-                  max: 9,
-                  divisions: 8,
-                  activeColor: ChowCozy.stone500,
-                  label: '$bcs',
-                  onChanged: (v) => setSheet(() => bcs = v.round()),
-                ),
-                const SizedBox(height: 12),
-                Text('활동량: ${_activityLabels[activity - 1]}', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                Slider(
-                  value: activity.toDouble(),
-                  min: 1,
-                  max: 5,
-                  divisions: 4,
-                  activeColor: ChowCozy.stone500,
-                  label: _activityLabels[activity - 1],
-                  onChanged: (v) => setSheet(() => activity = v.round()),
-                ),
-                const SizedBox(height: 12),
-                const Text('관심 건강 부위 (최대 3개)', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _healthFocusOptions.map((area) {
-                    final selected = healthFocus.contains(area);
-                    return ChoiceChip(
-                      label: Text(area),
-                      selected: selected,
-                      selectedColor: ChowCozy.stone100,
-                      onSelected: (v) => setSheet(() {
-                        if (v) {
-                          if (healthFocus.length < 3) healthFocus.add(area);
-                        } else {
-                          healthFocus.remove(area);
-                        }
-                      }),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: saving
-                        ? null
-                        : () async {
-                            setSheet(() => saving = true);
-                            try {
-                              await ApiClient.patch('/api/pets/${pet.petId}', {
-                                'petName': pet.petName,
-                                'petType': pet.petType,
-                                'petBodyConditionScore': bcs,
-                                'petActivityLevel': activity,
-                                'healthFocusAreas': healthFocus,
-                              });
-                              if (ctx.mounted) Navigator.of(ctx).pop();
-                              widget.onUpdated?.call();
-                            } catch (_) {
-                              setSheet(() => saving = false);
-                              if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  const SnackBar(content: Text('저장에 실패했어요. 잠시 후 다시 시도해주세요.')),
-                                );
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ChowCozy.stone500,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: saving
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('저장하기'),
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
@@ -2758,7 +2779,7 @@ class _MenuSection extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(top: 8),
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

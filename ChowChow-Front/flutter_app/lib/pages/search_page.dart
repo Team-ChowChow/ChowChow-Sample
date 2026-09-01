@@ -252,19 +252,15 @@ class _SearchPageState extends State<SearchPage> {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
                       '레시피 검색',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w500,
-                            color: ChowColors.gray900,
-                          ),
+                      style: ChowPageStyles.title,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
@@ -785,7 +781,7 @@ class _SearchResults extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 100),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
       children: [
         Row(
           children: [
