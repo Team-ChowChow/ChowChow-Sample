@@ -216,13 +216,13 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   Future<void> _toggleFollow() async {
-    if (_post == null) return;
+    if (_post == null || _post!.userId == null) return;
     setState(() => _isFollowing = !_isFollowing);
     try {
       if (_isFollowing) {
-        await FollowService.follow(_post!.userId);
+        await FollowService.follow(_post!.userId!);
       } else {
-        await FollowService.unfollow(_post!.userId);
+        await FollowService.unfollow(_post!.userId!);
       }
     } catch (_) {
       if (mounted) setState(() => _isFollowing = !_isFollowing);
