@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../data/sample_data.dart';
 import '../services/api_client.dart';
 import '../services/community_service.dart';
+import '../services/follow_service.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
 import '../widgets/community_avatar.dart';
@@ -28,6 +29,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   List<_PostComment> _comments = [];
   bool _isLiked = false;
   bool _isBookmarked = false;
+  bool _isFollowing = false;
   bool _loadError = false;
   int? _currentUserId;
   String? _currentUserProfileImage;
@@ -213,6 +215,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
+  Future<void> _toggleFollow() async {
+    if (_post == null) return;
+    setState(() => _isFollowing = !_isFollowing);
+    try {
+      if (_isFollowing) {
+        await FollowService.follow(_post!.userId);
+      } else {
+        await FollowService.unfollow(_post!.userId);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isFollowing = !_isFollowing);
+    }
+  }
+
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -289,6 +305,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     onToggleLike: _togglePostLike,
                     isBookmarked: _isBookmarked,
                     onToggleBookmark: _toggleBookmark,
+                    isFollowing: _isFollowing,
+                    onToggleFollow: _toggleFollow,
                     onEdit: _handleEdit,
                     onDelete: _handleDelete,
                   ),
@@ -359,6 +377,8 @@ class _PostContentSection extends StatelessWidget {
     required this.onToggleLike,
     required this.isBookmarked,
     required this.onToggleBookmark,
+    required this.isFollowing,
+    required this.onToggleFollow,
     this.currentUserId,
     this.onEdit,
     this.onDelete,
@@ -371,6 +391,8 @@ class _PostContentSection extends StatelessWidget {
   final VoidCallback onToggleLike;
   final bool isBookmarked;
   final VoidCallback onToggleBookmark;
+  final bool isFollowing;
+  final VoidCallback onToggleFollow;
   final int? currentUserId;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -416,7 +438,7 @@ class _PostContentSection extends StatelessWidget {
                   ),
                 ),
                 FilledButton(
-                  onPressed: () {},
+                  onPressed: onToggleFollow,
                   style: FilledButton.styleFrom(
                     backgroundColor: ChowCozy.stone500,
                     foregroundColor: Colors.white,
@@ -430,7 +452,7 @@ class _PostContentSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
                   ),
-                  child: const Text('팔로우'),
+                  child: Text(isFollowing ? '팔로우 중' : '팔로우'),
                 ),
                 _PostMenuButton(
                   isOwner: currentUserId != null && post.userId == currentUserId,

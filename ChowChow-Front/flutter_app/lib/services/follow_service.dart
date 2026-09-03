@@ -102,6 +102,14 @@ class FollowService {
     );
   }
 
+  static Future<void> follow(int userId) async {
+    await ApiClient.post('/api/users/$userId/follow', {});
+  }
+
+  static Future<void> unfollow(int userId) async {
+    await ApiClient.delete('/api/users/$userId/follow');
+  }
+
   static List<FollowUserModel> _parseUsers(List<dynamic> rawUsers) {
     return rawUsers
         .map(
