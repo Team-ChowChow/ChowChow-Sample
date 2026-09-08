@@ -1,7 +1,7 @@
 package com.petdiet.user.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.petdiet.user.entity.User;
+import com.petdiet.auth.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
