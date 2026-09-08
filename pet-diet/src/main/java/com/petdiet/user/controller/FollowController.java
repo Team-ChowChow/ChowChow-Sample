@@ -1,5 +1,6 @@
 package com.petdiet.user.controller;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
 import com.petdiet.config.SupabasePrincipal;
@@ -25,26 +26,29 @@ public class FollowController {
                 .orElseThrow(() -> new IllegalStateException("유저를 찾을 수 없습니다."));
     }
 
+    private User targetUser(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    }
+
     // 팔로우
     @PostMapping("/{userId}/follow")
-    public ResponseEntity<Void> follow(
+    public ResponseEntity<FollowResponse> follow(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId) {
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        followService.follow(currentUser(principal), targetUser);
-        return ResponseEntity.ok().build();
+        User target = targetUser(userId);
+        followService.follow(currentUser(principal), target);
+        return ResponseEntity.ok(new FollowResponse(followService.getFollowerCount(target)));
     }
 
     // 언팔로우
     @DeleteMapping("/{userId}/follow")
-    public ResponseEntity<Void> unfollow(
+    public ResponseEntity<FollowResponse> unfollow(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId) {
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        followService.unfollow(currentUser(principal), targetUser);
-        return ResponseEntity.ok().build();
+        User target = targetUser(userId);
+        followService.unfollow(currentUser(principal), target);
+        return ResponseEntity.ok(new FollowResponse(followService.getFollowerCount(target)));
     }
 
     // 나의 팔로워 목록
@@ -73,9 +77,7 @@ public class FollowController {
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        FollowPageResponse response = followService.getFollowers(currentUser(principal), targetUser, pageable);
+        FollowPageResponse response = followService.getFollowers(currentUser(principal), targetUser(userId), pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -85,9 +87,16 @@ public class FollowController {
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        FollowPageResponse response = followService.getFollowing(currentUser(principal), targetUser, pageable);
+        FollowPageResponse response = followService.getFollowing(currentUser(principal), targetUser(userId), pageable);
         return ResponseEntity.ok(response);
+    }
+
+    public static class FollowResponse {
+        @JsonProperty("followerCount")
+        public final long followerCount;
+
+        public FollowResponse(long followerCount) {
+            this.followerCount = followerCount;
+        }
     }
 }

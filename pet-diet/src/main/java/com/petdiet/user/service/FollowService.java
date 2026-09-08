@@ -1,6 +1,7 @@
 package com.petdiet.user.service;
 
 import com.petdiet.auth.entity.User;
+import com.petdiet.config.SupabasePrincipal;
 import com.petdiet.user.dto.FollowPageResponse;
 import com.petdiet.user.dto.UserFollowResponse;
 import com.petdiet.user.entity.UserFollow;

@@ -11,7 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "\"UserFollow\"")
+@Table(name = "user_follow")
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
