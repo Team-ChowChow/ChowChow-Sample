@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiException implements Exception {
@@ -163,7 +164,14 @@ class ApiClient {
     final uri = Uri.parse('$_baseUrl/api/common/upload?type=$type');
     final request = http.MultipartRequest('POST', uri);
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    final contentType = MediaType.parse(_imageContentType(file.path));
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+        contentType: contentType,
+      ),
+    );
     var streamed = await request.send();
     // 401 → refresh & retry once
     if (streamed.statusCode == 401) {
@@ -171,7 +179,13 @@ class ApiClient {
         final newToken = await getToken();
         final retryReq = http.MultipartRequest('POST', uri);
         if (newToken != null) retryReq.headers['Authorization'] = 'Bearer $newToken';
-        retryReq.files.add(await http.MultipartFile.fromPath('file', file.path));
+        retryReq.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            file.path,
+            contentType: contentType,
+          ),
+        );
         streamed = await retryReq.send();
       }
     }
@@ -188,12 +202,20 @@ class ApiClient {
     String type = 'recipe',
   }) async {
     final uri = Uri.parse('$_baseUrl/api/common/upload?type=$type');
+    final contentType = MediaType.parse(
+      _imageContentType(filename, bytes: bytes),
+    );
 
     Future<http.StreamedResponse> send(String? token) async {
       final request = http.MultipartRequest('POST', uri);
       if (token != null) request.headers['Authorization'] = 'Bearer $token';
       request.files.add(
-        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: filename,
+          contentType: contentType,
+        ),
       );
       return request.send();
     }
@@ -208,5 +230,43 @@ class ApiClient {
       return (jsonDecode(body) as Map<String, dynamic>)['url'] as String;
     }
     throw ApiException(streamed.statusCode, 'Upload failed: $body');
+  }
+
+  static String _imageContentType(String filename, {Uint8List? bytes}) {
+    if (bytes != null) {
+      if (bytes.length >= 8 &&
+          bytes[0] == 0x89 &&
+          bytes[1] == 0x50 &&
+          bytes[2] == 0x4E &&
+          bytes[3] == 0x47) {
+        return 'image/png';
+      }
+      if (bytes.length >= 3 &&
+          bytes[0] == 0xFF &&
+          bytes[1] == 0xD8 &&
+          bytes[2] == 0xFF) {
+        return 'image/jpeg';
+      }
+      if (bytes.length >= 6) {
+        final signature = String.fromCharCodes(bytes.take(6));
+        if (signature == 'GIF87a' || signature == 'GIF89a') {
+          return 'image/gif';
+        }
+      }
+      if (bytes.length >= 12 &&
+          String.fromCharCodes(bytes.take(4)) == 'RIFF' &&
+          String.fromCharCodes(bytes.skip(8).take(4)) == 'WEBP') {
+        return 'image/webp';
+      }
+    }
+
+    final normalizedName = filename.toLowerCase();
+    if (normalizedName.endsWith('.jpg') ||
+        normalizedName.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+    if (normalizedName.endsWith('.gif')) return 'image/gif';
+    if (normalizedName.endsWith('.webp')) return 'image/webp';
+    return 'image/png';
   }
 }

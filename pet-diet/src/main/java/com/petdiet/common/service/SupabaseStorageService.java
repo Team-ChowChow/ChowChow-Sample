@@ -71,9 +71,7 @@ public class SupabaseStorageService {
      * 바이트 배열을 직접 레시피 버킷에 업로드하고 공개 URL을 반환.
      */
     public String uploadRecipeImageBytes(byte[] data, String contentType) {
-        String ext = contentType != null && contentType.contains("gif")
-                ? ".gif"
-                : contentType != null && contentType.contains("jpeg") ? ".jpg" : ".png";
+        String ext = imageExtension(contentType);
         String path = "recipes/" + UUID.randomUUID() + ext;
         return uploadBytes(data, contentType != null ? contentType : "image/png", recipeBucket, path);
     }
@@ -82,9 +80,17 @@ public class SupabaseStorageService {
      * 바이트 배열을 직접 식단 기록 버킷에 업로드하고 공개 URL을 반환.
      */
     public String uploadMealImageBytes(byte[] data, String contentType) {
-        String ext = contentType != null && contentType.contains("jpeg") ? ".jpg" : ".png";
+        String ext = imageExtension(contentType);
         String path = "meals/" + UUID.randomUUID() + ext;
         return uploadBytes(data, contentType != null ? contentType : "image/png", mealBucket, path);
+    }
+
+    private String imageExtension(String contentType) {
+        if (contentType == null) return ".png";
+        if (contentType.contains("jpeg")) return ".jpg";
+        if (contentType.contains("gif")) return ".gif";
+        if (contentType.contains("webp")) return ".webp";
+        return ".png";
     }
 
     private String uploadFromUrl(String imageUrl, String bucket, String path) {

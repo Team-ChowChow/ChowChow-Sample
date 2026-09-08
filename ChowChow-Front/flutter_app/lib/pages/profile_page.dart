@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/character_service.dart';
@@ -2538,75 +2539,127 @@ class _PetRowState extends State<_PetRow> {
     }
   }
 
+  Future<void> _changePetImage(BuildContext sheetContext) async {
+    try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+
+      if (sheetContext.mounted) {
+        Navigator.of(sheetContext).pop();
+      }
+
+      final imageUrl = await ApiClient.uploadImageBytes(
+        await image.readAsBytes(),
+        filename: image.name,
+        type: 'pet',
+      );
+
+      await ApiClient.patch('/api/pets/${pet.petId}', {
+        'petName': pet.petName,
+        'petType': pet.petType ?? 'DOG',
+        if (pet.breedId != null) 'breedId': pet.breedId,
+        if (pet.petGender != null) 'petGender': pet.petGender,
+        if (pet.petBirthdate != null) 'petBirthdate': pet.petBirthdate,
+        if (pet.petWeight != null) 'petWeight': pet.petWeight,
+        if (pet.isNeutered != null) 'isNeutered': pet.isNeutered,
+        if (pet.petBodyConditionScore != null)
+          'petBodyConditionScore': pet.petBodyConditionScore,
+        if (pet.petActivityLevel != null)
+          'petActivityLevel': pet.petActivityLevel,
+        'petProfileImg': imageUrl,
+        'allergyIds': pet.allergyIds,
+        'healthFocusAreas': pet.healthFocusAreas,
+      });
+
+      if (!mounted) return;
+      widget.onUpdated?.call();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('반려동물 사진이 변경되었습니다.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('사진 변경에 실패했습니다. 다시 시도해주세요.')),
+      );
+    }
+  }
+
   void _openPetDetail(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 32,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: ChowColors.gray300,
-                  borderRadius: BorderRadius.circular(99),
+      builder: (ctx) => SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          MediaQuery.of(ctx).viewInsets.bottom + 32,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: ChowColors.gray300,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                },
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: SizedBox(
-                        width: 120,
-                        height: 120,
-                        child: ChowNetworkImage(
-                          url: pet.petProfileImg ?? _placeholder,
-                          fit: BoxFit.contain,
+              Center(
+                child: GestureDetector(
+                  onTap: () async {
+                    await _changePetImage(ctx);
+                  },
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: SizedBox(
+                          width: 120,
+                          height: 120,
+                          child: ChowNetworkImage(
+                            url: pet.petProfileImg ?? _placeholder,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: ChowCozy.stone500,
-                        shape: BoxShape.circle,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: ChowCozy.stone500,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.camera_alt_outlined,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
                 '사진을 탭하면 변경할 수 있어요',
+                textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: ChowColors.gray500),
               ),
               const SizedBox(height: 16),
               Text(
                 pet.petName,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w500,
@@ -2616,12 +2669,14 @@ class _PetRowState extends State<_PetRow> {
               const SizedBox(height: 4),
               Text(
                 _breedAgeLine,
+                textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: ChowColors.gray500),
               ),
               if (_weightLabel != null) ...[
                 const SizedBox(height: 2),
                 Text(
                   _weightLabel!,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 13,
                     color: ChowColors.gray600,
@@ -2674,8 +2729,7 @@ class _PetRowState extends State<_PetRow> {
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

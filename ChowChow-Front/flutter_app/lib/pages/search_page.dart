@@ -303,7 +303,7 @@ class _SearchPageState extends State<SearchPage> {
                           color: ChowColors.gray800,
                         ),
                         decoration: InputDecoration(
-                          hintText: '요리 재료 및 태그를 이용하여 검색',
+                          hintText: '요리 재료 및 태그 검색',
                           hintStyle: TextStyle(
                             fontSize: _searchFocused ? 14 : 13,
                             color: ChowColors.gray500,
