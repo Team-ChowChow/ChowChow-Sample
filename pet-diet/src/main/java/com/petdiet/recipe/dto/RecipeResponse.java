@@ -37,6 +37,7 @@ public class RecipeResponse {
     private Double averageRating;
     private Long reviewCount;
     private String authorNickname;
+    private String authorProfileImg;
     private Boolean likedByMe;
     private Boolean bookmarkedByMe;
     private Long saveCount;
@@ -64,8 +65,17 @@ public class RecipeResponse {
                 .difficulty(recipe.getDifficulty())
                 .calories(recipe.getCalories())
                 .likeCount(recipe.getLikeCount() != null ? recipe.getLikeCount() : 0)
-                .authorNickname(recipe.getUser() != null ? recipe.getUser().getUserNickname() : "관리자")
+                .authorNickname(resolveAuthorNickname(recipe))
+                .authorProfileImg(recipe.getUser() != null ? recipe.getUser().getUserProfileImg() : null)
                 .build();
+    }
+
+    private static String resolveAuthorNickname(Recipe recipe) {
+        if (recipe.getUser() == null) return "관리자";
+        String nickname = recipe.getUser().getUserNickname();
+        if (nickname != null && !nickname.isBlank()) return nickname;
+        String name = recipe.getUser().getUserName();
+        return name != null && !name.isBlank() ? name : "사용자";
     }
 
     @Getter

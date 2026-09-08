@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/chow_theme.dart';
@@ -24,11 +23,15 @@ class CommunityAvatar extends StatelessWidget {
       decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
       clipBehavior: Clip.antiAlias,
       child: url != null && url.isNotEmpty
-          ? CachedNetworkImage(
-              imageUrl: url,
+          ? Image.network(
+              url,
               fit: BoxFit.cover,
-              placeholder: (_, _) => _DefaultAvatar(size: radius),
-              errorWidget: (_, _, _) => _DefaultAvatar(size: radius),
+              gaplessPlayback: true,
+              loadingBuilder: (context, child, loadingProgress) =>
+                  loadingProgress == null
+                      ? child
+                      : _DefaultAvatar(size: radius),
+              errorBuilder: (_, _, _) => _DefaultAvatar(size: radius),
             )
           : _DefaultAvatar(size: radius),
     );

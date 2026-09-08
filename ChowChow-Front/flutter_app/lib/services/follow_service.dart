@@ -112,6 +112,14 @@ class FollowService {
     return ((res as Map<String, dynamic>)['followerCount'] as num?)?.toInt() ?? 0;
   }
 
+  static Future<bool> isFollowing(int userId) async {
+    final following = await fetchUsers(
+      FollowListType.following,
+      size: 1000,
+    );
+    return following.users.any((user) => user.userId == userId);
+  }
+
   static List<FollowUserModel> _parseUsers(List<dynamic> rawUsers) {
     return rawUsers
         .map(

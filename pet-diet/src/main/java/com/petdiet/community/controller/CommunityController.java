@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -42,6 +43,21 @@ public class CommunityController {
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(communityService.getMyPosts(principal.authUuid(), pageable));
+    }
+
+    @GetMapping("/posts/following")
+    public ResponseEntity<Page<PostResponse>> getFollowingPosts(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(communityService.getFollowingPosts(principal.authUuid(), pageable));
+    }
+
+    @GetMapping("/posts/users/{userId}")
+    public ResponseEntity<Page<PostResponse>> getUserPosts(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @PathVariable Integer userId,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(communityService.getUserPosts(principal.authUuid(), userId, pageable));
     }
 
     @GetMapping("/posts/liked")

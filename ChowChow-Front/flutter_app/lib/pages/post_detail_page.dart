@@ -121,7 +121,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
   Future<void> _loadData() async {
     try {
       final post = await CommunityService.getPost(widget.postId);
-      final apiComments = await CommunityService.getComments(widget.postId);
+      final commentsFuture = CommunityService.getComments(widget.postId);
+      final followStatusFuture = post.userId == null
+          ? Future.value(false)
+          : FollowService.isFollowing(post.userId!).catchError((_) => false);
+      final apiComments = await commentsFuture;
+      final isFollowing = await followStatusFuture;
       if (!mounted) return;
 
       // 백엔드가 tagNames를 응답에 포함하지 않으면,
@@ -143,6 +148,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
         _post = finalPost;
         _isLiked = post.likedByMe;
         _isBookmarked = post.bookmarkedByMe;
+        _isFollowing = isFollowing;
         _comments = apiComments
             .map((comment) => _PostComment.fromApiComment(
                   comment,
@@ -299,7 +305,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   _PostContentSection(
                     post: post,
                     isLiked: _isLiked,
-                    likes: _isLiked ? post.likes + 1 : post.likes,
+                    // 서버 likeCount에는 최초 likedByMe 상태가 이미 반영되어 있다.
+                    likes: post.likes +
+                        (_isLiked ? 1 : 0) -
+                        (post.likedByMe ? 1 : 0),
                     commentCount: _commentCount,
                     currentUserId: _currentUserId,
                     onToggleLike: _togglePostLike,
@@ -440,8 +449,16 @@ class _PostContentSection extends StatelessWidget {
                 FilledButton(
                   onPressed: onToggleFollow,
                   style: FilledButton.styleFrom(
-                    backgroundColor: ChowCozy.stone500,
-                    foregroundColor: Colors.white,
+                    backgroundColor: isFollowing
+                        ? Colors.transparent
+                        : ChowCozy.stone500,
+                    foregroundColor: isFollowing
+                        ? ChowCozy.stone500
+                        : Colors.white,
+                    elevation: 0,
+                    side: isFollowing
+                        ? const BorderSide(color: ChowCozy.stone500)
+                        : BorderSide.none,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 12,
@@ -452,7 +469,7 @@ class _PostContentSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(9),
                     ),
                   ),
-                  child: Text(isFollowing ? '팔로우 중' : '팔로우'),
+                  child: Text(isFollowing ? '팔로잉' : '팔로우'),
                 ),
                 _PostMenuButton(
                   isOwner: currentUserId != null && post.userId == currentUserId,

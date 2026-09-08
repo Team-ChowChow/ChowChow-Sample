@@ -122,16 +122,26 @@ class _FollowListPageState extends State<FollowListPage> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         itemCount: _users.length,
         separatorBuilder: (_, _) => const SizedBox(height: 8),
-        itemBuilder: (context, index) => _FollowUserTile(user: _users[index]),
+        itemBuilder: (context, index) {
+          final user = _users[index];
+          return _FollowUserTile(
+            user: user,
+            onTap: () => context.push(
+              '/users/${user.userId}/posts',
+              extra: user,
+            ),
+          );
+        },
       ),
     );
   }
 }
 
 class _FollowUserTile extends StatelessWidget {
-  const _FollowUserTile({required this.user});
+  const _FollowUserTile({required this.user, required this.onTap});
 
   final FollowUserModel user;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -140,54 +150,62 @@ class _FollowUserTile extends StatelessWidget {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
-          children: [
-            ClipOval(
-              child: SizedBox(
-                width: 48,
-                height: 48,
-                child: imageUrl != null && imageUrl.isNotEmpty
-                    ? ChowNetworkImage(url: imageUrl, fit: BoxFit.cover)
-                    : const ColoredBox(
-                        color: Colors.white,
-                        child: Icon(
-                          Icons.person,
-                          size: 26,
-                          color: ChowCozy.stone500,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              ClipOval(
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? ChowNetworkImage(url: imageUrl, fit: BoxFit.cover)
+                      : const ColoredBox(
+                          color: ChowCozy.stone100,
+                          child: Icon(
+                            Icons.person,
+                            size: 26,
+                            color: ChowCozy.stone500,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.displayName,
+                      style: const TextStyle(
+                        color: ChowColors.gray900,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (user.userName?.trim().isNotEmpty == true &&
+                        user.userName!.trim() != user.displayName) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        user.userName!.trim(),
+                        style: const TextStyle(
+                          color: ChowColors.gray500,
+                          fontSize: 12,
                         ),
                       ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user.displayName,
-                    style: const TextStyle(
-                      color: ChowColors.gray900,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (user.userName?.trim().isNotEmpty == true &&
-                      user.userName!.trim() != user.displayName) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      user.userName!.trim(),
-                      style: const TextStyle(
-                        color: ChowColors.gray500,
-                        fontSize: 12,
-                      ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+              const Icon(
+                Icons.chevron_right,
+                color: ChowColors.gray400,
+              ),
+            ],
+          ),
         ),
       ),
     );

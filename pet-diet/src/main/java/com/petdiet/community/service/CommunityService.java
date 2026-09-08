@@ -77,6 +77,25 @@ public class CommunityService {
                         likeRepository.existsByPostAndUser(post, user), bookmarkRepository.existsByPostAndUser(post, user)));
     }
 
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getFollowingPosts(UUID authUuid, Pageable pageable) {
+        User user = getUser(authUuid);
+        return postRepository.findFollowingPosts(user, "ACTIVE", pageable)
+                .map(post -> PostResponse.from(post, post.getLikeCount(),
+                        likeRepository.existsByPostAndUser(post, user), bookmarkRepository.existsByPostAndUser(post, user)));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getUserPosts(UUID authUuid, Integer userId, Pageable pageable) {
+        User currentUser = getUser(authUuid);
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        return postRepository.findAllByUserAndPostStatus(targetUser, "ACTIVE", pageable)
+                .map(post -> PostResponse.from(post, post.getLikeCount(),
+                        likeRepository.existsByPostAndUser(post, currentUser),
+                        bookmarkRepository.existsByPostAndUser(post, currentUser)));
+    }
+
     @Transactional
     public Map<String, Object> toggleBookmark(UUID authUuid, Integer postId) {
         User user = getUser(authUuid);

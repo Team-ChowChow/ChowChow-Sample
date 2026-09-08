@@ -71,7 +71,9 @@ public class SupabaseStorageService {
      * 바이트 배열을 직접 레시피 버킷에 업로드하고 공개 URL을 반환.
      */
     public String uploadRecipeImageBytes(byte[] data, String contentType) {
-        String ext = contentType != null && contentType.contains("jpeg") ? ".jpg" : ".png";
+        String ext = contentType != null && contentType.contains("gif")
+                ? ".gif"
+                : contentType != null && contentType.contains("jpeg") ? ".jpg" : ".png";
         String path = "recipes/" + UUID.randomUUID() + ext;
         return uploadBytes(data, contentType != null ? contentType : "image/png", recipeBucket, path);
     }

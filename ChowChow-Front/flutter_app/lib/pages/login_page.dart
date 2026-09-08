@@ -271,11 +271,14 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               children: [
                                 WidgetSpan(
+                                  alignment: PlaceholderAlignment.baseline,
+                                  baseline: TextBaseline.alphabetic,
                                   child: GestureDetector(
                                     onTap: () => context.push('/signup'),
                                     child: const Text(
                                       '회원가입',
                                       style: TextStyle(
+                                        fontSize: 14,
                                         color: ChowCozy.stone500,
                                         fontWeight: FontWeight.w500,
                                       ),

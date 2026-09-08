@@ -7,11 +7,25 @@ import '../services/community_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 
-enum MyPostsMode { myPosts, savedPosts, likedPosts, savedRecipes }
+enum MyPostsMode {
+  myPosts,
+  followingPosts,
+  userPosts,
+  savedPosts,
+  likedPosts,
+  savedRecipes,
+}
 
 class MyPostsPage extends StatefulWidget {
-  const MyPostsPage({super.key, required this.mode});
+  const MyPostsPage({
+    super.key,
+    required this.mode,
+    this.userId,
+    this.userNickname,
+  });
   final MyPostsMode mode;
+  final int? userId;
+  final String? userNickname;
 
   @override
   State<MyPostsPage> createState() => _MyPostsPageState();
@@ -38,6 +52,10 @@ class _MyPostsPageState extends State<MyPostsPage> {
       switch (widget.mode) {
         case MyPostsMode.myPosts:
           await _loadMyPosts();
+        case MyPostsMode.followingPosts:
+          await _loadFollowingPosts();
+        case MyPostsMode.userPosts:
+          await _loadUserPosts();
         case MyPostsMode.savedPosts:
           await _loadSavedPosts();
         case MyPostsMode.likedPosts:
@@ -77,6 +95,28 @@ class _MyPostsPageState extends State<MyPostsPage> {
     });
   }
 
+  Future<void> _loadFollowingPosts() async {
+    final posts = await CommunityService.getFollowingPosts();
+    if (!mounted) return;
+    setState(() {
+      _posts = posts;
+      _savedRecipes = [];
+    });
+  }
+
+  Future<void> _loadUserPosts() async {
+    final userId = widget.userId;
+    if (userId == null) {
+      throw StateError('게시글을 조회할 사용자 정보가 없습니다.');
+    }
+    final posts = await CommunityService.getUserPosts(userId);
+    if (!mounted) return;
+    setState(() {
+      _posts = posts;
+      _savedRecipes = [];
+    });
+  }
+
   Future<void> _loadSavedRecipes() async {
     final recipes = await _fetchSavedRecipes();
     if (!mounted) return;
@@ -103,6 +143,8 @@ class _MyPostsPageState extends State<MyPostsPage> {
 
   String get _title => switch (widget.mode) {
         MyPostsMode.myPosts => '내가 작성한 글',
+        MyPostsMode.followingPosts => '팔로잉 피드',
+        MyPostsMode.userPosts => '${widget.userNickname ?? '사용자'}님의 글',
         MyPostsMode.savedPosts => '저장한 글',
         MyPostsMode.likedPosts => '좋아한 글',
         MyPostsMode.savedRecipes => '저장한 레시피',
@@ -110,6 +152,8 @@ class _MyPostsPageState extends State<MyPostsPage> {
 
   String get _emptyMessage => switch (widget.mode) {
         MyPostsMode.myPosts => '작성한 글이 없습니다.',
+        MyPostsMode.followingPosts => '팔로잉한 사람의 글이 없습니다.',
+        MyPostsMode.userPosts => '이 사용자가 작성한 글이 없습니다.',
         MyPostsMode.savedPosts => '저장한 글이 없습니다.',
         MyPostsMode.likedPosts => '좋아한 글이 없습니다.',
         MyPostsMode.savedRecipes => '저장한 레시피가 없습니다.',
@@ -117,6 +161,8 @@ class _MyPostsPageState extends State<MyPostsPage> {
 
   bool get _isEmpty => switch (widget.mode) {
         MyPostsMode.myPosts => _posts.isEmpty,
+        MyPostsMode.followingPosts => _posts.isEmpty,
+        MyPostsMode.userPosts => _posts.isEmpty,
         MyPostsMode.savedPosts => _posts.isEmpty,
         MyPostsMode.likedPosts => _posts.isEmpty,
         MyPostsMode.savedRecipes => _savedRecipes.isEmpty,
@@ -166,6 +212,8 @@ class _MyPostsPageState extends State<MyPostsPage> {
                           Icon(
                             switch (widget.mode) {
                               MyPostsMode.myPosts => Icons.edit_note,
+                              MyPostsMode.followingPosts => Icons.people_outline,
+                              MyPostsMode.userPosts => Icons.article_outlined,
                               MyPostsMode.likedPosts => Icons.favorite_border,
                               _ => Icons.bookmark_border,
                             },
@@ -221,6 +269,17 @@ class _PostListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final content = post.content.trim();
+    final profileImageUrl = post.profileImageUrl?.trim() ?? '';
+    final savedTitle = post.title?.trim() ?? '';
+    final title = savedTitle.isNotEmpty
+        ? savedTitle
+        : (content.isNotEmpty ? content.split('\n').first.trim() : '제목 없음');
+    final contentLines = content.split('\n');
+    final body = contentLines.isNotEmpty && contentLines.first.trim() == title
+        ? contentLines.skip(1).join('\n').trim()
+        : content;
+
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
@@ -232,7 +291,7 @@ class _PostListItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 카테고리 + 날짜
+              // 카테고리 + 작성자 + 날짜
               Row(
                 children: [
                   Container(
@@ -250,7 +309,48 @@ class _PostListItem extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 6),
+                  ClipOval(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: profileImageUrl.isNotEmpty
+                          ? Image.network(
+                              profileImageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const ColoredBox(
+                                color: ChowColors.gray100,
+                                child: Icon(
+                                  Icons.person,
+                                  size: 16,
+                                  color: ChowColors.gray400,
+                                ),
+                              ),
+                            )
+                          : const ColoredBox(
+                              color: ChowColors.gray100,
+                              child: Icon(
+                                Icons.person,
+                                size: 16,
+                                color: ChowColors.gray400,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      post.author,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: ChowColors.gray600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     post.timeAgo,
                     style: const TextStyle(fontSize: 12, color: ChowColors.gray400),
@@ -258,9 +358,9 @@ class _PostListItem extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              // 제목 역할 (첫 줄)
+              // 게시글 제목
               Text(
-                post.content.split('\n').first,
+                title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -269,11 +369,10 @@ class _PostListItem extends StatelessWidget {
                   color: Color(0xFF111827),
                 ),
               ),
-              if (post.content.split('\n').length > 1 ||
-                  post.content.length > 60) ...[
+              if (body.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
-                  post.content,
+                  body,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

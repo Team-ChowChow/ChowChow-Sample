@@ -863,22 +863,20 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                             for (final e in recipe.steps.asMap().entries) ...[
                               if (e.key > 0) const SizedBox(height: 14),
                               Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Container(
                                     width: 24,
                                     height: 24,
                                     alignment: Alignment.center,
                                     decoration: const BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [ChowCozy.stone300, ChowCozy.stone500],
-                                      ),
+                                      color: ChowCozy.stone100,
                                       shape: BoxShape.circle,
                                     ),
                                     child: Text(
                                       '${e.key + 1}',
                                       style: const TextStyle(
-                                        color: Colors.white,
+                                        color: ChowColors.gray900,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
                                       ),

@@ -13,6 +13,7 @@ class RecipeModel {
   final int reviewCount;
   final int likeCount;
   final String authorNickname;
+  final String? authorProfileImg;
   final DateTime? createdAt;
 
   RecipeModel({
@@ -30,6 +31,7 @@ class RecipeModel {
     this.reviewCount = 0,
     this.likeCount = 0,
     this.authorNickname = '관리자',
+    this.authorProfileImg,
     this.createdAt,
   });
 
@@ -48,6 +50,7 @@ class RecipeModel {
         reviewCount: (j['reviewCount'] as num?)?.toInt() ?? 0,
         likeCount: (j['likeCount'] as num?)?.toInt() ?? 0,
         authorNickname: j['authorNickname'] as String? ?? '관리자',
+        authorProfileImg: j['authorProfileImg'] as String?,
         createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
       );
 }

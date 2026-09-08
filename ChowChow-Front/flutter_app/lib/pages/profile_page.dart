@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../services/api_client.dart';
 import '../services/character_service.dart';
+import '../services/follow_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
@@ -176,6 +177,28 @@ class _ProfilePageState extends State<ProfilePage> {
         ).catchError((_) => <String, dynamic>{}),
         ApiClient.get('/api/notifications').catchError((_) => <dynamic>[]),
         ApiClient.get('/api/v1/allergies').catchError((_) => <dynamic>[]),
+        FollowService.fetchUsers(
+          FollowListType.followers,
+          size: 1,
+        ).catchError(
+          (_) => const FollowUserPage(
+            users: [],
+            totalElements: 0,
+            page: 0,
+            isLast: true,
+          ),
+        ),
+        FollowService.fetchUsers(
+          FollowListType.following,
+          size: 1,
+        ).catchError(
+          (_) => const FollowUserPage(
+            users: [],
+            totalElements: 0,
+            page: 0,
+            isLast: true,
+          ),
+        ),
       ]);
 
       if (!mounted) return;
@@ -185,6 +208,8 @@ class _ProfilePageState extends State<ProfilePage> {
       final myPostsPage = results[4] as Map<String, dynamic>? ?? {};
       final rawNotifs = results[5] as List<dynamic>? ?? [];
       final rawAllergies = results[6] as List<dynamic>? ?? [];
+      final followers = results[7] as FollowUserPage;
+      final following = results[8] as FollowUserPage;
       final completedRecipeIds = rawMealRecords
           .map((item) => MealRecordModel.fromJson(item as Map<String, dynamic>))
           .where((record) => record.isCompletedRecipe)
@@ -205,8 +230,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _savedRecipes = (stats['savedRecipes'] as num?)?.toInt() ?? 0;
         _completedCooking = completedRecipeIds.length;
         _writtenPosts = myPostCount;
-        _followerCount = (stats['followerCount'] as num?)?.toInt() ?? 0;
-        _followingCount = (stats['followingCount'] as num?)?.toInt() ?? 0;
+        _followerCount = followers.totalElements;
+        _followingCount = following.totalElements;
         _notifications = rawNotifs.map((e) {
           final m = e as Map<String, dynamic>;
           final createdAt = m['createdAt'] as String?;
@@ -1999,9 +2024,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: '커뮤니티 활동',
                     items: [
                       _MenuItem(
-                        label: '내가 작성한 글',
-                        icon: Icons.edit_note,
-                        onTap: () => context.push('/my-posts'),
+                        label: '팔로잉 피드',
+                        icon: Icons.people_outline,
+                        onTap: () => context.push('/following-posts'),
                       ),
                       _MenuItem(
                         label: '저장한 글',
