@@ -235,9 +235,8 @@ public class CharacterService {
     @Transactional
     public void deleteCharacter(UUID authUuid, Integer characterId) {
         PetCharacter character = findCharacter(characterId, authUuid);
-        UserPet pet = character.getPet();
+        // 등록된 반려동물은 유지하고 캐릭터와 성장 기록만 삭제한다.
         characterRepository.delete(character);
-        userPetRepository.delete(pet);
     }
 
     private List<GrowthLogResponse> mapLogs(PetCharacter character, String filter) {

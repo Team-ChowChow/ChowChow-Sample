@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/api_client.dart';
 import '../services/character_service.dart';
+import '../services/follow_service.dart';
 import '../services/models.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
@@ -176,6 +178,28 @@ class _ProfilePageState extends State<ProfilePage> {
         ).catchError((_) => <String, dynamic>{}),
         ApiClient.get('/api/notifications').catchError((_) => <dynamic>[]),
         ApiClient.get('/api/v1/allergies').catchError((_) => <dynamic>[]),
+        FollowService.fetchUsers(
+          FollowListType.followers,
+          size: 1,
+        ).catchError(
+          (_) => const FollowUserPage(
+            users: [],
+            totalElements: 0,
+            page: 0,
+            isLast: true,
+          ),
+        ),
+        FollowService.fetchUsers(
+          FollowListType.following,
+          size: 1,
+        ).catchError(
+          (_) => const FollowUserPage(
+            users: [],
+            totalElements: 0,
+            page: 0,
+            isLast: true,
+          ),
+        ),
       ]);
 
       if (!mounted) return;
@@ -185,6 +209,8 @@ class _ProfilePageState extends State<ProfilePage> {
       final myPostsPage = results[4] as Map<String, dynamic>? ?? {};
       final rawNotifs = results[5] as List<dynamic>? ?? [];
       final rawAllergies = results[6] as List<dynamic>? ?? [];
+      final followers = results[7] as FollowUserPage;
+      final following = results[8] as FollowUserPage;
       final completedRecipeIds = rawMealRecords
           .map((item) => MealRecordModel.fromJson(item as Map<String, dynamic>))
           .where((record) => record.isCompletedRecipe)
@@ -205,13 +231,14 @@ class _ProfilePageState extends State<ProfilePage> {
         _savedRecipes = (stats['savedRecipes'] as num?)?.toInt() ?? 0;
         _completedCooking = completedRecipeIds.length;
         _writtenPosts = myPostCount;
-        _followerCount = (stats['followerCount'] as num?)?.toInt() ?? 0;
-        _followingCount = (stats['followingCount'] as num?)?.toInt() ?? 0;
+        _followerCount = followers.totalElements;
+        _followingCount = following.totalElements;
         _notifications = rawNotifs.map((e) {
           final m = e as Map<String, dynamic>;
           final createdAt = m['createdAt'] as String?;
           final timeStr = createdAt != null ? _formatNotifTime(createdAt) : '';
           return _ProfileNotice(
+            id: (m['notificationId'] as num).toInt(),
             type: m['notificationType'] as String? ?? 'notice',
             title:
                 m['notificationTitle'] as String? ??
@@ -1624,8 +1651,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ? const Color(0xFFFDF7EA)
                                     : Colors.white,
                                 child: InkWell(
-                                  onTap: () {
+                                  onTap: () async {
                                     if (!item.isNew) return;
+
+                                    try {
+                                      await ApiClient.patch(
+                                        '/api/notifications/${item.id}/read',
+                                        const <String, dynamic>{},
+                                      );
+                                    } catch (_) {
+                                      return;
+                                    }
+
+                                    if (!mounted || !context.mounted) return;
 
                                     setModalState(() {
                                       _notifications[index] = item.copyWith(
@@ -1999,9 +2037,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     title: '커뮤니티 활동',
                     items: [
                       _MenuItem(
-                        label: '내가 작성한 글',
-                        icon: Icons.edit_note,
-                        onTap: () => context.push('/my-posts'),
+                        label: '팔로잉 피드',
+                        icon: Icons.people_outline,
+                        onTap: () => context.push('/following-posts'),
                       ),
                       _MenuItem(
                         label: '저장한 글',
@@ -2513,75 +2551,127 @@ class _PetRowState extends State<_PetRow> {
     }
   }
 
+  Future<void> _changePetImage(BuildContext sheetContext) async {
+    try {
+      final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+      if (image == null) return;
+
+      if (sheetContext.mounted) {
+        Navigator.of(sheetContext).pop();
+      }
+
+      final imageUrl = await ApiClient.uploadImageBytes(
+        await image.readAsBytes(),
+        filename: image.name,
+        type: 'pet',
+      );
+
+      await ApiClient.patch('/api/pets/${pet.petId}', {
+        'petName': pet.petName,
+        'petType': pet.petType ?? 'DOG',
+        if (pet.breedId != null) 'breedId': pet.breedId,
+        if (pet.petGender != null) 'petGender': pet.petGender,
+        if (pet.petBirthdate != null) 'petBirthdate': pet.petBirthdate,
+        if (pet.petWeight != null) 'petWeight': pet.petWeight,
+        if (pet.isNeutered != null) 'isNeutered': pet.isNeutered,
+        if (pet.petBodyConditionScore != null)
+          'petBodyConditionScore': pet.petBodyConditionScore,
+        if (pet.petActivityLevel != null)
+          'petActivityLevel': pet.petActivityLevel,
+        'petProfileImg': imageUrl,
+        'allergyIds': pet.allergyIds,
+        'healthFocusAreas': pet.healthFocusAreas,
+      });
+
+      if (!mounted) return;
+      widget.onUpdated?.call();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('반려동물 사진이 변경되었습니다.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('사진 변경에 실패했습니다. 다시 시도해주세요.')),
+      );
+    }
+  }
+
   void _openPetDetail(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
+      useSafeArea: true,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 32,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: ChowColors.gray300,
-                  borderRadius: BorderRadius.circular(99),
+      builder: (ctx) => SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          MediaQuery.of(ctx).viewInsets.bottom + 32,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: ChowColors.gray300,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                },
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: SizedBox(
-                        width: 120,
-                        height: 120,
-                        child: ChowNetworkImage(
-                          url: pet.petProfileImg ?? _placeholder,
-                          fit: BoxFit.contain,
+              Center(
+                child: GestureDetector(
+                  onTap: () async {
+                    await _changePetImage(ctx);
+                  },
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: SizedBox(
+                          width: 120,
+                          height: 120,
+                          child: ChowNetworkImage(
+                            url: pet.petProfileImg ?? _placeholder,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
-                        color: ChowCozy.stone500,
-                        shape: BoxShape.circle,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: ChowCozy.stone500,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.camera_alt_outlined,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
                 '사진을 탭하면 변경할 수 있어요',
+                textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: ChowColors.gray500),
               ),
               const SizedBox(height: 16),
               Text(
                 pet.petName,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w500,
@@ -2591,12 +2681,14 @@ class _PetRowState extends State<_PetRow> {
               const SizedBox(height: 4),
               Text(
                 _breedAgeLine,
+                textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: ChowColors.gray500),
               ),
               if (_weightLabel != null) ...[
                 const SizedBox(height: 2),
                 Text(
                   _weightLabel!,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 13,
                     color: ChowColors.gray600,
@@ -2649,8 +2741,7 @@ class _PetRowState extends State<_PetRow> {
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -2848,6 +2939,7 @@ class _MenuItem extends StatelessWidget {
 
 class _ProfileNotice {
   const _ProfileNotice({
+    required this.id,
     required this.type,
     required this.title,
     required this.message,
@@ -2855,6 +2947,7 @@ class _ProfileNotice {
     required this.isNew,
   });
 
+  final int id;
   final String type;
   final String title;
   final String message;
@@ -2862,6 +2955,7 @@ class _ProfileNotice {
   final bool isNew;
 
   _ProfileNotice copyWith({
+    int? id,
     String? type,
     String? title,
     String? message,
@@ -2869,6 +2963,7 @@ class _ProfileNotice {
     bool? isNew,
   }) {
     return _ProfileNotice(
+      id: id ?? this.id,
       type: type ?? this.type,
       title: title ?? this.title,
       message: message ?? this.message,

@@ -532,54 +532,66 @@ class _ThemeTile extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.all(8),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: style.wallColors,
+                  Expanded(
+                    child: Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: style.wallColors,
+                        ),
                       ),
+                      alignment: Alignment.center,
+                      child: style.imagePath != null
+                          ? Image.asset(
+                              style.imagePath!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : Text(
+                              item.emoji,
+                              style: const TextStyle(fontSize: 28),
+                            ),
                     ),
-                    alignment: Alignment.center,
-                    child: style.imagePath != null
-                        ? Image.asset(style.imagePath!, fit: BoxFit.cover)
-                        : Text(
-                            item.emoji,
-                            style: const TextStyle(fontSize: 15),
-                          ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
                     style.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                       color: ChowCozy.stone800,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   if (busy)
                     const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: ChowCozy.stone500,
+                      height: 14,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: ChowCozy.stone500,
+                          ),
+                        ),
                       ),
                     )
                   else if (item.equipped)
                     const Text(
                       '적용중',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 10,
                         color: ChowCozy.stone600,
                         fontWeight: FontWeight.w500,
                       ),
@@ -588,19 +600,18 @@ class _ThemeTile extends StatelessWidget {
                     const Text(
                       '보유',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 10,
                         color: ChowCozy.mutedForeground,
                       ),
                     )
                   else
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🪙', style: TextStyle(fontSize: 9)),
+                        const Text('🪙', style: TextStyle(fontSize: 10)),
                         Text(
                           ' ${item.price}',
                           style: const TextStyle(
-                            fontSize: 9,
+                            fontSize: 10,
                             color: ChowCozy.mutedForeground,
                           ),
                         ),

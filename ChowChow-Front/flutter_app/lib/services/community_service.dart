@@ -1,5 +1,6 @@
 import '../data/sample_data.dart';
 import 'api_client.dart';
+import 'follow_service.dart';
 
 class CommunityService {
   const CommunityService._();
@@ -35,6 +36,68 @@ class CommunityService {
   static Future<CommunityPost> getPost(int postId) async {
     final res = await ApiClient.get('/api/community/posts/$postId');
     return CommunityPost.fromJson(res as Map<String, dynamic>);
+  }
+
+  static Future<List<CommunityPost>> getFollowingPosts() async {
+    try {
+      final res = await ApiClient.get(
+        '/api/community/posts/following',
+        query: {'page': '0', 'size': '1000'},
+      );
+      return _parsePosts(res);
+    } catch (_) {
+      final following = await FollowService.fetchUsers(
+        FollowListType.following,
+        size: 1000,
+      );
+      final followingUserIds = following.users
+          .map((user) => user.userId)
+          .toSet();
+      if (followingUserIds.isEmpty) return [];
+
+      final res = await ApiClient.get(
+        '/api/community/posts',
+        query: {
+          'page': '0',
+          'size': '1000',
+          'sort': 'createdAt,desc',
+        },
+      );
+      return _parsePosts(res)
+          .where((post) => followingUserIds.contains(post.userId))
+          .toList();
+    }
+  }
+
+  static Future<List<CommunityPost>> getUserPosts(int userId) async {
+    try {
+      final res = await ApiClient.get(
+        '/api/community/posts/users/$userId',
+        query: {'page': '0', 'size': '1000'},
+      );
+      return _parsePosts(res);
+    } catch (_) {
+      final res = await ApiClient.get(
+        '/api/community/posts',
+        query: {
+          'page': '0',
+          'size': '1000',
+          'sort': 'createdAt,desc',
+        },
+      );
+      return _parsePosts(res)
+          .where((post) => post.userId == userId)
+          .toList();
+    }
+  }
+
+  static List<CommunityPost> _parsePosts(dynamic response) {
+    final items = response is Map<String, dynamic>
+        ? response['content']
+        : response;
+    return (items as List<dynamic>)
+        .map((item) => CommunityPost.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   static Future<List<CommunityPost>> getLikedPosts() async {

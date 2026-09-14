@@ -160,12 +160,8 @@ class _CoinShopPageState extends State<CoinShopPage> {
     if (_grantingTestCoins) return;
     setState(() => _grantingTestCoins = true);
     try {
-      final res =
-          await ApiClient.post('/api/coins/earn', {
-                'amount': 2000,
-                'reason': '테스트 코인 지급',
-              })
-              as Map<String, dynamic>;
+      final res = await ApiClient.post('/api/coins/test-grant', {})
+          as Map<String, dynamic>;
       if (!mounted) return;
       setState(() {
         _balance = (res['balance'] as num?)?.toInt() ?? _balance;

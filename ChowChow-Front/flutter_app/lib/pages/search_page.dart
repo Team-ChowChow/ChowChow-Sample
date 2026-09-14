@@ -33,6 +33,8 @@ class _SearchPageState extends State<SearchPage> {
   List<RecipeModel> _results = [];
   bool _loading = false;
   Timer? _debounce;
+  Timer? _searchLogDebounce;
+  String? _lastLoggedKeyword;
 
   List<String> _popularCategories = [];
   List<_PopularSearchTerm> _popularSearchTerms = [];
@@ -66,6 +68,17 @@ class _SearchPageState extends State<SearchPage> {
 
       _debounce?.cancel();
       _debounce = Timer(const Duration(milliseconds: 400), _search);
+
+      _searchLogDebounce?.cancel();
+      final keyword = q.trim();
+      if (keyword.isEmpty) {
+        _lastLoggedKeyword = null;
+      } else {
+        _searchLogDebounce = Timer(
+          const Duration(milliseconds: 1200),
+          () => _saveSearchLog(keyword),
+        );
+      }
     });
 
     _focusNode.addListener(() {
@@ -99,9 +112,25 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _searchLogDebounce?.cancel();
     _searchCtrl.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveSearchLog(String keyword) async {
+    if (_query.trim() != keyword || _lastLoggedKeyword == keyword) return;
+    _lastLoggedKeyword = keyword;
+    try {
+      await ApiClient.post('/api/v1/search/log', {
+        'searchKeyword': keyword,
+        if (_petTypeFilter != null) 'petType': _petTypeFilter,
+        'resultCount': _results.length,
+      });
+      await _loadSearchMeta();
+    } catch (_) {
+      if (_lastLoggedKeyword == keyword) _lastLoggedKeyword = null;
+    }
   }
 
   Future<void> _search() async {
@@ -274,7 +303,7 @@ class _SearchPageState extends State<SearchPage> {
                           color: ChowColors.gray800,
                         ),
                         decoration: InputDecoration(
-                          hintText: '오리 이름으로도 검색...',
+                          hintText: '요리 재료 및 태그 검색',
                           hintStyle: TextStyle(
                             fontSize: _searchFocused ? 14 : 13,
                             color: ChowColors.gray500,
@@ -538,7 +567,18 @@ class _SearchSuggestionPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          if (!hasQuery)
+          if (!hasQuery && popularTerms.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                '아직 집계된 인기 검색어가 없습니다.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: ChowColors.gray500,
+                ),
+              ),
+            )
+          else if (!hasQuery)
             _PopularSearchGrid(
               terms: popularTerms,
               onSelect: onSelect,

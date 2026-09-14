@@ -42,6 +42,7 @@ CREATE TABLE "SearchLogs" (
 -- 인덱스
 CREATE INDEX idx_search_logs_user_id  ON "SearchLogs"("userId");
 CREATE INDEX idx_search_logs_keyword  ON "SearchLogs"("searchKeyword");
+CREATE INDEX idx_search_logs_searched_at ON "SearchLogs"("searchedAt");
 
 COMMENT ON TABLE  "SearchLogs"             IS '검색 활동 데이터. 인기 검색어, 맞춤 추천 활용';
 COMMENT ON COLUMN "SearchLogs"."userId"    IS 'NULL 허용: 비로그인 사용자 검색 기록 포함';

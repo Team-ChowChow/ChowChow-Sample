@@ -231,6 +231,28 @@ GoRouter createAppRouter({String initialLocation = '/login'}) {
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
+        path: '/following-posts',
+        builder: (context, state) =>
+            const MyPostsPage(mode: MyPostsMode.followingPosts),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: '/users/:userId/posts',
+        builder: (context, state) {
+          final userId =
+              int.tryParse(state.pathParameters['userId'] ?? '') ?? 0;
+          final user = state.extra is FollowUserModel
+              ? state.extra as FollowUserModel
+              : null;
+          return MyPostsPage(
+            mode: MyPostsMode.userPosts,
+            userId: userId,
+            userNickname: user?.displayName,
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
         path: '/saved-posts',
         builder: (context, state) =>
             const MyPostsPage(mode: MyPostsMode.savedPosts),

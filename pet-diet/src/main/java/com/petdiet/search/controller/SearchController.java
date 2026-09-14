@@ -1,8 +1,10 @@
 package com.petdiet.search.controller;
 
+import com.petdiet.config.SupabasePrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -15,19 +17,16 @@ public class SearchController {
 
     private final JdbcTemplate jdbc;
 
-    /**
-     * 인기 검색어: 최근 등록된 레시피의 주재료(1번째 재료) 기준 상위 10개
-     */
+    /** 최근 7일간 실제 검색 횟수 기준 인기 검색어 상위 10개. */
     @GetMapping("/popular")
     public ResponseEntity<?> getPopularSearches() {
         List<String> keywords = jdbc.queryForList(
-            "SELECT DISTINCT COALESCE(i.\"ingredientName\", ri.\"ingredientNote\") AS kw " +
-            "FROM \"RecipeIngredients\" ri " +
-            "JOIN \"Recipes\" r ON ri.\"recipeId\" = r.\"recipeId\" " +
-            "LEFT JOIN \"Ingredients\" i ON ri.\"ingredientId\" = i.\"ingredientId\" " +
-            "WHERE r.\"isPublic\" = true AND r.\"recipeStatus\" = 'ACTIVE' " +
-            "  AND ri.\"ingredientAmount\" IS NOT NULL " +
-            "ORDER BY kw " +
+            "SELECT LOWER(TRIM(\"searchKeyword\")) AS keyword " +
+            "FROM \"SearchLogs\" " +
+            "WHERE \"searchedAt\" >= NOW() - INTERVAL '7 days' " +
+            "  AND TRIM(\"searchKeyword\") <> '' " +
+            "GROUP BY LOWER(TRIM(\"searchKeyword\")) " +
+            "ORDER BY COUNT(*) DESC, MAX(\"searchedAt\") DESC " +
             "LIMIT 10",
             String.class
         );
@@ -55,9 +54,38 @@ public class SearchController {
     }
 
     @PostMapping("/log")
-    public ResponseEntity<?> saveSearchLog(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> saveSearchLog(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @RequestBody Map<String, Object> body) {
+        String keyword = Objects.toString(body.get("searchKeyword"), "").trim();
+        if (keyword.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "검색어를 입력해주세요."));
+        }
+        if (keyword.length() > 200) keyword = keyword.substring(0, 200);
+
+        if (principal != null) {
+            Integer userId = jdbc.queryForObject(
+                    "SELECT \"userId\" FROM \"Users\" WHERE \"authUuid\" = ?",
+                    Integer.class,
+                    principal.authUuid()
+            );
+            if (userId != null) {
+                String petType = Objects.toString(body.get("petType"), "").trim();
+                if (!petType.equals("DOG") && !petType.equals("CAT")) petType = null;
+                Integer resultCount = body.get("resultCount") instanceof Number count
+                        ? count.intValue()
+                        : null;
+                jdbc.update(
+                        "INSERT INTO \"SearchLogs\" " +
+                        "(\"userId\", \"searchKeyword\", \"searchType\", \"petType\", \"resultCount\") " +
+                        "VALUES (?, ?, 'KEYWORD', ?, ?)",
+                        userId, keyword, petType, resultCount
+                );
+            }
+        }
+
         return ResponseEntity.ok(Map.of(
-                "searchKeyword", body.getOrDefault("searchKeyword", ""),
+                "searchKeyword", keyword,
                 "message", "검색 기록이 저장되었습니다."
         ));
     }

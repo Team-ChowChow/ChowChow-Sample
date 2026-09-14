@@ -1,7 +1,10 @@
 package com.petdiet.user.controller;
 
+import com.petdiet.auth.entity.User;
+import com.petdiet.auth.repository.UserRepository;
 import com.petdiet.config.SupabasePrincipal;
 import com.petdiet.user.dto.*;
+import com.petdiet.user.service.FollowService;
 import com.petdiet.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +21,8 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final FollowService followService;
+    private final UserRepository userRepository;
     private final JdbcTemplate jdbc;
 
     @GetMapping("/me")
@@ -92,11 +97,18 @@ public class UserController {
             "WHERE u.\"authUuid\" = ?",
             Integer.class, authUuid
         );
+        User currentUser = userRepository.findByAuthUuid(authUuid)
+                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
+        long followerCount = followService.getFollowerCount(currentUser);
+        long followingCount = followService.getFollowingCount(currentUser);
+
         return ResponseEntity.ok(Map.of(
             "savedRecipes", savedRecipes != null ? savedRecipes : 0,
             "completedCooking", completedCooking != null ? completedCooking : 0,
             "writtenPosts", writtenPosts != null ? writtenPosts : 0,
-            "writtenReviews", writtenReviews != null ? writtenReviews : 0
+            "writtenReviews", writtenReviews != null ? writtenReviews : 0,
+            "followerCount", followerCount,
+            "followingCount", followingCount
         ));
     }
 

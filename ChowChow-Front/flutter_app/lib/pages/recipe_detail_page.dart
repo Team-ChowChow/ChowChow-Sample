@@ -9,6 +9,7 @@ import '../services/models.dart';
 import '../services/recipe_share_content.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/chow_network_image.dart';
+import '../widgets/community_avatar.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   const RecipeDetailPage({
@@ -684,27 +685,26 @@ class _TitleSection extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              const CircleAvatar(
+              CommunityAvatar(
                 radius: 22,
-                backgroundColor: ChowCozy.stone100,
-                child: Icon(Icons.pets, color: ChowCozy.stone300),
+                imageUrl: recipe.authorProfileImg,
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '관리자',
-                      style: TextStyle(
+                      recipe.authorNickname,
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: ChowColors.gray900,
                       ),
                     ),
-                    SizedBox(height: 2),
-                    Text(
-                      '공식 레시피',
+                    const SizedBox(height: 2),
+                    const Text(
+                      '레시피 작성자',
                       style: TextStyle(fontSize: 12, color: ChowColors.gray500),
                     ),
                   ],
@@ -961,7 +961,7 @@ class _InstructionsSection extends StatelessWidget {
             (step) => Padding(
               padding: const EdgeInsets.only(bottom: 18),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     width: 32,
@@ -969,14 +969,12 @@ class _InstructionsSection extends StatelessWidget {
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [ChowCozy.stone300, ChowCozy.stone500],
-                      ),
+                      color: ChowCozy.stone100,
                     ),
                     child: Text(
                       '${step.step}',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: ChowColors.gray900,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1256,6 +1254,7 @@ class _RelatedSection extends StatelessWidget {
           const _SectionTitle('비슷한 레시피'),
           const SizedBox(height: 14),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: recipes
                 .map(
                   (recipe) => Expanded(
@@ -1524,14 +1523,18 @@ class _RelatedCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            recipe.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: ChowColors.gray900,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+          SizedBox(
+            height: 36,
+            child: Text(
+              recipe.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: ChowColors.gray900,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+              ),
             ),
           ),
           const SizedBox(height: 4),
@@ -1692,6 +1695,8 @@ class _RecipeDetailData {
     this.petName,
     this.petWeight,
     this.petAllergyNames = const [],
+    this.authorNickname = '관리자',
+    this.authorProfileImg,
   });
 
   final int id;
@@ -1707,6 +1712,8 @@ class _RecipeDetailData {
   final String servings;
   final String difficulty;
   final String calories;
+  final String authorNickname;
+  final String? authorProfileImg;
   final List<String> tags;
   final List<_Ingredient> ingredients;
   final List<_RecipeStep> steps;
@@ -1734,6 +1741,8 @@ class _RecipeDetailData {
       steps: const [],
       tips: const [],
       servings: recipe.feedingAmount ?? '-',
+      authorNickname: recipe.authorNickname,
+      authorProfileImg: recipe.authorProfileImg,
     );
   }
 
@@ -1810,6 +1819,10 @@ class _RecipeDetailData {
       petName: json['petName'] as String? ?? base.petName,
       petWeight: (json['petWeight'] as num?)?.toDouble() ?? base.petWeight,
       petAllergyNames: petAllergyNames ?? base.petAllergyNames,
+      authorNickname:
+          json['authorNickname'] as String? ?? base.authorNickname,
+      authorProfileImg:
+          json['authorProfileImg'] as String? ?? base.authorProfileImg,
     );
   }
 
