@@ -50,7 +50,11 @@ class _CharacterListPageState extends State<CharacterListPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('캐릭터 삭제'),
-        content: Text('${c.characterName}을(를) 삭제할까요?\n삭제 후에는 복구할 수 없습니다.'),
+        content: Text(
+          '${c.characterName}을(를) 삭제할까요?\n'
+          '캐릭터와 성장 기록은 복구할 수 없습니다.\n'
+          '등록된 반려동물 정보는 유지됩니다.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
           TextButton(
