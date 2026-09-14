@@ -40,7 +40,6 @@ public class KoreanFoodSeedService {
             new SeedFood("지위픽(ZIWI PEAK)", "맥커럴 & 램", "DOG", 450.0, null, null, "영양 밀도가 높아 소량 급여로 포만감 유지"),
             new SeedFood("나우(NOW FRESH)", "그레인프리 라지브리드 어덜트", "DOG", 357.3, 28.0, 14.0, "곡물 없는 슈퍼푸드 배합, 프리미엄 사료 중 가성비 좋음"),
             new SeedFood("웰니스(Wellness)", "컴플리트 헬스 비프&발리", "DOG", 355.0, null, null, "합리적인 가격대의 균형 잡힌 영양 설계"),
-            new SeedFood("블루버팔로(Blue Buffalo)", "라이프 프로텍션 라지브리드 시니어", "DOG", 343.6, 20.0, 10.0, "노령 대형견 맞춤, 목록 중 칼로리 밀도가 가장 낮음"),
             new SeedFood("브릿(Brit Care)", "그레인프리 시니어 라이트 살몬", "DOG", 341.0, 25.0, 12.0, "가수분해 연어 사용, 저칼로리 시니어견용"),
             new SeedFood("파리나(Farmina)", "N&D 퀴노아 웨이트 매니지먼트 램", "DOG", 313.5, 28.0, 8.0, "체중관리용 사료로 칼로리 밀도가 특히 낮음"),
             new SeedFood("K9 내추럴", "램 피스트 프리즈드라이드", "DOG", 503.0, 41.0, 34.0, "동결건조 생식, 고단백·고지방(췌장질환 반려견은 주의)"),

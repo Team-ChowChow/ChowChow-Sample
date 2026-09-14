@@ -40,6 +40,9 @@ public class RecipeNutritionSummary {
     @Column(name = "\"carbohydrateG\"", precision = 7, scale = 2)
     private BigDecimal carbohydrateG;
 
+    @Column(name = "\"fiberG\"", precision = 7, scale = 2)
+    private BigDecimal fiberG;
+
     @Column(name = "\"sodiumMg\"", precision = 8, scale = 2)
     private BigDecimal sodiumMg;
 

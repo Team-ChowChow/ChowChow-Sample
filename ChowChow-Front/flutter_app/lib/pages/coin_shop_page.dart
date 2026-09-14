@@ -156,15 +156,13 @@ class _CoinShopPageState extends State<CoinShopPage> {
   }
 
   // TODO(임시): 테스트 코인 지급용 — 사용 후 이 메서드와 위 버튼을 제거할 것.
-  // '/api/coins/earn'이 아직 배포 서버에 없어서(404), 이미 배포된 '/api/coins/spend'에
-  // 음수 amount를 보내 balance -= (-2000)이 되게 하는 임시 편법을 쓴다.
   Future<void> _handleGrantTestCoins() async {
     if (_grantingTestCoins) return;
     setState(() => _grantingTestCoins = true);
     try {
       final res =
-          await ApiClient.post('/api/coins/spend', {
-                'amount': -2000,
+          await ApiClient.post('/api/coins/earn', {
+                'amount': 2000,
                 'reason': '테스트 코인 지급',
               })
               as Map<String, dynamic>;

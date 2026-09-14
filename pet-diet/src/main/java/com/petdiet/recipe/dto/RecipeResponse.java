@@ -16,6 +16,9 @@ public class RecipeResponse {
     private String menuName;
     private String menuCategory;
     private Integer petId;
+    private String petName;
+    private Double petWeight;
+    private List<String> petAllergyNames;
     private String recipeTitle;
     private String recipeDescription;
     private String recipePurpose;
@@ -49,6 +52,9 @@ public class RecipeResponse {
                 .menuName(recipe.getMenu() != null ? recipe.getMenu().getMenuName() : null)
                 .menuCategory(recipe.getMenu() != null ? recipe.getMenu().getMenuCategory() : null)
                 .petId(recipe.getPet() != null ? recipe.getPet().getPetId() : null)
+                .petName(recipe.getPet() != null ? recipe.getPet().getPetName() : null)
+                .petWeight(recipe.getPet() != null && recipe.getPet().getPetWeight() != null
+                        ? recipe.getPet().getPetWeight().doubleValue() : null)
                 .recipeTitle(recipe.getRecipeTitle())
                 .recipeDescription(recipe.getRecipeDescription())
                 .recipePurpose(recipe.getRecipePurpose())
@@ -75,6 +81,7 @@ public class RecipeResponse {
         private Double proteinG;
         private Double fatG;
         private Double carbohydrateG;
+        private Double fiberG;
         private Double sodiumMg;
         private String nutritionComment;
     }

@@ -134,6 +134,7 @@ CREATE TABLE "RecipeNutritionSummaries" (
     "proteinG"           DECIMAL(7, 2)   NULL,
     "fatG"               DECIMAL(7, 2)   NULL,
     "carbohydrateG"      DECIMAL(7, 2)   NULL,
+    "fiberG"             DECIMAL(7, 2)   NULL,
     "sodiumMg"           DECIMAL(8, 2)   NULL,
     "nutritionComment"   TEXT            NULL,
     "createdAt"          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),

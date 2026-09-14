@@ -25,6 +25,16 @@ public class CoinController {
         return ResponseEntity.ok(Map.of("balance", balance));
     }
 
+    @PostMapping("/earn")
+    public ResponseEntity<?> earn(
+            @AuthenticationPrincipal SupabasePrincipal principal,
+            @RequestBody Map<String, Object> body) {
+        int amount = ((Number) body.get("amount")).intValue();
+        String reason = String.valueOf(body.getOrDefault("reason", "코인 적립"));
+        int balance = coinService.earnCoins(principal.authUuid(), amount, reason);
+        return ResponseEntity.ok(Map.of("balance", balance));
+    }
+
     @PostMapping("/daily-login")
     public ResponseEntity<?> dailyLogin(@AuthenticationPrincipal SupabasePrincipal principal) {
         int previousBalance = coinService.getBalance(principal.authUuid());

@@ -8,8 +8,10 @@ import com.petdiet.pet.entity.UserPet;
 import com.petdiet.recipe.entity.Menu;
 import com.petdiet.recipe.entity.Recipe;
 import com.petdiet.recipe.entity.RecipeIngredient;
+import com.petdiet.recipe.entity.RecipeNutritionSummary;
 import com.petdiet.recipe.entity.RecipeStep;
 import com.petdiet.recipe.repository.MenuRepository;
+import com.petdiet.recipe.repository.RecipeNutritionSummaryRepository;
 import com.petdiet.recipe.repository.RecipeRepository;
 import com.petdiet.recipe.service.NutritionCalculationService;
 import lombok.RequiredArgsConstructor;
@@ -36,11 +38,14 @@ public class DietRecipeSaveService {
     private final MenuRepository menuRepository;
     private final IngredientResolutionService ingredientResolutionService;
     private final NutritionCalculationService nutritionCalculationService;
+    private final RecipeNutritionSummaryRepository nutritionSummaryRepository;
 
     private static final Pattern AMOUNT_PATTERN = Pattern.compile("([\\d.]+)\\s*(.*)");
 
+    public record SavedAiRecipe(Recipe recipe, RecipeNutritionSummary nutrition) {}
+
     @Transactional
-    public Recipe saveAiRecipe(User user, UserPet pet, DietRecommendResponse response,
+    public SavedAiRecipe saveAiRecipe(User user, UserPet pet, DietRecommendResponse response,
                                String imageUrl, List<String> stepImages) {
         Integer menuId = resolveMenuId(pet, response);
 
@@ -64,8 +69,9 @@ public class DietRecipeSaveService {
 
         Recipe saved = recipeRepository.save(recipe);
         nutritionCalculationService.calculateAndSave(saved);
+        RecipeNutritionSummary nutrition = nutritionSummaryRepository.findByRecipeRecipeId(saved.getRecipeId()).orElse(null);
         log.info("AI 레시피 저장 완료: recipeId={}, title={}", saved.getRecipeId(), saved.getRecipeTitle());
-        return saved;
+        return new SavedAiRecipe(saved, nutrition);
     }
 
     private Integer resolveMenuId(UserPet pet, DietRecommendResponse response) {

@@ -64,6 +64,33 @@ class DietIngredientModel {
       );
 }
 
+class RecipeNutritionModel {
+  final double? totalCalories;
+  final double? proteinG;
+  final double? fatG;
+  final double? carbohydrateG;
+  final double? fiberG;
+
+  RecipeNutritionModel({
+    this.totalCalories,
+    this.proteinG,
+    this.fatG,
+    this.carbohydrateG,
+    this.fiberG,
+  });
+
+  bool get isEmpty =>
+      totalCalories == null && proteinG == null && fatG == null && carbohydrateG == null && fiberG == null;
+
+  factory RecipeNutritionModel.fromJson(Map<String, dynamic> j) => RecipeNutritionModel(
+        totalCalories: (j['totalCalories'] as num?)?.toDouble(),
+        proteinG: (j['proteinG'] as num?)?.toDouble(),
+        fatG: (j['fatG'] as num?)?.toDouble(),
+        carbohydrateG: (j['carbohydrateG'] as num?)?.toDouble(),
+        fiberG: (j['fiberG'] as num?)?.toDouble(),
+      );
+}
+
 class DietGenerateModel {
   final int? recipeId;
   final String title;
@@ -73,6 +100,7 @@ class DietGenerateModel {
   final List<DietIngredientModel> ingredients;
   final List<String> steps;
   final List<String> warnings;
+  final RecipeNutritionModel? nutrition;
 
   DietGenerateModel({
     this.recipeId,
@@ -83,6 +111,7 @@ class DietGenerateModel {
     required this.ingredients,
     required this.steps,
     required this.warnings,
+    this.nutrition,
   });
 
   factory DietGenerateModel.fromJson(Map<String, dynamic> j) => DietGenerateModel(
@@ -97,6 +126,9 @@ class DietGenerateModel {
             [],
         steps: (j['steps'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
         warnings: (j['warnings'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+        nutrition: j['nutrition'] != null
+            ? RecipeNutritionModel.fromJson(j['nutrition'] as Map<String, dynamic>)
+            : null,
       );
 }
 
