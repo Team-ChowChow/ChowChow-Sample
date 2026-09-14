@@ -238,6 +238,7 @@ class _ProfilePageState extends State<ProfilePage> {
           final createdAt = m['createdAt'] as String?;
           final timeStr = createdAt != null ? _formatNotifTime(createdAt) : '';
           return _ProfileNotice(
+            id: (m['notificationId'] as num).toInt(),
             type: m['notificationType'] as String? ?? 'notice',
             title:
                 m['notificationTitle'] as String? ??
@@ -1650,8 +1651,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ? const Color(0xFFFDF7EA)
                                     : Colors.white,
                                 child: InkWell(
-                                  onTap: () {
+                                  onTap: () async {
                                     if (!item.isNew) return;
+
+                                    try {
+                                      await ApiClient.patch(
+                                        '/api/notifications/${item.id}/read',
+                                        const <String, dynamic>{},
+                                      );
+                                    } catch (_) {
+                                      return;
+                                    }
+
+                                    if (!mounted || !context.mounted) return;
 
                                     setModalState(() {
                                       _notifications[index] = item.copyWith(
@@ -2927,6 +2939,7 @@ class _MenuItem extends StatelessWidget {
 
 class _ProfileNotice {
   const _ProfileNotice({
+    required this.id,
     required this.type,
     required this.title,
     required this.message,
@@ -2934,6 +2947,7 @@ class _ProfileNotice {
     required this.isNew,
   });
 
+  final int id;
   final String type;
   final String title;
   final String message;
@@ -2941,6 +2955,7 @@ class _ProfileNotice {
   final bool isNew;
 
   _ProfileNotice copyWith({
+    int? id,
     String? type,
     String? title,
     String? message,
@@ -2948,6 +2963,7 @@ class _ProfileNotice {
     bool? isNew,
   }) {
     return _ProfileNotice(
+      id: id ?? this.id,
       type: type ?? this.type,
       title: title ?? this.title,
       message: message ?? this.message,

@@ -842,11 +842,13 @@ class _CharacterPageState extends State<CharacterPage>
       builder: (context, constraints) {
         const horizontalPadding = 16.0;
         const spacing = 8.0;
-        final side = ((constraints.maxWidth - (horizontalPadding * 2) -
-                    (spacing * (shortcuts.length - 1))) /
-                shortcuts.length)
-            .clamp(0.0, 68.0)
-            .toDouble();
+        final side = max(
+          0.0,
+          (constraints.maxWidth -
+                  (horizontalPadding * 2) -
+                  (spacing * (shortcuts.length - 1))) /
+              shortcuts.length,
+        );
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 4),
@@ -855,8 +857,8 @@ class _CharacterPageState extends State<CharacterPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var i = 0; i < shortcuts.length; i++) ...[
-                  SizedBox.square(
-                    dimension: side,
+                  SizedBox(
+                    width: side,
                     child: _ShortcutChip(data: shortcuts[i]),
                   ),
                   if (i < shortcuts.length - 1) const SizedBox(width: spacing),
@@ -1264,6 +1266,7 @@ class _ShortcutChip extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Icon(data.icon, size: 20, color: ChowCozy.stone700),
