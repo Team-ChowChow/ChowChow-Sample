@@ -17,12 +17,25 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CoinController {
 
+    // TODO(임시): 코인 상점 테스트가 끝나면 엔드포인트와 함께 제거한다.
+    private static final int TEST_COIN_GRANT_AMOUNT = 2_000;
+
     private final CoinService coinService;
 
     @GetMapping("/balance")
     public ResponseEntity<?> getBalance(@AuthenticationPrincipal SupabasePrincipal principal) {
         int balance = coinService.getBalance(principal.authUuid());
         return ResponseEntity.ok(Map.of("balance", balance));
+    }
+
+    @PostMapping("/test-grant")
+    public ResponseEntity<?> grantTestCoins(
+            @AuthenticationPrincipal SupabasePrincipal principal) {
+        int balance = coinService.earnCoins(
+                principal.authUuid(), TEST_COIN_GRANT_AMOUNT, "테스트 코인 지급");
+        return ResponseEntity.ok(Map.of(
+                "balance", balance,
+                "granted", TEST_COIN_GRANT_AMOUNT));
     }
 
     @PostMapping("/daily-login")
