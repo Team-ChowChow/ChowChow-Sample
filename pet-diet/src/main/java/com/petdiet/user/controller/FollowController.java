@@ -1,11 +1,11 @@
 package com.petdiet.user.controller;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
 import com.petdiet.config.SupabasePrincipal;
 import com.petdiet.user.dto.FollowPageResponse;
 import com.petdiet.user.service.FollowService;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,18 +21,24 @@ public class FollowController {
     private final FollowService followService;
     private final UserRepository userRepository;
 
+    private User currentUser(SupabasePrincipal principal) {
+        return userRepository.findByAuthUuid(principal.authUuid())
+                .orElseThrow(() -> new IllegalStateException("유저를 찾을 수 없습니다."));
+    }
+
+    private User targetUser(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    }
+
     // 팔로우
     @PostMapping("/{userId}/follow")
     public ResponseEntity<FollowResponse> follow(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId) {
-        User currentUser = userRepository.findByAuthUuid(principal.authUuid())
-                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        followService.follow(currentUser, targetUser);
-        long followerCount = followService.getFollowerCount(targetUser);
-        return ResponseEntity.ok(new FollowResponse(followerCount));
+        User target = targetUser(userId);
+        followService.follow(currentUser(principal), target);
+        return ResponseEntity.ok(new FollowResponse(followService.getFollowerCount(target)));
     }
 
     // 언팔로우
@@ -40,13 +46,9 @@ public class FollowController {
     public ResponseEntity<FollowResponse> unfollow(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId) {
-        User currentUser = userRepository.findByAuthUuid(principal.authUuid())
-                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        followService.unfollow(currentUser, targetUser);
-        long followerCount = followService.getFollowerCount(targetUser);
-        return ResponseEntity.ok(new FollowResponse(followerCount));
+        User target = targetUser(userId);
+        followService.unfollow(currentUser(principal), target);
+        return ResponseEntity.ok(new FollowResponse(followService.getFollowerCount(target)));
     }
 
     // 나의 팔로워 목록
@@ -54,9 +56,8 @@ public class FollowController {
     public ResponseEntity<FollowPageResponse> getMyFollowers(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        User currentUser = userRepository.findByAuthUuid(principal.authUuid())
-                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
-        FollowPageResponse response = followService.getFollowers(currentUser, currentUser, pageable);
+        User user = currentUser(principal);
+        FollowPageResponse response = followService.getFollowers(user, user, pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -65,9 +66,8 @@ public class FollowController {
     public ResponseEntity<FollowPageResponse> getMyFollowing(
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        User currentUser = userRepository.findByAuthUuid(principal.authUuid())
-                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
-        FollowPageResponse response = followService.getFollowing(currentUser, currentUser, pageable);
+        User user = currentUser(principal);
+        FollowPageResponse response = followService.getFollowing(user, user, pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -77,11 +77,7 @@ public class FollowController {
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        User currentUser = userRepository.findByAuthUuid(principal.authUuid())
-                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        FollowPageResponse response = followService.getFollowers(currentUser, targetUser, pageable);
+        FollowPageResponse response = followService.getFollowers(currentUser(principal), targetUser(userId), pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -91,11 +87,7 @@ public class FollowController {
             @AuthenticationPrincipal SupabasePrincipal principal,
             @PathVariable Integer userId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        User currentUser = userRepository.findByAuthUuid(principal.authUuid())
-                .orElseThrow(() -> new IllegalArgumentException("현재 사용자를 찾을 수 없습니다."));
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        FollowPageResponse response = followService.getFollowing(currentUser, targetUser, pageable);
+        FollowPageResponse response = followService.getFollowing(currentUser(principal), targetUser(userId), pageable);
         return ResponseEntity.ok(response);
     }
 

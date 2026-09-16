@@ -68,6 +68,7 @@ public class NutritionCalculationService {
         BigDecimal protein = BigDecimal.ZERO;
         BigDecimal fat = BigDecimal.ZERO;
         BigDecimal carb = BigDecimal.ZERO;
+        BigDecimal fiber = BigDecimal.ZERO;
 
         for (RecipeIngredient ri : ingredients) {
             Ingredient ingredient = byId.get(ri.getIngredientId());
@@ -82,6 +83,7 @@ public class NutritionCalculationService {
             protein = protein.add(nullToZero(ingredient.getProteinG()).multiply(ratio));
             fat = fat.add(nullToZero(ingredient.getFatG()).multiply(ratio));
             carb = carb.add(nullToZero(ingredient.getCarbohydrateG()).multiply(ratio));
+            fiber = fiber.add(nullToZero(ingredient.getFiberG()).multiply(ratio));
         }
 
         if (totalWeight.compareTo(BigDecimal.ZERO) == 0) return;
@@ -97,6 +99,7 @@ public class NutritionCalculationService {
                 .proteinG(scale(protein, 2))
                 .fatG(scale(fat, 2))
                 .carbohydrateG(scale(carb, 2))
+                .fiberG(scale(fiber, 2))
                 .build();
 
         nutritionRepository.save(summary);

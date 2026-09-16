@@ -99,3 +99,6 @@ ALTER TABLE "CommercialFoods" ADD COLUMN IF NOT EXISTS "source" VARCHAR(30);
 ALTER TABLE "CommercialFoods" DROP COLUMN IF EXISTS "lowestPriceWon";
 UPDATE "CommercialFoods" SET "source" = 'CURATED_KR' WHERE "source" IS NULL AND "features" IS NOT NULL;
 UPDATE "CommercialFoods" SET "source" = 'OPFF' WHERE "source" IS NULL;
+
+-- 레시피 결과 화면에 섬유질까지 표시하기 위해 영양 요약에 섬유질 추가
+ALTER TABLE "RecipeNutritionSummaries" ADD COLUMN IF NOT EXISTS "fiberG" DECIMAL(7,2);

@@ -19,6 +19,7 @@ public class CommercialFoodResponse {
     private BigDecimal carbohydrateG;
     private String features;
     private String imageUrl;
+    private String purchaseUrl;
 
     public static CommercialFoodResponse from(CommercialFood f) {
         return CommercialFoodResponse.builder()
@@ -32,6 +33,7 @@ public class CommercialFoodResponse {
                 .carbohydrateG(f.getCarbohydrateG())
                 .features(f.getFeatures())
                 .imageUrl(f.getImageUrl())
+                .purchaseUrl(f.getPurchaseUrl())
                 .build();
     }
 }

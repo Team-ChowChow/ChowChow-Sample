@@ -4,6 +4,9 @@ import com.petdiet.auth.entity.User;
 import com.petdiet.auth.repository.UserRepository;
 import com.petdiet.ingredient.entity.Ingredient;
 import com.petdiet.ingredient.repository.IngredientRepository;
+import com.petdiet.master.entity.Allergy;
+import com.petdiet.master.repository.AllergyRepository;
+import com.petdiet.pet.entity.PetAllergy;
 import com.petdiet.pet.entity.UserPet;
 import com.petdiet.pet.repository.UserPetRepository;
 import com.petdiet.recipe.dto.*;
@@ -34,6 +37,7 @@ public class RecipeService {
     private final UserPetRepository userPetRepository;
     private final RecipeNutritionSummaryRepository nutritionRepository;
     private final IngredientRepository ingredientRepository;
+    private final AllergyRepository allergyRepository;
     private final NutritionCalculationService nutritionCalculationService;
     private final JdbcTemplate jdbc;
 
@@ -121,6 +125,7 @@ public class RecipeService {
                 .bookmarkedByMe(bookmarkedByMe)
                 .saveCount(saveCount)
                 .ingredients(enrichIngredientNames(recipe.getIngredients()))
+                .petAllergyNames(recipe.getPet() != null ? petAllergyNames(recipe.getPet()) : null)
                 .build();
         var nutrition = nutritionRepository.findByRecipeRecipeId(recipeId);
         if (nutrition.isEmpty()) return base;
@@ -131,6 +136,7 @@ public class RecipeService {
                         .proteinG(n.getProteinG() != null ? n.getProteinG().doubleValue() : null)
                         .fatG(n.getFatG() != null ? n.getFatG().doubleValue() : null)
                         .carbohydrateG(n.getCarbohydrateG() != null ? n.getCarbohydrateG().doubleValue() : null)
+                        .fiberG(n.getFiberG() != null ? n.getFiberG().doubleValue() : null)
                         .sodiumMg(n.getSodiumMg() != null ? n.getSodiumMg().doubleValue() : null)
                         .nutritionComment(n.getNutritionComment())
                         .build())
@@ -155,6 +161,12 @@ public class RecipeService {
                     return RecipeIngredientDto.from(ri, name != null ? name : ri.getIngredientNote());
                 })
                 .toList();
+    }
+
+    private List<String> petAllergyNames(UserPet pet) {
+        List<Integer> allergyIds = pet.getAllergies().stream().map(PetAllergy::getAllergyId).toList();
+        if (allergyIds.isEmpty()) return List.of();
+        return allergyRepository.findAllById(allergyIds).stream().map(Allergy::getAllergyName).toList();
     }
 
     @Transactional

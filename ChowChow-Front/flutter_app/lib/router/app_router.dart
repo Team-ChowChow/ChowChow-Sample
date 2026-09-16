@@ -10,7 +10,6 @@ import '../pages/character_page.dart';
 import '../pages/character_growth_logs_page.dart';
 import '../pages/coin_shop_page.dart';
 import '../pages/pet_raising_3d_page.dart';
-import '../pages/character_raise_page.dart';
 import '../pages/community_page.dart';
 import '../pages/completed_recipes_page.dart';
 import '../pages/find_id_page.dart';

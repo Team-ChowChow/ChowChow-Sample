@@ -65,6 +65,8 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
   PetModel? _selectedPet;
   bool _petsLoading = true;
   DietGenerateModel? _result;
+  List<AllergyModel> _allergies = [];
+  bool _liked = false;
   final _notesCtrl = TextEditingController();
 
   late final AnimationController _pulseCtrl;
@@ -93,12 +95,34 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
     _bounceY = Tween<double>(begin: 0, end: -10).animate(
       CurvedAnimation(parent: _bounceCtrl, curve: Curves.easeOut),
     );
+    _loadAllergies();
     if (widget.quickStart) {
       _petsLoading = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _startGeneration());
     } else {
       _loadPets();
     }
+  }
+
+  Future<void> _loadAllergies() async {
+    try {
+      final res = await ApiClient.get('/api/v1/allergies') as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _allergies = res.map((e) => AllergyModel.fromJson(e as Map<String, dynamic>)).toList();
+      });
+    } catch (_) {}
+  }
+
+  String _allergyNames(List<int> ids) {
+    if (ids.isEmpty) return '없음';
+    return ids
+        .map((id) => _allergies.firstWhere(
+              (a) => a.allergyId == id,
+              orElse: () => AllergyModel(allergyId: id, allergyName: '', allergyDescription: ''),
+            ).allergyName)
+        .where((name) => name.isNotEmpty)
+        .join(', ');
   }
 
   @override
@@ -137,6 +161,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
       _apiDone = false;
       _errorMsg = null;
       _result = null;
+      _liked = false;
     });
 
     _progressTimer = Timer.periodic(const Duration(milliseconds: 120), (_) {
@@ -199,6 +224,16 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
     } catch (e) {
       if (!mounted) return;
       navigateHomeAndShowRecipeGenerationFailed(context);
+    }
+  }
+
+  Future<void> _toggleLike(int recipeId) async {
+    final newLiked = !_liked;
+    setState(() => _liked = newLiked);
+    try {
+      await ApiClient.post('/api/v1/recipes/$recipeId/like', {});
+    } catch (_) {
+      if (mounted) setState(() => _liked = !newLiked);
     }
   }
 
@@ -725,7 +760,7 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                   ),
                   const SizedBox(width: 20),
                   const Expanded(
-                    child: Text('생성된 레시피', style: ChowPageStyles.title),
+                    child: Text('레시피 결과', style: ChowPageStyles.title),
                   ),
                   const SizedBox(width: 48),
                 ],
@@ -737,6 +772,39 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: ChowColors.green500.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: ChowColors.green500.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: ChowColors.green500, size: 26),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '레시피가 완성되었어요!',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: ChowColors.gray900),
+                                ),
+                                Text(
+                                  _selectedPet != null
+                                      ? '${_selectedPet!.petName}를 위한 맞춤 레시피'
+                                      : '우리 아이를 위한 맞춤 레시피',
+                                  style: const TextStyle(fontSize: 13, color: ChowColors.gray600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Stack(
                       children: [
                         ClipRRect(
@@ -775,16 +843,31 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                       ],
                     ),
                     const SizedBox(height: 18),
-                    Text(
-                      recipe.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w500,
-                        color: ChowColors.gray900,
-                        height: 1.3,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            recipe.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w500,
+                              color: ChowColors.gray900,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                        if (recipe.recipeId != null)
+                          IconButton(
+                            onPressed: () => _toggleLike(recipe.recipeId!),
+                            icon: Icon(
+                              _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                              color: _liked ? ChowColors.red500 : ChowColors.gray400,
+                            ),
+                          ),
+                      ],
                     ),
                     if (recipe.description != null && recipe.description!.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -792,6 +875,81 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
                         recipe.description!,
                         style: const TextStyle(fontSize: 14, color: ChowColors.gray600, height: 1.5),
                       ),
+                    ],
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _resultTags(_selectedPet, recipe).map(
+                        (tag) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: ChowCozy.stone100,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '#$tag',
+                            style: const TextStyle(color: ChowCozy.stone700, fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _ResultInfoCell(icon: Icons.schedule, label: '조리시간', value: '25분'),
+                        _ResultInfoCell(icon: Icons.group_outlined, label: '분량', value: '2인분'),
+                        _ResultInfoCell(icon: Icons.restaurant, label: '난이도', value: '쉬움'),
+                        _ResultInfoCell(
+                          icon: Icons.local_fire_department,
+                          label: '칼로리',
+                          value: recipe.nutrition?.totalCalories != null
+                              ? '${recipe.nutrition!.totalCalories!.toStringAsFixed(0)}kcal'
+                              : '-',
+                        ),
+                      ],
+                    ),
+                    if (_selectedPet != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: ChowColors.gray100),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '🐾 ${_selectedPet!.petName}의 정보',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ChowColors.gray800),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Text(
+                                  '체중: ${_selectedPet!.petWeight != null ? '${_selectedPet!.petWeight!.toStringAsFixed(1)}kg' : '-'}',
+                                  style: const TextStyle(fontSize: 12, color: ChowColors.gray600),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    '알레르기: ${_allergyNames(_selectedPet!.allergyIds)}',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, color: ChowColors.gray600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (recipe.nutrition != null && !recipe.nutrition!.isEmpty) ...[
+                      const SizedBox(height: 16),
+                      _NutritionBars(nutrition: recipe.nutrition!),
                     ],
                     if (recipe.feedingAmount != null && recipe.feedingAmount!.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -979,6 +1137,125 @@ class _RecipeGenerationPageState extends State<RecipeGenerationPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+List<String> _resultTags(PetModel? pet, DietGenerateModel recipe) {
+  final tags = <String>[];
+  if (pet?.petType == 'DOG') tags.add('강아지');
+  if (pet?.petType == 'CAT') tags.add('고양이');
+
+  final text = '${recipe.title} ${recipe.description ?? ''}';
+  const keywordMap = {
+    '다이어트': ['다이어트', '체중', '비만', '감량', '저칼로리'],
+    '고단백': ['단백질', '고단백', '근육'],
+    '저지방': ['저지방', '지방 감소'],
+    '소화': ['소화', '위장', '장'],
+    '관절': ['관절', '뼈', '연골'],
+    '피부모질': ['피부', '모질', '털'],
+    '노령': ['노령', '시니어', '노견', '노묘'],
+    '면역': ['면역', '항산화'],
+  };
+  for (final entry in keywordMap.entries) {
+    if (entry.value.any((kw) => text.contains(kw))) tags.add(entry.key);
+  }
+  if (recipe.warnings.isEmpty) tags.add('알러지프리');
+  tags.add('AI생성');
+
+  return tags.toSet().take(5).toList();
+}
+
+class _ResultInfoCell extends StatelessWidget {
+  const _ResultInfoCell({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: ChowCozy.stone500, size: 21),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(color: ChowColors.gray600, fontSize: 11)),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: ChowColors.gray900, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NutritionBars extends StatelessWidget {
+  const _NutritionBars({required this.nutrition});
+
+  final RecipeNutritionModel nutrition;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <(String, double?)>[
+      ('단백질', nutrition.proteinG),
+      ('탄수화물', nutrition.carbohydrateG),
+      ('지방', nutrition.fatG),
+      ('섬유질', nutrition.fiberG),
+    ].where((r) => r.$2 != null).toList();
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    final maxValue = rows.map((r) => r.$2!).reduce((a, b) => a > b ? a : b);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ChowColors.gray100),
+        boxShadow: const [BoxShadow(blurRadius: 6, color: Color(0x0A000000), offset: Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.pie_chart_outline, size: 18, color: ChowCozy.stone500),
+              SizedBox(width: 8),
+              Text('영양 정보', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ChowColors.gray800)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (final row in rows) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(row.$1, style: const TextStyle(fontSize: 13, color: ChowColors.gray700)),
+                Text(
+                  '${row.$2!.toStringAsFixed(0)}g',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ChowColors.gray900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: maxValue > 0 ? row.$2! / maxValue : 0,
+                minHeight: 8,
+                backgroundColor: ChowColors.gray100,
+                valueColor: const AlwaysStoppedAnimation(ChowCozy.stone500),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ],
       ),
     );
   }

@@ -31,11 +31,6 @@ public class RecipeV1Controller {
     private final JdbcTemplate jdbc;
     private final AllergyRepository allergyRepository;
 
-    @PostMapping("/recipes/convert")
-    public ResponseEntity<?> convertRecipe() {
-        return ResponseEntity.ok(Map.of("message", "AI 레시피 생성이 완료되었습니다."));
-    }
-
     @GetMapping("/recipes/{recipeId}")
     public ResponseEntity<RecipeResponse> getRecipe(
             @AuthenticationPrincipal SupabasePrincipal principal,
@@ -235,16 +230,6 @@ public class RecipeV1Controller {
                 ))
                 .toList()
         );
-    }
-
-    @GetMapping("/diseases")
-    public ResponseEntity<List<Object>> getDiseases() {
-        return ResponseEntity.ok(List.of());
-    }
-
-    @GetMapping("/ingredients/categories")
-    public ResponseEntity<List<Object>> getIngredientCategories() {
-        return ResponseEntity.ok(List.of());
     }
 
     @GetMapping("/menus")

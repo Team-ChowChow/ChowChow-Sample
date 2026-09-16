@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../services/api_client.dart';
 import '../theme/chow_theme.dart';
 import '../widgets/auth_account_ui.dart';
+
+// Supabase Google 프로바이더에 등록된 웹 클라이언트 ID — id_token 검증용(aud)
+const _googleServerClientId =
+    '216947139579-0am4h6c6gs4nbt2mdk0h9fu7ducm726h.apps.googleusercontent.com';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -72,7 +77,46 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _handleGoogleLogin() => context.go('/');
+  Future<void> _handleGoogleLogin() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final googleSignIn = GoogleSignIn(serverClientId: _googleServerClientId);
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        // 사용자가 로그인 창을 취소함
+        setState(() => _isLoading = false);
+        return;
+      }
+      final googleAuth = await account.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        throw Exception('Google id_token을 가져오지 못했습니다.');
+      }
+
+      final res =
+          await ApiClient.post('/api/auth/google', {
+                'idToken': idToken,
+              }, auth: false)
+              as Map<String, dynamic>;
+      final token = res['accessToken'] as String?;
+      final refreshToken = res['refreshToken'] as String?;
+      if (token != null) await ApiClient.saveToken(token);
+      if (refreshToken != null) await ApiClient.saveRefreshToken(refreshToken);
+      if (!mounted) return;
+      context.go('/');
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message.isNotEmpty ? e.message : 'Google 로그인에 실패했습니다.');
+    } catch (e) {
+      debugPrint('❌ Google 로그인 실패: $e');
+      setState(() => _errorMessage = 'Google 로그인에 실패했습니다.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

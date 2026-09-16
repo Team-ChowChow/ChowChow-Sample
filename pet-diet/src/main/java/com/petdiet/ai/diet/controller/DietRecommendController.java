@@ -3,7 +3,6 @@ package com.petdiet.ai.diet.controller;
 import com.petdiet.ai.diet.dto.DietGenerateResponse;
 import com.petdiet.ai.diet.dto.DietRecommendRequest;
 import com.petdiet.ai.diet.dto.DietRecommendResponse;
-import com.petdiet.recipe.entity.Recipe;
 import com.petdiet.ai.diet.service.DietRecommendService;
 import com.petdiet.ai.diet.service.DietRecommendService.RecommendContext;
 import com.petdiet.ai.diet.service.DietRecipeSaveService;
@@ -71,9 +70,9 @@ public class DietRecommendController {
             }
         }
 
-        Recipe saved = dietRecipeSaveService.saveAiRecipe(ctx.user(), ctx.pet(), ctx.response(), imageUrl, stepImages);
+        var saved = dietRecipeSaveService.saveAiRecipe(ctx.user(), ctx.pet(), ctx.response(), imageUrl, stepImages);
         coinService.llmGenerateReward(principal.authUuid());
 
-        return ResponseEntity.ok(DietGenerateResponse.from(saved, ctx.response()));
+        return ResponseEntity.ok(DietGenerateResponse.from(saved.recipe(), ctx.response(), saved.nutrition()));
     }
 }

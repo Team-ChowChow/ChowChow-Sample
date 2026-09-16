@@ -443,6 +443,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                     saveCount: _saveCount,
                   ),
                   _InfoSection(recipe: recipe),
+                  if (recipe.petName != null) _PetInfoSection(recipe: recipe),
                   _DescriptionSection(description: recipe.description),
                   _Tabs(
                     activeTab: _activeTab,
@@ -458,8 +459,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       steps: recipe.steps,
                       loading: _loading,
                     ),
-                    if (recipe.nutrition.isNotEmpty)
-                      _NutritionSection(items: recipe.nutrition),
+                    if (recipe.nutrition != null && !recipe.nutrition!.isEmpty)
+                      _NutritionSection(nutrition: recipe.nutrition!),
                     if (recipe.tips.isNotEmpty) _TipsSection(tips: recipe.tips),
                     if (_similarRecipes.isNotEmpty)
                       _RelatedSection(recipes: _similarRecipes),
@@ -1000,62 +1001,99 @@ class _InstructionsSection extends StatelessWidget {
 }
 
 class _NutritionSection extends StatelessWidget {
-  const _NutritionSection({required this.items});
+  const _NutritionSection({required this.nutrition});
 
-  final List<_NutritionItem> items;
+  final RecipeNutritionModel nutrition;
 
   @override
   Widget build(BuildContext context) {
+    final rows = <(String, double?)>[
+      ('단백질', nutrition.proteinG),
+      ('탄수화물', nutrition.carbohydrateG),
+      ('지방', nutrition.fatG),
+      ('섬유질', nutrition.fiberG),
+    ].where((r) => r.$2 != null).toList();
+    if (rows.isEmpty) return const SizedBox.shrink();
+
+    final maxValue = rows.map((r) => r.$2!).reduce((a, b) => a > b ? a : b);
+
     return _WhiteSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _SectionTitle('영양 정보'),
           const SizedBox(height: 14),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: items.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 2.2,
+          for (final row in rows) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(row.$1, style: const TextStyle(fontSize: 13, color: ChowColors.gray700)),
+                Text(
+                  '${row.$2!.toStringAsFixed(0)}g',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ChowColors.gray900),
+                ),
+              ],
             ),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: ChowColors.gray50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item.label,
-                      style: const TextStyle(
-                        color: ChowColors.gray600,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.value,
-                      style: const TextStyle(
-                        color: ChowColors.gray900,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: maxValue > 0 ? row.$2! / maxValue : 0,
+                minHeight: 8,
+                backgroundColor: ChowColors.gray100,
+                valueColor: const AlwaysStoppedAnimation(ChowCozy.stone500),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _PetInfoSection extends StatelessWidget {
+  const _PetInfoSection({required this.recipe});
+
+  final _RecipeDetailData recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteSection(
+      topMargin: 0,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: ChowColors.gray50,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '🐾 ${recipe.petName}의 정보',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ChowColors.gray800),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  '체중: ${recipe.petWeight != null ? '${recipe.petWeight!.toStringAsFixed(1)}kg' : '-'}',
+                  style: const TextStyle(fontSize: 12, color: ChowColors.gray600),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    '알레르기: ${recipe.petAllergyNames.isEmpty ? '없음' : recipe.petAllergyNames.join(', ')}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: ChowColors.gray600),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1643,7 +1681,7 @@ class _RecipeDetailData {
     required this.tags,
     required this.ingredients,
     required this.steps,
-    required this.nutrition,
+    this.nutrition,
     required this.tips,
     this.imageUrl,
     this.rating = 0.0,
@@ -1654,6 +1692,9 @@ class _RecipeDetailData {
     this.servings = '2회분',
     this.difficulty = '보통',
     this.calories = '-',
+    this.petName,
+    this.petWeight,
+    this.petAllergyNames = const [],
     this.authorNickname = '관리자',
     this.authorProfileImg,
   });
@@ -1676,8 +1717,11 @@ class _RecipeDetailData {
   final List<String> tags;
   final List<_Ingredient> ingredients;
   final List<_RecipeStep> steps;
-  final List<_NutritionItem> nutrition;
+  final RecipeNutritionModel? nutrition;
   final List<String> tips;
+  final String? petName;
+  final double? petWeight;
+  final List<String> petAllergyNames;
 
   factory _RecipeDetailData.fromRecipeModel(RecipeModel? recipe) {
     if (recipe == null) return _RecipeDetailData._empty(0);
@@ -1695,7 +1739,6 @@ class _RecipeDetailData {
       ),
       ingredients: const [],
       steps: const [],
-      nutrition: const [],
       tips: const [],
       servings: recipe.feedingAmount ?? '-',
       authorNickname: recipe.authorNickname,
@@ -1732,46 +1775,13 @@ class _RecipeDetailData {
 
     // 영양정보 파싱
     final nutritionJson = json['nutrition'] as Map<String, dynamic>?;
-    final nutritionItems = <_NutritionItem>[];
-    if (nutritionJson != null) {
-      if (nutritionJson['totalCalories'] != null)
-        nutritionItems.add(
-          _NutritionItem(
-            label: '칼로리',
-            value:
-                '${(nutritionJson['totalCalories'] as num).toStringAsFixed(0)}kcal',
-          ),
-        );
-      if (nutritionJson['proteinG'] != null)
-        nutritionItems.add(
-          _NutritionItem(
-            label: '단백질',
-            value: '${(nutritionJson['proteinG'] as num).toStringAsFixed(1)}g',
-          ),
-        );
-      if (nutritionJson['fatG'] != null)
-        nutritionItems.add(
-          _NutritionItem(
-            label: '지방',
-            value: '${(nutritionJson['fatG'] as num).toStringAsFixed(1)}g',
-          ),
-        );
-      if (nutritionJson['carbohydrateG'] != null)
-        nutritionItems.add(
-          _NutritionItem(
-            label: '탄수화물',
-            value:
-                '${(nutritionJson['carbohydrateG'] as num).toStringAsFixed(1)}g',
-          ),
-        );
-      if (nutritionJson['sodiumMg'] != null)
-        nutritionItems.add(
-          _NutritionItem(
-            label: '나트륨',
-            value: '${(nutritionJson['sodiumMg'] as num).toStringAsFixed(0)}mg',
-          ),
-        );
-    }
+    final nutritionModel =
+        nutritionJson != null ? RecipeNutritionModel.fromJson(nutritionJson) : null;
+
+    // 반려동물 정보 파싱
+    final petAllergyNames = (json['petAllergyNames'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList();
 
     // 태그 파싱 (API가 tagNames 리스트 반환 시 우선 사용)
     final apiTags = (json['tags'] as List<dynamic>?)
@@ -1794,7 +1804,7 @@ class _RecipeDetailData {
       tags: (apiTags != null && apiTags.isNotEmpty) ? apiTags : builtTags,
       ingredients: ingredients,
       steps: steps,
-      nutrition: nutritionItems,
+      nutrition: nutritionModel ?? base.nutrition,
       tips: _tipsFromWarnings(json['warnings'] as String?) ?? const [],
       servings: json['feedingAmount'] as String? ?? base.servings,
       cookTime: json['cookTime'] as String? ?? base.cookTime,
@@ -1806,6 +1816,9 @@ class _RecipeDetailData {
       reviewCount: (json['reviewCount'] as num?)?.toInt() ?? base.reviewCount,
       likes: (json['likeCount'] as num?)?.toInt() ?? base.likes,
       saves: (json['saveCount'] as num?)?.toInt() ?? base.saves,
+      petName: json['petName'] as String? ?? base.petName,
+      petWeight: (json['petWeight'] as num?)?.toDouble() ?? base.petWeight,
+      petAllergyNames: petAllergyNames ?? base.petAllergyNames,
       authorNickname:
           json['authorNickname'] as String? ?? base.authorNickname,
       authorProfileImg:
@@ -1822,7 +1835,6 @@ class _RecipeDetailData {
       tags: const [],
       ingredients: const [],
       steps: const [],
-      nutrition: const [],
       tips: const [],
     );
   }
@@ -1860,13 +1872,6 @@ class _RecipeStep {
       description: json['stepDescription'] as String? ?? '',
     );
   }
-}
-
-class _NutritionItem {
-  const _NutritionItem({required this.label, required this.value});
-
-  final String label;
-  final String value;
 }
 
 class _Review {
