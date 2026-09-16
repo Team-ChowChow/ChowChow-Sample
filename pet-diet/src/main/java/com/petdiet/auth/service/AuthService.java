@@ -296,6 +296,17 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthResponse loginWithGoogle(String idToken) {
+        SupabaseTokenResult result = supabaseAuthClient.loginWithIdToken("google", idToken);
+        SupabasePrincipal principal = new SupabasePrincipal(
+                result.authUuid(), result.email(), result.name(), result.avatarUrl(), "google");
+        return syncSocialUser(principal).toBuilder()
+                .accessToken(result.accessToken())
+                .refreshToken(result.refreshToken())
+                .build();
+    }
+
+    @Transactional
     public AuthResponse syncSocialUser(SupabasePrincipal principal) {
         String provider = principal.provider().toUpperCase();
 

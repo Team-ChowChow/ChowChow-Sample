@@ -118,7 +118,7 @@ public class SupabaseAuthClient {
             UUID authUuid = UUID.fromString(user.path("id").asText());
             String userEmail = user.path("email").asText();
 
-            return new SupabaseTokenResult(accessToken, refreshToken, authUuid, userEmail);
+            return new SupabaseTokenResult(accessToken, refreshToken, authUuid, userEmail, "", null);
 
         } catch (WebClientResponseException e) {
             int status = e.getStatusCode().value();
@@ -200,12 +200,55 @@ public class SupabaseAuthClient {
             UUID authUuid = UUID.fromString(user.path("id").asText());
             String userEmail = user.path("email").asText();
 
-            return new SupabaseTokenResult(accessToken, newRefreshToken, authUuid, userEmail);
+            return new SupabaseTokenResult(accessToken, newRefreshToken, authUuid, userEmail, "", null);
         } catch (WebClientResponseException e) {
             throw new IllegalStateException("토큰 갱신에 실패했습니다. 다시 로그인해주세요.");
         } catch (Exception e) {
             throw new RuntimeException("토큰 갱신 중 오류가 발생했습니다.", e);
         }
+    }
+
+    /** Google 등 ID 토큰 기반 소셜 로그인 — Flutter에서 발급받은 Google id_token을 Supabase가 검증하고 세션을 발급한다. */
+    public SupabaseTokenResult loginWithIdToken(String provider, String idToken) {
+        try {
+            String response = webClient.post()
+                    .uri("/auth/v1/token?grant_type=id_token")
+                    .bodyValue(Map.of("provider", provider, "id_token", idToken))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode root = objectMapper.readTree(response);
+            String accessToken = root.path("access_token").asText();
+            String refreshToken = root.path("refresh_token").asText();
+            JsonNode user = root.path("user");
+            UUID authUuid = UUID.fromString(user.path("id").asText());
+            String userEmail = user.path("email").asText();
+
+            JsonNode metadata = user.path("user_metadata");
+            String name = str(metadata.path("full_name"));
+            if (name == null) name = str(metadata.path("name"));
+            String avatarUrl = str(metadata.path("avatar_url"));
+            if (avatarUrl == null) avatarUrl = str(metadata.path("picture"));
+
+            return new SupabaseTokenResult(accessToken, refreshToken, authUuid, userEmail,
+                    name != null ? name : "", avatarUrl);
+        } catch (WebClientResponseException e) {
+            log.error("Supabase {} 로그인 실패 (HTTP {}): {}", provider, e.getStatusCode(), e.getResponseBodyAsString());
+            throw new IllegalArgumentException(providerDisplayNameStatic(provider) + " 로그인에 실패했습니다.");
+        } catch (Exception e) {
+            throw new RuntimeException(providerDisplayNameStatic(provider) + " 로그인 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    private static String providerDisplayNameStatic(String provider) {
+        return switch (provider.toUpperCase()) {
+            case "GOOGLE" -> "구글";
+            case "KAKAO" -> "카카오";
+            case "NAVER" -> "네이버";
+            case "APPLE" -> "애플";
+            default -> provider;
+        };
     }
 
     /** 관리자 권한으로 비밀번호를 강제 변경한다. 호출 전에 현재 비밀번호 검증(login)을 먼저 해야 한다. */
@@ -247,6 +290,8 @@ public class SupabaseAuthClient {
             String accessToken,
             String refreshToken,
             UUID authUuid,
-            String email) {
+            String email,
+            String name,
+            String avatarUrl) {
     }
 }

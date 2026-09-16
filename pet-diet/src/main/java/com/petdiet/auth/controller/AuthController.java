@@ -31,6 +31,16 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    // Google 로그인 — Flutter가 발급받은 Google id_token을 검증하고 세션을 발급
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> loginWithGoogle(@RequestBody java.util.Map<String, String> body) {
+        String idToken = body.get("idToken");
+        if (idToken == null || idToken.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(authService.loginWithGoogle(idToken));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@RequestBody java.util.Map<String, String> body) {
         String refreshToken = body.get("refreshToken");
