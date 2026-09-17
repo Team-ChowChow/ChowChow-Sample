@@ -17,22 +17,43 @@ public class SearchController {
 
     private final JdbcTemplate jdbc;
 
-    /** 최근 7일간 실제 검색 횟수 기준 인기 검색어 상위 10개. */
+    /** 최근 7일간 실제 검색 횟수 기준 인기 검색어 상위 10개 (한글 검색어만 — 영문 테스트 입력 등 노이즈 제외). */
     @GetMapping("/popular")
     public ResponseEntity<?> getPopularSearches() {
         List<String> keywords = jdbc.queryForList(
-            "SELECT LOWER(TRIM(\"searchKeyword\")) AS keyword " +
+            "SELECT TRIM(\"searchKeyword\") AS keyword " +
             "FROM \"SearchLogs\" " +
             "WHERE \"searchedAt\" >= NOW() - INTERVAL '7 days' " +
-            "  AND TRIM(\"searchKeyword\") <> '' " +
-            "GROUP BY LOWER(TRIM(\"searchKeyword\")) " +
+            "  AND TRIM(\"searchKeyword\") ~ '[가-힣]' " +
+            "GROUP BY TRIM(\"searchKeyword\") " +
             "ORDER BY COUNT(*) DESC, MAX(\"searchedAt\") DESC " +
             "LIMIT 10",
             String.class
         );
-        List<String> filtered = keywords.stream()
+        List<String> filtered = new ArrayList<>(keywords.stream()
             .filter(k -> k != null && !k.isBlank())
-            .collect(Collectors.toList());
+            .collect(Collectors.toList()));
+
+        // 실제 검색 로그가 충분하지 않으면 현재 공개된 레시피에 실제로 쓰인 한글 재료명으로 채운다.
+        if (filtered.size() < 10) {
+            List<String> ingredientFallback = jdbc.queryForList(
+                "SELECT i.\"ingredientNameKo\" AS keyword " +
+                "FROM \"RecipeIngredients\" ri " +
+                "JOIN \"Ingredients\" i ON i.\"ingredientId\" = ri.\"ingredientId\" " +
+                "JOIN \"Recipes\" r ON r.\"recipeId\" = ri.\"recipeId\" " +
+                "WHERE r.\"isPublic\" = true AND r.\"recipeStatus\" = 'ACTIVE' " +
+                "  AND i.\"ingredientNameKo\" IS NOT NULL " +
+                "GROUP BY i.\"ingredientNameKo\" " +
+                "ORDER BY COUNT(*) DESC " +
+                "LIMIT 10",
+                String.class
+            );
+            for (String keyword : ingredientFallback) {
+                if (filtered.size() >= 10) break;
+                if (!filtered.contains(keyword)) filtered.add(keyword);
+            }
+        }
+
         return ResponseEntity.ok(Map.of("popular", filtered, "totalCount", filtered.size()));
     }
 
